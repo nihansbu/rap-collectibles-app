@@ -126,6 +126,7 @@ Candidate combined skill roster to finalize:
 - Mobile LAN URL on current network: `http://192.168.0.203:5173`
 - Build production bundle: `npm run build`
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
+- Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 
 ## Verified Workflows
 
@@ -135,6 +136,8 @@ Candidate combined skill roster to finalize:
 - Local dev server starts with `npm run dev -- --port 5173`.
 - Dev server is configured with `vite --host 0.0.0.0`, so phones on the same LAN can open the app through the Windows machine's LAN IP instead of `127.0.0.1`.
 - GitHub Pages is configured through GitHub Actions. Vite uses `base: "./"` so bundled assets load correctly from a project page subpath such as `/rap-collectibles-app/`.
+- Public GitHub repository: `https://github.com/nihansbu/rap-collectibles-app`
+- Live GitHub Pages URL: `https://nihansbu.github.io/rap-collectibles-app/`
 - Playwright mobile smoke test at `390x844` verified:
   - home page title is `Collectibles`
   - category tile order is Characters, Skills, Pets, Mounts
@@ -146,6 +149,12 @@ Candidate combined skill roster to finalize:
   - confirming purchase marks the mount as owned
   - detail sheet opens from the item info button
 
+2026-07-05:
+
+- First GitHub Pages deployment failed after creating the repository because Pages was not enabled yet. The deploy job failed with `Failed to create deployment (status: 404)` and pointed to repository Pages settings.
+- Successful solution: enable Pages with GitHub Actions build type via `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`, then rerun `.github/workflows/deploy-pages.yml`.
+- After enabling Pages, workflow run `28722585961` completed successfully and deployed to `https://nihansbu.github.io/rap-collectibles-app/`.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
@@ -153,6 +162,7 @@ Candidate combined skill roster to finalize:
 - Long-press native behavior is not fully customized yet; an explicit info button opens the item detail sheet reliably.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
+- New GitHub Pages repositories may need Pages enabled before `actions/deploy-pages` can create a deployment. If the deploy job returns a 404 deployment creation error, enable Pages with `build_type=workflow` and rerun the workflow.
 
 ## Lessons Learned
 
