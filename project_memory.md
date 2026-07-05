@@ -234,6 +234,14 @@ Candidate combined skill roster to finalize:
 - Files involved: `src/training.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`.
 - Commands used: `npm run build`, local Playwright mobile training QA through `node`.
 
+2026-07-05: GitHub Pages transient deployment recovery.
+
+- Original problem: after pushing timestamped Skill training, GitHub Actions built the app successfully but the Pages deployment failed with `Deployment failed, try again later`.
+- Successful solution: update the Pages actions to v5, restore repository Pages configuration to `build_type=workflow`, rerun the main deploy workflow, then verify the public URL serves the new hashed assets and passes the live Playwright smoke test.
+- Failed approach: switching Pages to a classic `gh-pages` branch and pushing the built `dist` also triggered GitHub's internal `pages-build-deployment`, but that failed with the same `Deployment failed, try again later` backend message. Do not treat branch deployment as a fix for this specific failure unless the workflow route is also unavailable after retry.
+- Files involved: `.github/workflows/deploy-pages.yml`, `project_memory.md`.
+- Commands used: `gh run watch`, `gh run rerun`, `gh api --method PUT repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`, live Playwright smoke test through `node`.
+
 2026-07-05: Transparent reusable Skill icons.
 
 - Original problem: the first generated Skill icons had their own illustrated backgrounds, frames, and glossy fantasy rendering, which made them less reusable and less aligned with the approved dense-grid mockup.
@@ -250,7 +258,7 @@ Candidate combined skill roster to finalize:
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
 - New GitHub Pages repositories may need Pages enabled before `actions/deploy-pages` can create a deployment. If the deploy job returns a 404 deployment creation error, enable Pages with `build_type=workflow` and rerun the workflow.
-- GitHub Actions Pages deployment actions should stay on Node-24-compatible major versions. On 2026-07-05, `actions/deploy-pages@v4` repeatedly created a deployment and then failed with `Deployment failed, try again later`; the workflow was updated to `actions/upload-pages-artifact@v5` and `actions/deploy-pages@v5`.
+- GitHub Actions Pages deployment actions should stay on Node-24-compatible major versions. On 2026-07-05, `actions/deploy-pages@v4` repeatedly created a deployment and then failed with `Deployment failed, try again later`; the workflow was updated to `actions/upload-pages-artifact@v5` and `actions/deploy-pages@v5`. The first v5 run still hit the same transient Pages backend error, but rerunning after restoring `build_type=workflow` succeeded.
 - When the user sends only screenshots/images without a written change request, do not edit files or implement changes. Describe what is visible in the images and wait for an explicit instruction.
 
 ## Lessons Learned
