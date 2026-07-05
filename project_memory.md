@@ -19,10 +19,10 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - No separated currencies for different activity types at this stage.
 - Collectibles are the main progression system.
 - The Codex is the collection overview and should make progress visible quickly.
-- Collection categories should be tile-based, for example Characters, Mounts, Pets, Items, and future categories.
+- Collection categories should be tile-based, for example Characters, Classes, Races, Mounts, Pets, Items, and future categories.
 - The setting is high fantasy.
 - Characters are collectibles too. A player may own multiple characters, but they are not actively played in the first version.
-- Characters may later have fantasy races/peoples and classes.
+- Characters may later have fantasy races and classes.
 - Skill levels are trained with RAP.
 - Skill levels can be prerequisites for collectible purchases.
 - Example unlock requirement: Mount requires Herblore level 73 plus RAP cost.
@@ -51,11 +51,12 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
 - Home page title: `Collectibles`.
-- Main category tiles in order: Characters, Skills, Pets, Mounts.
+- Main category tiles in order: Characters, Classes, Races, Skills, Pets, Mounts.
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, current RAP, and a plus button that grants 10,000 RAP.
 - Subpages use a back button in the topbar.
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
+- Classes and Races are implemented as standard collectible categories using the `type` field for broad grouping rather than nested subpages.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
@@ -80,6 +81,7 @@ Likely entities:
 - Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state.
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
+- Class/Race grouping: use `Collectible.type` for broad labels such as `Melee Tank`, `Magic Support`, `Dwarf`, or `Machine`. Avoid deeper subpage routing until content volume proves it is needed.
 - Future asset fields should include stable icon paths, for example `icon`, `iconPrompt`, and possibly `type` for the one-line tile subtitle.
 
 ## Icon Pipeline Notes
@@ -215,6 +217,12 @@ Candidate combined skill roster to finalize:
   - v2 save files process elapsed timestamp time on reload and stop training when RAP reaches zero
   - old `rap-collectibles.save.v1` data still loads through the migration path
   - `npm run build` succeeds after the implementation
+- Classes and Races category expansion verified locally with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - Collectibles overview shows Characters, Classes, Races, Skills, Pets, and Mounts in order
+  - Classes and Races each start with 8 entries
+  - Class and Race detail panels show type and RAP cost through the shared collectible detail view
+  - buying Highland Human persists through reload and updates Races progress to `1/8`
+  - no console warnings/errors and no failed requests
 
 ## Successful Solutions
 

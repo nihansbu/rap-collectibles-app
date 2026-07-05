@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   Check,
   ChevronRight,
   Gem,
@@ -10,6 +11,7 @@ import {
   Shield,
   Sparkles,
   Swords,
+  Users,
   X,
 } from "lucide-react";
 import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
@@ -101,6 +103,8 @@ function skillNameFontSize(name: string) {
 function AppIcon({ category }: { category: CategoryId }) {
   const common = { size: 22, strokeWidth: 1.8 };
   if (category === "characters") return <Shield {...common} />;
+  if (category === "classes") return <BookOpen {...common} />;
+  if (category === "races") return <Users {...common} />;
   if (category === "skills") return <Swords {...common} />;
   if (category === "pets") return <Sparkles {...common} />;
   return <Gem {...common} />;

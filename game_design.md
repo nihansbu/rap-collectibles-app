@@ -41,6 +41,8 @@ The Codex is the central collection overview. It should make the player feel imm
 The Codex starts as the main `Collectibles` page and should show category tiles in this order:
 
 - Characters
+- Classes
+- Races
 - Skills
 - Pets
 - Mounts
@@ -63,9 +65,9 @@ Planned collectible types:
 - Mounts
 - Pets
 - Characters
-- Skills
-- Races/peoples
 - Classes
+- Races
+- Skills
 - Items
 - Future high-fantasy categories
 
@@ -88,9 +90,45 @@ Characters are collectible entities, not playable avatars in the first version.
 Design direction:
 
 - Player can own multiple characters.
-- Characters may have race/people and class.
-- Races/peoples and classes may be unlockable collectible categories.
+- Characters may have race and class.
+- Races and classes are unlockable collectible categories.
 - Characters are part of the fantasy identity and collection fantasy.
+
+## Classes And Races
+
+Classes and Races are collectible categories under the main `Collectibles` page.
+
+Design decisions:
+
+- Use the English category names `Classes` and `Races`.
+- Do not create extra subpages for class or race families yet.
+- Use the existing collectible `type` field for grouping and future filtering.
+- Every tile follows the standard compact collectible pattern: icon, name, and type.
+- Detail panels handle cost, rarity, description, requirements, and purchase action.
+
+Current Class type direction:
+
+- Melee Tank
+- Melee DPS
+- Melee Support
+- Ranged DPS
+- Ranged Support
+- Magic DPS
+- Magic Support
+- Hybrid
+
+Current Race type direction:
+
+- Human
+- Elf
+- Dwarf
+- Orc
+- Goblin
+- Troll
+- Machine
+- Undead
+
+Race names can be specific variants while the type remains the broader fantasy family. Example: `Ironhold Dwarf` has type `Dwarf`.
 
 ## Skill System
 
@@ -142,7 +180,7 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Four category tiles: Characters, Skills, Pets, Mounts.
+- Category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
 - No bottom navigation.
 - Subpages are reached by tapping category tiles.
 
@@ -171,6 +209,8 @@ Grid tile direction:
 - Subpages should move away from text-heavy list cards toward dense icon grids.
 - Skills should use very compact tiles, likely five columns per row on mobile.
 - Skills show only icon, skill name, and current level such as `Lv. 73`.
+- Classes show icon, class name, and class type.
+- Races show icon, race name, and race type.
 - Pets show icon, pet name, and pet type.
 - Mounts show icon, mount name, and mount type.
 - Characters can show icon/portrait, character name, and class/archetype.
