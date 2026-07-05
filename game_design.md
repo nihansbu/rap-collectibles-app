@@ -136,8 +136,15 @@ Collection subpages should show:
 - owned/unlockable/locked state
 - filters for All, Owned, Unlockable, Locked
 - sorting for cost and requirement level
-- a detail sheet for more information
+- a full-content detail panel for more information
 - a confirmation dialog before purchase
+
+Interaction decision:
+
+- Tapping any collectible or skill card opens its detail panel.
+- The detail panel fills the content area under the topbar.
+- Buying collectibles and training skills happens from the detail panel, not directly from the list card.
+- Native browser text selection should never appear during normal app interaction.
 
 ## Tone And Setting
 

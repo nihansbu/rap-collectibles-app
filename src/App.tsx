@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Check,
   ChevronRight,
   Gem,
-  Info,
   Lock,
   Plus,
   Search,
@@ -20,6 +19,7 @@ type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
 type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "requirements-desc";
 type Page = { type: "home" } | { type: "category"; id: CategoryId };
+type DetailView = { type: "collectible"; item: Collectible } | { type: "skill"; skillId: SkillId };
 
 type PlayerState = {
   rp: number;
@@ -105,10 +105,27 @@ export function App() {
   const [filter, setFilter] = useState<Filter>("all");
   const [skillFilter, setSkillFilter] = useState<SkillFilter>("all");
   const [sort, setSort] = useState<SortMode>("default");
-  const [detailItem, setDetailItem] = useState<Collectible | null>(null);
+  const [detailView, setDetailView] = useState<DetailView | null>(null);
   const [confirmItem, setConfirmItem] = useState<Collectible | null>(null);
 
   const title = page.type === "home" ? "Collectibles" : categories.find((category) => category.id === page.id)?.name ?? "";
+
+  useEffect(() => {
+    const preventNativeSelection = (event: Event) => event.preventDefault();
+    const clearSelection = () => window.getSelection()?.removeAllRanges();
+
+    document.addEventListener("selectstart", preventNativeSelection);
+    document.addEventListener("contextmenu", preventNativeSelection);
+    document.addEventListener("dragstart", preventNativeSelection);
+    document.addEventListener("selectionchange", clearSelection);
+
+    return () => {
+      document.removeEventListener("selectstart", preventNativeSelection);
+      document.removeEventListener("contextmenu", preventNativeSelection);
+      document.removeEventListener("dragstart", preventNativeSelection);
+      document.removeEventListener("selectionchange", clearSelection);
+    };
+  }, []);
 
   function grantRp() {
     setPlayer((current) => ({ ...current, rp: current.rp + 10_000 }));
@@ -142,7 +159,7 @@ export function App() {
       };
     });
     setConfirmItem(null);
-    setDetailItem(null);
+    setDetailView(null);
   }
 
   const categoryProgress = useMemo(() => {
@@ -159,14 +176,45 @@ export function App() {
   }, [player]);
 
   return (
-    <div className="app-shell">
-      <TopBar title={title} rp={player.rp} canGoBack={page.type !== "home"} onBack={() => setPage({ type: "home" })} onGrantRp={grantRp} />
+    <div
+      className="app-shell"
+      onContextMenu={(event) => event.preventDefault()}
+      onSelect={(event) => event.preventDefault()}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      <TopBar
+        title={title}
+        rp={player.rp}
+        canGoBack={page.type !== "home" || detailView !== null}
+        onBack={() => {
+          if (detailView) {
+            setDetailView(null);
+            return;
+          }
+          setPage({ type: "home" });
+        }}
+        onGrantRp={grantRp}
+      />
 
       <main className="content">
-        {page.type === "home" ? (
+        {detailView?.type === "collectible" ? (
+          <CollectibleDetailView
+            item={detailView.item}
+            player={player}
+            onClose={() => setDetailView(null)}
+            onBuy={() => setConfirmItem(detailView.item)}
+          />
+        ) : detailView?.type === "skill" ? (
+          <SkillDetailView
+            skillId={detailView.skillId}
+            player={player}
+            onClose={() => setDetailView(null)}
+            onTrain={() => trainSkill(detailView.skillId)}
+          />
+        ) : page.type === "home" ? (
           <HomePage progress={categoryProgress} onOpen={(id) => setPage({ type: "category", id })} />
         ) : page.id === "skills" ? (
-          <SkillsPage player={player} skillFilter={skillFilter} onFilter={setSkillFilter} onTrain={trainSkill} />
+          <SkillsPage player={player} skillFilter={skillFilter} onFilter={setSkillFilter} onOpenSkill={(skillId) => setDetailView({ type: "skill", skillId })} />
         ) : (
           <CollectionPage
             category={page.id}
@@ -175,23 +223,10 @@ export function App() {
             sort={sort}
             onFilter={setFilter}
             onSort={setSort}
-            onOpenDetails={setDetailItem}
-            onRequestBuy={(item) => {
-              if (player.owned.includes(item.id)) {
-                setDetailItem(item);
-              } else if (canUnlock(item, player)) {
-                setConfirmItem(item);
-              } else {
-                setDetailItem(item);
-              }
-            }}
+            onOpenDetails={(item) => setDetailView({ type: "collectible", item })}
           />
         )}
       </main>
-
-      {detailItem && (
-        <DetailSheet item={detailItem} player={player} onClose={() => setDetailItem(null)} onBuy={() => setConfirmItem(detailItem)} />
-      )}
 
       {confirmItem && (
         <ConfirmDialog item={confirmItem} onCancel={() => setConfirmItem(null)} onConfirm={() => buyItem(confirmItem)} />
@@ -303,7 +338,6 @@ function CollectionPage({
   onFilter,
   onSort,
   onOpenDetails,
-  onRequestBuy,
 }: {
   category: Exclude<CategoryId, "skills">;
   player: PlayerState;
@@ -312,7 +346,6 @@ function CollectionPage({
   onFilter: (filter: Filter) => void;
   onSort: (sort: SortMode) => void;
   onOpenDetails: (item: Collectible) => void;
-  onRequestBuy: (item: Collectible) => void;
 }) {
   const items = useMemo(() => {
     let next = collectibles.filter((item) => item.category === category);
@@ -340,7 +373,7 @@ function CollectionPage({
       <FilterBar filter={filter} sort={sort} onFilter={onFilter} onSort={onSort} />
       <section className="card-grid">
         {items.map((item) => (
-          <CollectibleCard key={item.id} item={item} player={player} onOpenDetails={onOpenDetails} onRequestBuy={onRequestBuy} />
+          <CollectibleCard key={item.id} item={item} player={player} onOpenDetails={onOpenDetails} />
         ))}
       </section>
     </>
@@ -351,12 +384,10 @@ function CollectibleCard({
   item,
   player,
   onOpenDetails,
-  onRequestBuy,
 }: {
   item: Collectible;
   player: PlayerState;
   onOpenDetails: (item: Collectible) => void;
-  onRequestBuy: (item: Collectible) => void;
 }) {
   const owned = player.owned.includes(item.id);
   const unlockable = canUnlock(item, player) && !owned;
@@ -364,11 +395,7 @@ function CollectibleCard({
   return (
     <article
       className={`item-card ${owned ? "owned" : ""} ${unlockable ? "unlockable" : ""}`}
-      onClick={() => onRequestBuy(item)}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        onOpenDetails(item);
-      }}
+      onClick={() => onOpenDetails(item)}
     >
       <div className="item-icon">
         {owned ? <Check size={22} /> : unlockable ? <Gem size={22} /> : <Lock size={21} />}
@@ -376,16 +403,7 @@ function CollectibleCard({
       <div className="item-copy">
         <div className="item-title-row">
           <h2>{item.name}</h2>
-          <button
-            className="mini-info"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpenDetails(item);
-            }}
-            aria-label={`Show ${item.name} details`}
-          >
-            <Info size={15} />
-          </button>
+          <ChevronRight className="card-chevron" size={17} />
         </div>
         <p>{item.description}</p>
         <div className="meta-row">
@@ -402,12 +420,12 @@ function SkillsPage({
   player,
   skillFilter,
   onFilter,
-  onTrain,
+  onOpenSkill,
 }: {
   player: PlayerState;
   skillFilter: SkillFilter;
   onFilter: (filter: SkillFilter) => void;
-  onTrain: (skillId: SkillId) => void;
+  onOpenSkill: (skillId: SkillId) => void;
 }) {
   const visibleSkills = skills.filter((skill) => {
     const level = levelFromXp(player.skillXp[skill.id]);
@@ -433,9 +451,8 @@ function SkillsPage({
         {visibleSkills.map((skill) => {
           const xp = player.skillXp[skill.id];
           const levelInfo = xpIntoLevel(xp);
-          const spend = Math.min(10_000, player.rp, xpTable[MAX_LEVEL] - xp);
           return (
-            <article className="skill-card" key={skill.id}>
+            <article className="skill-card" key={skill.id} onClick={() => onOpenSkill(skill.id)}>
               <div className="skill-topline">
                 <div>
                   <h2>{skill.name}</h2>
@@ -451,9 +468,7 @@ function SkillsPage({
                   {formatNumber(xp)} XP
                   {levelInfo.level < MAX_LEVEL ? ` / ${formatNumber(levelInfo.next)} XP` : ""}
                 </span>
-                <button disabled={spend <= 0} onClick={() => onTrain(skill.id)}>
-                  Train {formatNumber(spend)} RP
-                </button>
+                <ChevronRight className="card-chevron" size={17} />
               </div>
             </article>
           );
@@ -463,7 +478,7 @@ function SkillsPage({
   );
 }
 
-function DetailSheet({
+function CollectibleDetailView({
   item,
   player,
   onClose,
@@ -478,44 +493,101 @@ function DetailSheet({
   const unlockable = canUnlock(item, player) && !owned;
 
   return (
-    <div className="sheet-backdrop" role="presentation" onClick={onClose}>
-      <aside className="detail-sheet" role="dialog" aria-modal="true" aria-label={`${item.name} details`} onClick={(event) => event.stopPropagation()}>
-        <button className="sheet-close" onClick={onClose} aria-label="Close">
-          <X size={18} />
-        </button>
-        <div className="sheet-icon">
-          {owned ? <Check size={32} /> : unlockable ? <Gem size={32} /> : <Lock size={32} />}
+    <section className="detail-view" aria-label={`${item.name} details`}>
+      <button className="detail-close" onClick={onClose} aria-label="Close details">
+        <X size={18} />
+      </button>
+      <div className="sheet-icon">
+        {owned ? <Check size={32} /> : unlockable ? <Gem size={32} /> : <Lock size={32} />}
+      </div>
+      <h2>{item.name}</h2>
+      <p>{item.description}</p>
+      <div className="sheet-meta">
+        <span className={rarityClass[item.rarity]}>{item.rarity}</span>
+        <span>{formatNumber(item.cost)} RP</span>
+      </div>
+      <RequirementList item={item} player={player} />
+      <button className="primary-action detail-action" disabled={!unlockable} onClick={onBuy}>
+        {owned ? "Unlocked" : unlockable ? "Buy" : "Requirements not met"}
+      </button>
+    </section>
+  );
+}
+
+function SkillDetailView({
+  skillId,
+  player,
+  onClose,
+  onTrain,
+}: {
+  skillId: SkillId;
+  player: PlayerState;
+  onClose: () => void;
+  onTrain: () => void;
+}) {
+  const skill = skills.find((candidate) => candidate.id === skillId)!;
+  const xp = player.skillXp[skillId];
+  const levelInfo = xpIntoLevel(xp);
+  const spend = Math.min(10_000, player.rp, xpTable[MAX_LEVEL] - xp);
+  const nextLevel = Math.min(levelInfo.level + 1, MAX_LEVEL);
+
+  return (
+    <section className="detail-view" aria-label={`${skill.name} details`}>
+      <button className="detail-close" onClick={onClose} aria-label="Close details">
+        <X size={18} />
+      </button>
+      <div className="sheet-icon">
+        <Swords size={32} />
+      </div>
+      <h2>{skill.name}</h2>
+      <p>
+        Train this skill with RP to unlock collectibles that require {skill.name} levels.
+      </p>
+      <div className="sheet-meta">
+        <span>{skill.source}</span>
+        <span>Level {levelInfo.level}</span>
+      </div>
+      <div className="skill-detail-track">
+        <div className="xp-track" aria-label={`${skill.name} XP progress`}>
+          <span style={{ width: `${Math.max(3, levelInfo.progress * 100)}%` }} />
         </div>
-        <h2>{item.name}</h2>
-        <p>{item.description}</p>
-        <div className="sheet-meta">
-          <span className={rarityClass[item.rarity]}>{item.rarity}</span>
-          <span>{formatNumber(item.cost)} RP</span>
+        <div className="skill-detail-stats">
+          <span>{formatNumber(xp)} XP</span>
+          <span>
+            {levelInfo.level >= MAX_LEVEL
+              ? "Maximum level"
+              : `${formatNumber(levelInfo.next - xp)} XP to Level ${nextLevel}`}
+          </span>
         </div>
-        <div className="requirement-list">
-          <h3>Requirements</h3>
-          {item.requirements.length === 0 ? (
-            <div className="requirement-row met">
-              <Check size={15} />
-              <span>No requirements</span>
+      </div>
+      <button className="primary-action detail-action" disabled={spend <= 0} onClick={onTrain}>
+        Train {formatNumber(spend)} RP
+      </button>
+    </section>
+  );
+}
+
+function RequirementList({ item, player }: { item: Collectible; player: PlayerState }) {
+  return (
+    <div className="requirement-list">
+      <h3>Requirements</h3>
+      {item.requirements.length === 0 ? (
+        <div className="requirement-row met">
+          <Check size={15} />
+          <span>No requirements</span>
+        </div>
+      ) : (
+        item.requirements.map((requirement) => {
+          const state = getRequirementState(requirement, player);
+          return (
+            <div key={state.label} className={`requirement-row ${state.met ? "met" : ""}`}>
+              {state.met ? <Check size={15} /> : <Lock size={15} />}
+              <span>{state.label}</span>
+              <small>{state.current}</small>
             </div>
-          ) : (
-            item.requirements.map((requirement) => {
-              const state = getRequirementState(requirement, player);
-              return (
-                <div key={state.label} className={`requirement-row ${state.met ? "met" : ""}`}>
-                  {state.met ? <Check size={15} /> : <Lock size={15} />}
-                  <span>{state.label}</span>
-                  <small>{state.current}</small>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <button className="primary-action" disabled={!unlockable} onClick={onBuy}>
-          {owned ? "Unlocked" : unlockable ? "Buy" : "Requirements not met"}
-        </button>
-      </aside>
+          );
+        })
+      )}
     </div>
   );
 }

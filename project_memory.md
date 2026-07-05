@@ -38,7 +38,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 ## Folder Structure
 
-- `src/App.tsx`: app shell, pages, purchase dialog, detail sheet, filters, skill training interactions.
+- `src/App.tsx`: app shell, pages, purchase dialog, full-content detail views, filters, skill training interactions.
 - `src/data.ts`: category, skill, collectible, and requirement data.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
@@ -53,8 +53,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, current RP, and a plus button that grants 10,000 RP.
 - Subpages use a back button in the topbar.
-- Collection pages share the same card, filter, sort, detail sheet, and purchase dialog patterns.
+- Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Skills have their own page but live under Collectibles as a category tile.
+- Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
 Expected early systems:
 
@@ -155,12 +156,13 @@ Candidate combined skill roster to finalize:
 - Successful solution: enable Pages with GitHub Actions build type via `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`, then rerun `.github/workflows/deploy-pages.yml`.
 - After enabling Pages, workflow run `28722585961` completed successfully and deployed to `https://nihansbu.github.io/rap-collectibles-app/`.
 - User-provided phone screenshots confirmed that the GitHub Pages URL loads on Android Chrome and that the Pets page plus item detail sheet render on-device.
+- Android Chrome screenshots showed unwanted Google text selection overlays after long-pressing app text. Successful solution: disable selection/callouts in CSS and prevent `selectstart`, `contextmenu`, and `dragstart` events at document level, then clear selection ranges on `selectionchange`.
 
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - State is currently in-memory only. Refreshing the page resets RP, owned collectibles, and skill XP.
-- Long-press native behavior is not fully customized yet; an explicit info button opens the item detail sheet reliably.
+- Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
 - New GitHub Pages repositories may need Pages enabled before `actions/deploy-pages` can create a deployment. If the deploy job returns a 404 deployment creation error, enable Pages with `build_type=workflow` and rerun the workflow.
