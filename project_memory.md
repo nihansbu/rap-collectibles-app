@@ -40,6 +40,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 - `src/App.tsx`: app shell, pages, purchase dialog, full-content detail views, filters, skill training interactions.
 - `src/data.ts`: category, skill, collectible, and requirement data.
+- `src/save.ts`: versioned local save/load system, validation, normalization, and backup rotation for player progress.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
 - `index.html`: Vite HTML entry.
@@ -57,9 +58,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
-Expected early systems:
+Implemented early systems:
 
-- RAP wallet: implemented as local React state.
+- RAP wallet: persisted through versioned browser `localStorage`.
 - Skill progression: implemented as XP per skill, with 1 RP spent = 1 XP gained.
 - Collectible catalog: implemented in `src/data.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -81,6 +82,8 @@ Likely entities:
 ## Icon Pipeline Notes
 
 - The user approved the generated mockup style for compact Skills and Mounts grids.
+- Current Mount icon direction is approved.
+- Current implemented Skill icons are not the preferred direction. The next Skill icon pass should return to a simpler, more RuneScape-like icon style from the approved mockup, with stronger small-size readability and less illustrative detail.
 - Use the internal image generator for icon creation.
 - Target icon source size should likely be square, for example 512x512 PNG/WebP.
 - Store generated project icons under a stable public asset path such as `public/assets/icons/{category}/{id}.webp`.
@@ -182,11 +185,31 @@ Candidate combined skill roster to finalize:
 - User-provided phone screenshots confirmed that the GitHub Pages URL loads on Android Chrome and that the Pets page plus item detail view render on-device.
 - Android Chrome screenshots showed unwanted Google text selection overlays after long-pressing app text. Successful solution: disable selection/callouts in CSS and prevent `selectstart`, `contextmenu`, and `dragstart` events at document level, then clear selection ranges on `selectionchange`.
 - Dense grid implementation verified with Playwright at `390x844`: Skills render 30 icon tiles with five equal-width tiles in the first row; test batch loads 5 skill images and 3 mount images with no failed requests; card taps open full-content detail views; skill training still works; native text selection remains disabled.
+- Versioned local save implementation verified with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - cleared localStorage
+  - added 10,000 RP
+  - reloaded and confirmed RP persisted
+  - trained Agility for 10,000 XP
+  - reloaded and confirmed Agility XP persisted
+  - bought Stable Pony
+  - reloaded and confirmed Stable Pony remained unlocked
+  - confirmed `rap-collectibles.save.v1`, `rap-collectibles.save.backup.1`, `rap-collectibles.save.backup.2`, and `rap-collectibles.save.lastKnownGood` exist
+  - no console warnings/errors and no failed requests
+
+## Successful Solutions
+
+2026-07-05: Persistent progress save.
+
+- Original problem: refreshing the GitHub Pages app reset RAP, skill XP, and owned collectibles because player progress only lived in React state.
+- Successful solution: add `src/save.ts` with a versioned save file in `localStorage`, player-state normalization, unknown-ID filtering, numeric clamping, backup rotation, and a `lastKnownGood` copy. `App.tsx` now lazily loads progress on startup and autosaves whenever `player` changes.
+- Why it works: the saved shape is independent of transient React page state, so progress survives reloads while UI navigation still resets cleanly. The loader tolerates future catalog changes by defaulting newly added skills to `0 XP` and dropping removed/unknown collectible IDs.
+- Files involved: `src/save.ts`, `src/App.tsx`.
+- Commands used: `npm run build`, `npx playwright install chromium`, local Playwright reload smoke test through `node`.
 
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
-- State is currently in-memory only. Refreshing the page resets RP, owned collectibles, and skill XP.
+- Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.

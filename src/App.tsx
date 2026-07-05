@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import { loadPlayerState, savePlayerState, type PlayerState } from "./save";
 import { MAX_LEVEL, levelFromXp, xpIntoLevel, xpTable } from "./xp";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
@@ -20,20 +21,6 @@ type SkillFilter = "all" | "trained" | "trainable" | "maxed";
 type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "requirements-desc";
 type Page = { type: "home" } | { type: "category"; id: CategoryId };
 type DetailView = { type: "collectible"; item: Collectible } | { type: "skill"; skillId: SkillId };
-
-type PlayerState = {
-  rp: number;
-  owned: string[];
-  skillXp: Record<SkillId, number>;
-};
-
-const initialSkillXp = Object.fromEntries(skills.map((skill) => [skill.id, 0])) as Record<SkillId, number>;
-
-const initialPlayer: PlayerState = {
-  rp: 0,
-  owned: [],
-  skillXp: initialSkillXp,
-};
 
 const rarityClass: Record<Collectible["rarity"], string> = {
   Common: "rarity-common",
@@ -107,7 +94,7 @@ function categoryForSkill(skillId: SkillId): CategoryId {
 }
 
 export function App() {
-  const [player, setPlayer] = useState<PlayerState>(initialPlayer);
+  const [player, setPlayer] = useState<PlayerState>(() => loadPlayerState());
   const [page, setPage] = useState<Page>({ type: "home" });
   const [filter, setFilter] = useState<Filter>("all");
   const [skillFilter, setSkillFilter] = useState<SkillFilter>("all");
@@ -133,6 +120,10 @@ export function App() {
       document.removeEventListener("selectionchange", clearSelection);
     };
   }, []);
+
+  useEffect(() => {
+    savePlayerState(player);
+  }, [player]);
 
   function grantRp() {
     setPlayer((current) => ({ ...current, rp: current.rp + 10_000 }));

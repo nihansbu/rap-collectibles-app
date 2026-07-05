@@ -112,6 +112,13 @@ Skill naming decision:
 - Use `Hitpoints`.
 - Use `Rune Crafting`.
 
+Progress persistence decision:
+
+- Player progress must survive normal page reloads.
+- RAP, owned collectibles, and skill XP are considered core save data.
+- The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
+- Local persistence is acceptable for the current prototype, but export/import and cloud sync are future priorities before the app is treated as durable across devices.
+
 ## First Screen Concept
 
 The first usable screen should focus on the mount purchase loop.
@@ -159,6 +166,8 @@ Grid tile direction:
 Icon art direction:
 
 - Follow the approved dense grid mockup style for Skills and Mounts.
+- Mount icons from the first implemented batch are directionally approved.
+- Skill icons from the first implemented batch are not yet the desired final direction. Future Skill icons should be simpler, more RuneScape-like, and closer to the approved mockup style than the current detailed illustrated batch.
 - Icons should be high-fantasy inventory/codex icons with strong readable silhouettes.
 - Preferred look: dark emerald/charcoal background, muted gold accents, centered object, crisp painterly game-icon rendering, readable at small sizes.
 - Icon images should not contain baked-in text. Text stays native UI.
