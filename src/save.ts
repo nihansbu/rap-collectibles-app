@@ -88,6 +88,15 @@ export function savePlayerState(player: PlayerState): void {
   }
 }
 
+export function exportPlayerState(player: PlayerState): string {
+  return serializeSave(processActiveTrainings(player));
+}
+
+export function importPlayerState(rawSave: string): PlayerState | null {
+  const player = parsePlayerState(rawSave);
+  return player ? processActiveTrainings(player) : null;
+}
+
 function getStorage(): StorageLike | null {
   try {
     if (typeof window === "undefined") return null;

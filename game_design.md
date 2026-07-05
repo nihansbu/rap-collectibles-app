@@ -177,7 +177,9 @@ Progress persistence decision:
 - Player progress must survive normal page reloads.
 - RAP, owned collectibles, and skill XP are considered core save data.
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
-- Local persistence is acceptable for the current prototype, but export/import and cloud sync are future priorities before the app is treated as durable across devices.
+- Local persistence is acceptable for the current prototype.
+- Manual save export/import is available as a safety fallback.
+- Cloud sync is a future priority before the app is treated as durable across devices.
 
 ## First Screen Concept
 
@@ -201,6 +203,7 @@ Collection subpages should show:
 - at most one secondary info line
 - owned/ready/locked state
 - filters for All, Owned, Unlockable, Locked
+- type filters generated from the category's current collectible types
 - sorting for cost and requirement level
 - a full-content detail panel for more information
 - a confirmation dialog before purchase
@@ -210,6 +213,7 @@ Interaction decision:
 - Tapping any collectible or skill card opens its detail panel.
 - The detail panel fills the content area under the topbar.
 - Buying collectibles and training skills happens from the detail panel, not directly from the list card.
+- Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
 - Native browser text selection should never appear during normal app interaction.
 
 Grid tile direction:

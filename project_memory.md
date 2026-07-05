@@ -58,6 +58,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Classes and Races are implemented as standard collectible categories using the `type` field for broad grouping rather than nested subpages.
 - Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
+- Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
+- The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
+- The Collectibles home page includes manual Save Export and Import tools. Export produces the same normalized v2 save JSON used by localStorage; Import reuses the save parser/migration path.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
@@ -232,6 +235,12 @@ Candidate combined skill roster to finalize:
   - ready and owned tiles do not show the lock icon
   - Classes and Races both show the new status behavior
   - Skills do not receive collectible status classes
+- Type filters, detail panel, and save import/export verified locally with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - Export Save downloads a `rap-collectibles-save-YYYY-MM-DD.json` file
+  - Import Save accepts valid v2 save JSON and replaces local player progress
+  - imported RAP and owned collectible progress render after import
+  - Classes can be filtered by type, for example `Melee Tank`
+  - collectible detail panels show status and purchase messaging
 
 ## Successful Solutions
 
