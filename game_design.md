@@ -32,7 +32,25 @@ Design rules:
 - RAP is the only currency at the start.
 - RAP can be used for all purchases and skill training.
 - The first prototype uses a simple grant button instead of real tracking.
+- The first player-facing earning placeholder is a manual `Log Activity` panel. Each tap logs 1 hour and grants RAP immediately.
 - Real activity tracking can be added later without changing the core economy.
+
+Current manual activity rates:
+
+- Walking: 20,000 RAP/hour
+- Reading: 15,000 RAP/hour
+- Podcast: 15,000 RAP/hour
+- Gym: 45,000 RAP/hour
+- Work: 10,000 RAP/hour
+- Music Practice: 20,000 RAP/hour
+
+Early collectible cost bands:
+
+- Common: 8,000-20,000 RAP
+- Uncommon: 18,000-40,000 RAP
+- Rare: 40,000-85,000 RAP
+- Epic: 75,000-160,000 RAP
+- Legendary: 150,000-350,000 RAP
 
 ## Collections And Codex
 
@@ -47,7 +65,15 @@ The Codex starts as the main `Collectibles` page and should show category tiles 
 - Pets
 - Mounts
 
-Each tile should show progress as unlocked count out of total count, for example Mounts 3/20.
+Each tile should show progress as unlocked count out of total count, for example Mounts 3/20, plus a percentage and progress bar. Skills use total skill level out of maximum total level.
+
+Purchasing a collectible should give immediate feedback:
+
+- centered unlock notice
+- icon
+- collectible name
+- category/Codex confirmation
+- recent unlock shown on the Collectibles overview
 
 Inside a category, the player should see all entries:
 
@@ -179,6 +205,8 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Manual save export/import is available as a safety fallback.
+- Save v3 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, and recent manual activity log entries.
+- The home page exposes local autosave status and lifetime RAP earned.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
 ## First Screen Concept
@@ -191,6 +219,9 @@ Current first screen elements:
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
 - Category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
+- Category tiles show count, percentage, and progress bar.
+- The home page includes a compact manual `Log Activity` panel for one-hour activity entries.
+- The home page includes Save Status, Export Save, and Import Save controls.
 - No bottom navigation.
 - Subpages are reached by tapping category tiles.
 
@@ -214,6 +245,7 @@ Interaction decision:
 - The detail panel fills the content area under the topbar.
 - Buying collectibles and training skills happens from the detail panel, not directly from the list card.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
+- Requirement rows should show a requirement icon plus current and needed progress, for example `Attack Level 1 / 20`.
 - Native browser text selection should never appear during normal app interaction.
 
 Grid tile direction:
@@ -266,10 +298,12 @@ Build only:
 
 - RAP balance.
 - Button to gain 10,000 RAP.
+- Manual one-hour activity logging that grants RAP.
 - Mount purchasing with RAP.
 - Skill levels required by some mounts.
 - Time-based RAP skill training with up to three concurrent skills.
 - Codex overview with category progress.
+- Codex overview with completion percentage, progress bars, recent unlocks, and save status.
 - All RuneScape/Old School RuneScape skills, max level 120.
 - Shared collection page pattern for Characters, Pets, and Mounts.
 

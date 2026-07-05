@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
+  Briefcase,
   Check,
   ChevronRight,
   Download,
+  Dumbbell,
+  Footprints,
   Gem,
+  Headphones,
   Lock,
+  Music,
   Plus,
   Search,
   Shield,
@@ -17,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { exportPlayerState, importPlayerState, loadPlayerState, savePlayerState, type PlayerState } from "./save";
 import {
   formatDuration,
@@ -37,6 +43,14 @@ type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "req
 type CollectibleStatus = "owned" | "ready" | "locked";
 type Page = { type: "home" } | { type: "category"; id: CategoryId };
 type DetailView = { type: "collectible"; item: Collectible } | { type: "skill"; skillId: SkillId };
+type CategoryProgress = {
+  id: CategoryId;
+  name: string;
+  totalLabel: string;
+  unlocked: number;
+  total: number;
+  percent: number;
+};
 
 const rarityClass: Record<Collectible["rarity"], string> = {
   Common: "rarity-common",
@@ -48,6 +62,16 @@ const rarityClass: Record<Collectible["rarity"], string> = {
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(Math.floor(value));
+}
+
+function completionPercent(unlocked: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.min(100, Math.round((unlocked / total) * 100));
+}
+
+function formatSavedTime(date: Date | null) {
+  if (!date) return "Not saved yet";
+  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
 }
 
 function skillName(skillId: SkillId) {
@@ -132,6 +156,16 @@ function AppIcon({ category }: { category: CategoryId }) {
   return <Gem {...common} />;
 }
 
+function ActivityIcon({ activityId }: { activityId: ActivityOption["id"] }) {
+  const common = { size: 18, strokeWidth: 1.9 };
+  if (activityId === "walking") return <Footprints {...common} />;
+  if (activityId === "reading") return <BookOpen {...common} />;
+  if (activityId === "podcast") return <Headphones {...common} />;
+  if (activityId === "gym") return <Dumbbell {...common} />;
+  if (activityId === "work") return <Briefcase {...common} />;
+  return <Music {...common} />;
+}
+
 function categoryForSkill(skillId: SkillId): CategoryId {
   void skillId;
   return "skills";
@@ -153,6 +187,9 @@ export function App() {
   const [saveMessage, setSaveMessage] = useState("");
   const [importText, setImportText] = useState("");
   const [importOpen, setImportOpen] = useState(false);
+  const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
+  const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const title = page.type === "home" ? "Collectibles" : categories.find((category) => category.id === page.id)?.name ?? "";
   const pageKey = page.type === "category" ? page.id : page.type;
@@ -182,6 +219,7 @@ export function App() {
 
   useEffect(() => {
     savePlayerState(player);
+    setLastSavedAt(new Date());
   }, [player]);
 
   useEffect(() => {
@@ -198,8 +236,39 @@ export function App() {
     return () => window.clearInterval(intervalId);
   }, [player.activeTrainings.length]);
 
+  useEffect(() => {
+    if (!unlockNotice) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setUnlockNotice(null);
+    }, 3_200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [unlockNotice]);
+
   function grantRp() {
-    setPlayer((current) => ({ ...current, rp: current.rp + 10_000 }));
+    setPlayer((current) => ({ ...current, rp: current.rp + 10_000, lifetimeRap: current.lifetimeRap + 10_000 }));
+  }
+
+  function logActivity(activity: ActivityOption) {
+    const hours = 1;
+    const rap = activityRap(activity, hours);
+    const loggedAt = Date.now();
+    const entry: ActivityLogEntry = {
+      id: `${activity.id}-${loggedAt}`,
+      activityId: activity.id,
+      name: activity.name,
+      hours,
+      rap,
+      loggedAt,
+    };
+
+    setPlayer((current) => ({
+      ...current,
+      rp: current.rp + rap,
+      lifetimeRap: current.lifetimeRap + rap,
+      activityLog: [entry, ...current.activityLog].slice(0, 8),
+    }));
   }
 
   function trainSkill(skillId: SkillId, hours: number) {
@@ -210,6 +279,11 @@ export function App() {
   }
 
   function buyItem(item: Collectible) {
+    if (player.owned.includes(item.id) || !canUnlock(item, player)) {
+      setConfirmItem(null);
+      return;
+    }
+
     setPlayer((current) => {
       if (current.owned.includes(item.id) || !canUnlock(item, current)) return current;
       return {
@@ -218,6 +292,8 @@ export function App() {
         owned: [...current.owned, item.id],
       };
     });
+    setUnlockNotice(item);
+    setRecentUnlocks((current) => [item, ...current.filter((candidate) => candidate.id !== item.id)].slice(0, 3));
     setConfirmItem(null);
     setDetailView(null);
   }
@@ -262,12 +338,13 @@ export function App() {
     return categories.map((category) => {
       if (category.id === "skills") {
         const totalLevel = skills.reduce((total, skill) => total + levelFromXp(player.skillXp[skill.id]), 0);
-        return { ...category, unlocked: totalLevel, total: skills.length * MAX_LEVEL };
+        const total = skills.length * MAX_LEVEL;
+        return { ...category, unlocked: totalLevel, total, percent: completionPercent(totalLevel, total) };
       }
 
       const items = collectibles.filter((item) => item.category === category.id);
       const unlocked = items.filter((item) => player.owned.includes(item.id)).length;
-      return { ...category, unlocked, total: items.length };
+      return { ...category, unlocked, total: items.length, percent: completionPercent(unlocked, items.length) };
     });
   }, [player]);
 
@@ -314,7 +391,13 @@ export function App() {
         ) : page.type === "home" ? (
           <HomePage
             progress={categoryProgress}
+            recentUnlocks={recentUnlocks}
+            activities={ACTIVITY_OPTIONS}
+            activityLog={player.activityLog}
+            lifetimeRap={player.lifetimeRap}
+            lastSavedAt={lastSavedAt}
             saveMessage={saveMessage}
+            onLogActivity={logActivity}
             onExportSave={exportSave}
             onImportSave={() => {
               setImportOpen(true);
@@ -350,6 +433,7 @@ export function App() {
           onImport={importSave}
         />
       )}
+      {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
     </div>
   );
 }
@@ -389,13 +473,25 @@ function TopBar({
 
 function HomePage({
   progress,
+  recentUnlocks,
+  activities,
+  activityLog,
+  lifetimeRap,
+  lastSavedAt,
   saveMessage,
+  onLogActivity,
   onExportSave,
   onImportSave,
   onOpen,
 }: {
-  progress: Array<{ id: CategoryId; name: string; totalLabel: string; unlocked: number; total: number }>;
+  progress: CategoryProgress[];
+  recentUnlocks: Collectible[];
+  activities: ActivityOption[];
+  activityLog: ActivityLogEntry[];
+  lifetimeRap: number;
+  lastSavedAt: Date | null;
   saveMessage: string;
+  onLogActivity: (activity: ActivityOption) => void;
   onExportSave: () => void;
   onImportSave: () => void;
   onOpen: (id: CategoryId) => void;
@@ -413,13 +509,65 @@ function HomePage({
               <small>{category.totalLabel}</small>
             </span>
             <span className="tile-progress">
-              {category.unlocked}/{category.total}
+              <strong>{category.unlocked}/{category.total}</strong>
+              <small>{category.percent}%</small>
             </span>
             <ChevronRight className="tile-chevron" size={18} />
+            <span className="category-progress-track" aria-hidden="true">
+              <span style={{ width: `${category.percent}%` }} />
+            </span>
           </button>
         ))}
       </section>
+      {recentUnlocks.length > 0 && (
+        <section className="recent-unlocks" aria-label="Recent unlocks">
+          <h2>Recent Unlocks</h2>
+          <div>
+            {recentUnlocks.map((item) => (
+              <article key={item.id} className="recent-unlock">
+                <TileVisual icon={item.icon} category={item.category} owned />
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>{categories.find((category) => category.id === item.category)?.name ?? item.type}</small>
+                </span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      <section className="activity-panel" aria-label="Activity log">
+        <div className="section-heading">
+          <h2>Log Activity</h2>
+          <span>1 hour</span>
+        </div>
+        <div className="activity-grid">
+          {activities.map((activity) => (
+            <button key={activity.id} className="activity-action" onClick={() => onLogActivity(activity)}>
+              <span>
+                <ActivityIcon activityId={activity.id} />
+              </span>
+              <strong>{activity.name}</strong>
+              <small>+{formatNumber(activity.rapPerHour)} RAP</small>
+            </button>
+          ))}
+        </div>
+        {activityLog.length > 0 && (
+          <div className="activity-history" aria-label="Recent activity history">
+            {activityLog.slice(0, 3).map((entry) => (
+              <span key={entry.id}>
+                <strong>{entry.name}</strong>
+                <small>+{formatNumber(entry.rap)} RAP</small>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
       <section className="save-tools" aria-label="Save tools">
+        <div className="save-status">
+          <strong>Save Status</strong>
+          <span>Autosaved {formatSavedTime(lastSavedAt)}</span>
+          <small>{formatNumber(lifetimeRap)} lifetime RAP earned</small>
+        </div>
         <button className="tool-action" onClick={onExportSave}>
           <Download size={16} />
           <span>Export Save</span>
@@ -796,21 +944,72 @@ function RequirementList({ item, player }: { item: Collectible; player: PlayerSt
       <h3>Requirements</h3>
       {item.requirements.length === 0 ? (
         <div className="requirement-row met">
-          <Check size={15} />
-          <span>No requirements</span>
+          <span className="requirement-icon">
+            <Check size={14} />
+          </span>
+          <span className="requirement-copy">
+            <strong>No requirements</strong>
+            <small>Ready by default</small>
+          </span>
+          <span className="requirement-state">Met</span>
         </div>
       ) : (
         item.requirements.map((requirement) => {
           const state = getRequirementState(requirement, player);
+          const key = requirement.type === "skill" ? `${requirement.skillId}-${requirement.level}` : requirement.collectibleId;
+          const skill = requirement.type === "skill" ? skills.find((candidate) => candidate.id === requirement.skillId) : null;
+          const requiredCollectible = requirement.type === "collectible" ? collectibles.find((candidate) => candidate.id === requirement.collectibleId) : null;
+          const currentLevel = requirement.type === "skill" ? levelFromXp(player.skillXp[requirement.skillId]) : 0;
+          const label = requirement.type === "skill" ? skillName(requirement.skillId) : requirement.label;
+          const detail = requirement.type === "skill"
+            ? `Level ${currentLevel} / ${requirement.level}`
+            : state.current;
+
           return (
-            <div key={state.label} className={`requirement-row ${state.met ? "met" : ""}`}>
-              {state.met ? <Check size={15} /> : <Lock size={15} />}
-              <span>{state.label}</span>
-              <small>{state.current}</small>
+            <div key={key} className={`requirement-row ${state.met ? "met" : ""}`}>
+              <span className="requirement-icon">
+                {skill?.icon ? (
+                  <img src={skill.icon} alt="" draggable="false" />
+                ) : requiredCollectible?.icon ? (
+                  <img src={requiredCollectible.icon} alt="" draggable="false" />
+                ) : requirement.type === "skill" ? (
+                  <Swords size={15} />
+                ) : (
+                  <AppIcon category={requiredCollectible?.category ?? item.category} />
+                )}
+                <span className="requirement-badge" aria-hidden="true">
+                  {state.met ? <Check size={9} /> : <Lock size={9} />}
+                </span>
+              </span>
+              <span className="requirement-copy">
+                <strong>{label}</strong>
+                <small>{detail}</small>
+              </span>
+              <span className="requirement-state">{state.met ? "Met" : "Needed"}</span>
             </div>
           );
         })
       )}
+    </div>
+  );
+}
+
+function UnlockNotice({ item, onClose }: { item: Collectible; onClose: () => void }) {
+  const categoryName = categories.find((category) => category.id === item.category)?.name ?? "Collectibles";
+
+  return (
+    <div className="sheet-backdrop unlock-backdrop" role="presentation" onClick={onClose}>
+      <section className="unlock-notice" role="dialog" aria-modal="true" aria-label={`${item.name} unlocked`} onClick={(event) => event.stopPropagation()}>
+        <div className="unlock-burst">
+          <TileVisual icon={item.icon} category={item.category} owned />
+        </div>
+        <span className="unlock-kicker">Unlocked</span>
+        <h2>{item.name}</h2>
+        <p>Added to your {categoryName} Codex.</p>
+        <button className="primary-action" onClick={onClose}>
+          Continue
+        </button>
+      </section>
     </div>
   );
 }

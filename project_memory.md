@@ -40,7 +40,8 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 - `src/App.tsx`: app shell, pages, purchase dialog, full-content detail views, filters, skill training interactions.
 - `src/data.ts`: category, skill, collectible, and requirement data.
-- `src/save.ts`: versioned local save/load system, v1-to-v2 migration, validation, normalization, active training persistence, offline training processing, and backup rotation for player progress.
+- `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
+- `src/save.ts`: versioned local save/load system, v1/v2-to-v3 migration, validation, normalization, active training persistence, offline training processing, activity log persistence, and backup rotation for player progress.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
@@ -60,19 +61,24 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
 - Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
 - The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
-- The Collectibles home page includes manual Save Export and Import tools. Export produces the same normalized v2 save JSON used by localStorage; Import reuses the save parser/migration path.
+- The Collectibles home page includes manual Save Export and Import tools. Export produces the same normalized v3 save JSON used by localStorage; Import reuses the save parser/migration path and still accepts older supported save versions.
+- The Collectibles home page shows category progress bars, completion percentages, recent unlocks, quick manual activity logging, and local save status.
+- Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
 Implemented early systems:
 
 - RAP wallet: persisted through versioned browser `localStorage`.
+- Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
 - Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented in `src/data.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
 - Codex collection overview: implemented as category progress tiles.
+- Codex progress overview: category tiles show `current/total`, percentage, and a progress bar. Skills use total skill level out of maximum total level.
+- Unlock feedback: purchases show a centered unlock confirmation with icon, name, category, and an `Added to Codex` message. The home page also keeps the latest in-session unlocks.
 - Mobile-only UI navigation: implemented with topbar and page state.
 - Planned collection subpage direction: replace text-heavy list cards with dense icon-based grids. The approved mockup direction uses five compact tiles per row for Skills and a similar icon-first grid for Mounts.
 
@@ -81,6 +87,7 @@ Implemented early systems:
 Likely entities:
 
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
+- Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
 - Skill: ID, display name, source game(s), XP, derived level, max level 120.
 - Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state.
 - Requirement: skill ID plus required level.
@@ -241,6 +248,15 @@ Candidate combined skill roster to finalize:
   - imported RAP and owned collectible progress render after import
   - Classes can be filtered by type, for example `Melee Tank`
   - collectible detail panels show status and purchase messaging
+- Codex progress, unlock feedback, v3 saves, and manual activity logging verified locally with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - v2 saves migrate into the new v3 save key
+  - all six category tiles render progress bars and percentages
+  - Skills display total level progress such as `30/3600` and `1%`
+  - tapping `Walking` grants 20,000 RAP, updates lifetime RAP, and adds a recent activity entry
+  - buying Highland Human shows the unlock notice and adds it to Recent Unlocks
+  - Races progress updates to `1/8` and `13%`
+  - locked requirement detail rows show a requirement icon, current level, required level, and `Needed`
+  - no console warnings/errors and no failed requests
 
 ## Successful Solutions
 
@@ -259,6 +275,14 @@ Candidate combined skill roster to finalize:
 - Why it works: training state is stored as durable timestamps rather than UI timers. Reload/offline progress is deterministic because the processor consumes RAP and awards XP based on elapsed milliseconds, bounded by available RAP, max level 120, job end time, and the three-skill concurrency cap.
 - Files involved: `src/training.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`.
 - Commands used: `npm run build`, local Playwright mobile training QA through `node`.
+
+2026-07-05: Save v3 with manual activity logging.
+
+- Original problem: the app still relied on the debug RAP plus button for earning and did not expose a player-facing first version of real-life activity earning.
+- Successful solution: add `src/economy.ts` with fixed one-hour activity RAP rates, extend the save file to v3 with `lifetimeRap` and `activityLog`, migrate v1/v2 saves, and render a compact `Log Activity` panel plus Save Status on the Collectibles home page.
+- Why it works: the activity system is data-driven and uses the same RAP wallet as the rest of the app, so future real tracking can replace the manual tap source while preserving the save shape and economy constants.
+- Files involved: `src/economy.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`.
+- Commands used: `npm run build`, local Playwright mobile activity/save QA through `node`.
 
 2026-07-05: GitHub Pages transient deployment recovery.
 
@@ -280,6 +304,7 @@ Candidate combined skill roster to finalize:
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
+- Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
