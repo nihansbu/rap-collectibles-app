@@ -250,6 +250,7 @@ Candidate combined skill roster to finalize:
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
 - New GitHub Pages repositories may need Pages enabled before `actions/deploy-pages` can create a deployment. If the deploy job returns a 404 deployment creation error, enable Pages with `build_type=workflow` and rerun the workflow.
+- GitHub Actions Pages deployment actions should stay on Node-24-compatible major versions. On 2026-07-05, `actions/deploy-pages@v4` repeatedly created a deployment and then failed with `Deployment failed, try again later`; the workflow was updated to `actions/upload-pages-artifact@v5` and `actions/deploy-pages@v5`.
 - When the user sends only screenshots/images without a written change request, do not edit files or implement changes. Describe what is visible in the images and wait for an explicit instruction.
 
 ## Lessons Learned
