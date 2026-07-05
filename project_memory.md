@@ -112,7 +112,8 @@ Likely entities:
 - Do not bake text into icon images.
 - Current committed Skill icon batch covers all 30 skills with transparent 256x256 WebP assets.
 - Current committed Mount icon batch covers all 8 mounts with transparent 256x256 WebP assets in the approved gritty old-school inventory style.
-- Remaining collectible icon coverage gap after the Mount batch: 30 missing icons across Characters, Classes, Races, and Pets.
+- Current committed Pet icon batch covers all 6 pets with transparent 256x256 WebP assets. `Pocket Spriggan` is represented by a woodland leaf/root charm because direct Spriggan/Woodland familiar prompts were rejected by the image-generation safety system.
+- Remaining collectible icon coverage gap after the Pet batch: 24 missing icons across Characters, Classes, and Races.
 
 ## Commit And Push Policy
 
@@ -268,6 +269,12 @@ Candidate combined skill roster to finalize:
   - generated Mount sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
   - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
   - contact sheet inspection confirmed all Mounts are background-free and visually consistent enough for compact grid tiles
+- Pet icon pipeline verified locally:
+  - `npm run icons:prepare` reports 38 collectibles and 24 remaining missing icons after the full Pet pass
+  - all 6 Pet data entries now reference transparent WebP icon assets
+  - generated Pet sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
+  - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
+  - mobile Playwright check confirmed 6 Pet tiles and 6 loaded Pet images, with no console warnings/errors and no failed requests
 
 ## Successful Solutions
 
@@ -319,12 +326,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `scripts/prepare-icon-prompts.mjs`, `scripts/normalize-icon.py`, `src/data.ts`, `public/assets/icons/mounts/*.webp`, `package.json`, `.gitignore`.
 - Commands used: built-in Image Gen, `npm run icons:prepare`, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, contact sheet inspection with Pillow.
 
+2026-07-05: Full Pet icon pass.
+
+- Original problem: Pets still used placeholder category icons, leaving the category visually inconsistent with Skills and Mounts.
+- Successful solution: generate six Pet source images through the built-in Image Gen tool, remove chroma-key backgrounds locally, normalize to transparent 256x256 WebP assets, and wire all Pet entries in `src/data.ts`.
+- Important detail: direct Spriggan/Woodland familiar prompts were rejected by the image-generation safety system, so `Pocket Spriggan` is represented by a woodland leaf/root charm while preserving the category/type meaning.
+- Files involved: `src/data.ts`, `public/assets/icons/pets/*.webp`, `project_memory.md`, `game_design.md`.
+- Commands used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, local Playwright mobile Pet asset check.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
-- Non-Skill collectible icon coverage is not complete yet. Mounts are complete; Characters, Classes, Races, and Pets still need generated transparent icons.
+- Non-Skill collectible icon coverage is not complete yet. Mounts and Pets are complete; Characters, Classes, and Races still need generated transparent icons.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
