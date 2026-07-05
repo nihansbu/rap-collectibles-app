@@ -110,7 +110,7 @@ Skill requirement example:
 Skill naming decision:
 
 - Use `Hitpoints`.
-- Use `Rune Crafting`.
+- Use `Runecrafting`.
 
 Progress persistence decision:
 
@@ -166,13 +166,14 @@ Grid tile direction:
 Icon art direction:
 
 - Follow the approved dense grid mockup style for Skills and Mounts.
-- Mount icons from the first implemented batch are directionally approved.
-- Skill icons from the first implemented batch are not yet the desired final direction. Future Skill icons should be simpler, more RuneScape-like, and closer to the approved mockup style than the current detailed illustrated batch.
-- Icons should be high-fantasy inventory/codex icons with strong readable silhouettes.
-- Preferred look: dark emerald/charcoal background, muted gold accents, centered object, crisp painterly game-icon rendering, readable at small sizes.
+- Icons should be gritty old-school MMORPG / Old School RuneScape-like inventory assets with strong readable silhouettes.
+- Icons should be low-detail, matte, slightly rough, and readable at compact mobile tile size.
+- Icons must be reusable transparent assets.
+- Icons must not include their own frame, border, tile, card, or background. The tile/card background always comes from CSS.
+- Avoid high-gloss fantasy illustration, cinematic glow, smoke, sparkles, scene backgrounds, and cute children's-book rendering.
 - Icon images should not contain baked-in text. Text stays native UI.
 - Icons should work inside compact square tiles and larger detail panels.
-- Approved test-batch subjects: Agility, Attack, Magic, Mining, Herblore, Stable Pony, Verdant Stag, Ashwing Drake.
+- The first full Skill icon pass covers all 30 skills as transparent 256x256 WebP assets.
 - Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting

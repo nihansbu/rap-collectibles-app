@@ -81,20 +81,18 @@ Likely entities:
 
 ## Icon Pipeline Notes
 
-- The user approved the generated mockup style for compact Skills and Mounts grids.
-- Current Mount icon direction is approved.
-- Current implemented Skill icons are not the preferred direction. The next Skill icon pass should return to a simpler, more RuneScape-like icon style from the approved mockup, with stronger small-size readability and less illustrative detail.
+- The user approved the dense grid mockup as the UI direction, but later rejected the first glossy generated Skill and Mount art pass.
+- Current icon direction: gritty old-school MMORPG / Old School RuneScape-like low-detail inventory assets.
+- Icons must be reusable assets with alpha transparency.
+- Icons must never include their own frame, border, tile, card, or background. Tile backgrounds, borders, glows, locked state, and owned state come from CSS.
 - Use the internal image generator for icon creation.
-- Target icon source size should likely be square, for example 512x512 PNG/WebP.
-- Store generated project icons under a stable public asset path such as `public/assets/icons/{category}/{id}.webp`.
-- Data entries should reference icons by path instead of hardcoded component icons.
-- Start with a small test batch before generating all assets: a few Skills and a few Mounts.
+- For transparent icons, generate on a flat chroma-key background, then remove the key locally with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`.
+- Use `#00ff00` as default chroma key and `#ff00ff` for green-heavy subjects such as Farming or Herblore.
+- Normalize final icons to 256x256 WebP with alpha under `public/assets/icons/{category}/{id}.webp`.
+- Data entries should reference icons by relative path, for example `assets/icons/skills/agility.webp`, so GitHub Pages project-subpath deployment works.
 - Do not bake text into icon images.
-- The icon style should be consistent: high-fantasy inventory icon, centered subject, dark emerald/charcoal background, muted gold accent/rim light, crisp painterly rendering, readable at small tile sizes.
-- Icons must support both compact grid tiles and larger detail views.
-- Current icon asset pipeline uses built-in Image Gen output copied into `public/assets/icons/...`, then resized to 512x512 WebP at roughly quality 82 with Pillow.
-- Use relative icon paths in app data, for example `assets/icons/skills/agility.webp`, so GitHub Pages project-subpath deployment works.
-- Current committed test batch covers Skills: Agility, Attack, Magic, Mining, Herblore; Mounts: Stable Pony, Verdant Stag, Ashwing Drake.
+- Current committed Skill icon batch covers all 30 skills with transparent 256x256 WebP assets.
+- A generic transparent Mount style preview is saved as `public/assets/icons/mounts/_style-preview.webp`; current production Mount icons have not yet been replaced.
 
 ## Commit And Push Policy
 
@@ -110,7 +108,7 @@ Current verified source notes as of 2026-07-04:
 
 - RuneScape official game guide lists skills including Archaeology and Necromancy.
 - Old School RuneScape official Sailing page states Sailing is out now and describes it as OSRS's first new skill.
-- OSRS and RuneScape naming differs for some equivalent concepts. The app has settled on `Hitpoints` and `Rune Crafting` as the visible canonical names.
+- OSRS and RuneScape naming differs for some equivalent concepts. The app has settled on `Hitpoints` and `Runecrafting` as the visible canonical names.
 
 Candidate combined skill roster to finalize:
 
@@ -136,7 +134,7 @@ Candidate combined skill roster to finalize:
 - Necromancy
 - Prayer
 - Ranged
-- Rune Crafting
+- Runecrafting
 - Sailing
 - Slayer
 - Smithing
@@ -154,7 +152,7 @@ Candidate combined skill roster to finalize:
 - Build production bundle: `npm run build`
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
-- Convert copied generated icons to optimized WebP: use Pillow to resize source PNGs to 512x512 and save as WebP quality 82 under `public/assets/icons/...`.
+- Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.
 
 ## Verified Workflows
 
@@ -195,6 +193,14 @@ Candidate combined skill roster to finalize:
   - reloaded and confirmed Stable Pony remained unlocked
   - confirmed `rap-collectibles.save.v1`, `rap-collectibles.save.backup.1`, `rap-collectibles.save.backup.2`, and `rap-collectibles.save.lastKnownGood` exist
   - no console warnings/errors and no failed requests
+- Full Skill icon pass verified locally:
+  - all 30 skills now have `icon` paths in `src/data.ts`
+  - visible skill name is `Runecrafting`
+  - generated Skill assets are transparent 256x256 WebP files under `public/assets/icons/skills`
+  - mobile Playwright check at `390x844` confirmed 30 skill tiles and 30 loaded images
+  - first row still renders as five equal-width tiles
+  - Runecrafting detail view opens with the expected title
+  - no console warnings/errors and no failed requests
 
 ## Successful Solutions
 
@@ -205,6 +211,14 @@ Candidate combined skill roster to finalize:
 - Why it works: the saved shape is independent of transient React page state, so progress survives reloads while UI navigation still resets cleanly. The loader tolerates future catalog changes by defaulting newly added skills to `0 XP` and dropping removed/unknown collectible IDs.
 - Files involved: `src/save.ts`, `src/App.tsx`.
 - Commands used: `npm run build`, `npx playwright install chromium`, local Playwright reload smoke test through `node`.
+
+2026-07-05: Transparent reusable Skill icons.
+
+- Original problem: the first generated Skill icons had their own illustrated backgrounds, frames, and glossy fantasy rendering, which made them less reusable and less aligned with the approved dense-grid mockup.
+- Successful solution: generate icons as old-school MMORPG-style subjects on flat chroma-key backgrounds, remove the chroma key locally, crop to alpha bounds, center on a 256x256 transparent canvas, and export WebP with alpha.
+- Why it works: CSS owns the tile background and state styling, while the icon file is only the reusable subject. The same asset can now be used in compact tiles, detail panels, Codex views, and future inventory-like surfaces.
+- Files involved: `src/data.ts`, `public/assets/icons/skills/*.webp`, `public/assets/icons/mounts/_style-preview.webp`.
+- Commands used: built-in Image Gen, `remove_chroma_key.py`, Pillow normalization, `npm run build`, local Playwright mobile asset check.
 
 ## Known Issues
 
