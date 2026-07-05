@@ -57,6 +57,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Subpages use a back button in the topbar.
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Classes and Races are implemented as standard collectible categories using the `type` field for broad grouping rather than nested subpages.
+- Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 
@@ -82,6 +83,7 @@ Likely entities:
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
 - Class/Race grouping: use `Collectible.type` for broad labels such as `Melee Tank`, `Magic Support`, `Dwarf`, or `Machine`. Avoid deeper subpage routing until content volume proves it is needed.
+- Collectible status logic: do not treat missing RAP as a red lock. Red means progression requirements are missing; yellow means the entry is qualified by requirements and may only need RAP.
 - Future asset fields should include stable icon paths, for example `icon`, `iconPrompt`, and possibly `type` for the one-line tile subtitle.
 
 ## Icon Pipeline Notes
@@ -223,6 +225,13 @@ Candidate combined skill roster to finalize:
   - Class and Race detail panels show type and RAP cost through the shared collectible detail view
   - buying Highland Human persists through reload and updates Races progress to `1/8`
   - no console warnings/errors and no failed requests
+- Collectible status color grouping verified locally with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - owned tiles use the `owned` status and sort first
+  - requirement-ready tiles use the `ready` status even with `0 RAP`
+  - missing-requirement tiles use the `locked` status and show the lock icon
+  - ready and owned tiles do not show the lock icon
+  - Classes and Races both show the new status behavior
+  - Skills do not receive collectible status classes
 
 ## Successful Solutions
 

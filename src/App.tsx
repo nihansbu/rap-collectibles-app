@@ -93,6 +93,19 @@ function collectibleActionLabel(item: Collectible, player: PlayerState) {
   return "Buy";
 }
 
+function collectibleStatus(item: Collectible, player: PlayerState) {
+  if (player.owned.includes(item.id)) return "owned";
+  if (requirementsMet(item, player)) return "ready";
+  return "locked";
+}
+
+function collectibleStatusRank(item: Collectible, player: PlayerState) {
+  const status = collectibleStatus(item, player);
+  if (status === "owned") return 0;
+  if (status === "ready") return 1;
+  return 2;
+}
+
 function skillNameFontSize(name: string) {
   if (name.length >= 12) return "7.2px";
   if (name.length >= 11) return "7.7px";
@@ -372,13 +385,16 @@ function CollectionPage({
     next = next.filter((item) => {
       const owned = player.owned.includes(item.id);
       const unlockable = canUnlock(item, player) && !owned;
+      const locked = !owned && !requirementsMet(item, player);
       if (filter === "owned") return owned;
       if (filter === "unlockable") return unlockable;
-      if (filter === "locked") return !owned && !unlockable;
+      if (filter === "locked") return locked;
       return true;
     });
 
     return [...next].sort((a, b) => {
+      const statusDifference = collectibleStatusRank(a, player) - collectibleStatusRank(b, player);
+      if (statusDifference !== 0) return statusDifference;
       if (sort === "cost-asc") return a.cost - b.cost;
       if (sort === "cost-desc") return b.cost - a.cost;
       if (sort === "requirements-asc") return highestRequirement(a) - highestRequirement(b);
@@ -409,14 +425,14 @@ function CollectibleCard({
   onOpenDetails: (item: Collectible) => void;
 }) {
   const owned = player.owned.includes(item.id);
-  const unlockable = canUnlock(item, player) && !owned;
+  const status = collectibleStatus(item, player);
 
   return (
     <article
-      className={`icon-tile ${owned ? "owned" : ""} ${unlockable ? "unlockable" : ""}`}
+      className={`icon-tile ${status}`}
       onClick={() => onOpenDetails(item)}
     >
-      <TileVisual icon={item.icon} category={item.category} locked={!owned && !unlockable} owned={owned} />
+      <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} />
       <h2>{item.name}</h2>
       <span>{item.type}</span>
     </article>

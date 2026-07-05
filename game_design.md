@@ -56,6 +56,14 @@ Inside a category, the player should see all entries:
 - requirements visible where useful
 - RAP cost visible for purchasable entries
 
+Collectible tile status colors:
+
+- Owned collectibles are green.
+- Ready collectibles are yellow when all non-currency requirements are met, even if the player still needs more RAP.
+- Locked collectibles are red when at least one non-currency requirement is missing.
+- The lock icon should only appear on red locked tiles.
+- Default collection ordering is Owned first, then Ready, then Locked.
+
 ## Collectibles
 
 Initial focus: mounts.
@@ -191,7 +199,7 @@ Collection subpages should show:
 - icon as the main visual element
 - name
 - at most one secondary info line
-- owned/unlockable/locked state
+- owned/ready/locked state
 - filters for All, Owned, Unlockable, Locked
 - sorting for cost and requirement level
 - a full-content detail panel for more information
