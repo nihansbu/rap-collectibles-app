@@ -274,7 +274,8 @@ Icon art direction:
 - The first full Skill icon pass covers all 30 skills as transparent 256x256 WebP assets.
 - The first full Mount icon pass covers all 8 mounts as transparent 256x256 WebP assets.
 - The first full Pet icon pass covers all 6 pets as transparent 256x256 WebP assets. Pocket Spriggan currently uses a woodland leaf/root charm visual.
-- Characters, Classes, and Races still need their generated transparent icon passes.
+- The first full Class icon pass covers all 8 classes as transparent 256x256 WebP assets. Classes use role equipment/emblems instead of portraits.
+- Characters and Races still need their generated transparent icon passes.
 - Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting

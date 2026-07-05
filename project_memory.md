@@ -113,7 +113,8 @@ Likely entities:
 - Current committed Skill icon batch covers all 30 skills with transparent 256x256 WebP assets.
 - Current committed Mount icon batch covers all 8 mounts with transparent 256x256 WebP assets in the approved gritty old-school inventory style.
 - Current committed Pet icon batch covers all 6 pets with transparent 256x256 WebP assets. `Pocket Spriggan` is represented by a woodland leaf/root charm because direct Spriggan/Woodland familiar prompts were rejected by the image-generation safety system.
-- Remaining collectible icon coverage gap after the Pet batch: 24 missing icons across Characters, Classes, and Races.
+- Current committed Class icon batch covers all 8 classes with transparent 256x256 WebP assets. Class visuals are equipment/emblem objects rather than character portraits, so they remain distinct from the Characters category.
+- Remaining collectible icon coverage gap after the Class batch: 16 missing icons across Characters and Races.
 
 ## Commit And Push Policy
 
@@ -275,6 +276,12 @@ Candidate combined skill roster to finalize:
   - generated Pet sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
   - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
   - mobile Playwright check confirmed 6 Pet tiles and 6 loaded Pet images, with no console warnings/errors and no failed requests
+- Class icon pipeline verified locally:
+  - `npm run icons:prepare` reports 38 collectibles and 16 remaining missing icons after the full Class pass
+  - all 8 Class data entries now reference transparent WebP icon assets
+  - generated Class sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
+  - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
+  - mobile Playwright check confirmed 8 Class tiles and 8 loaded Class images, with no console warnings/errors and no failed requests
 
 ## Successful Solutions
 
@@ -334,12 +341,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `src/data.ts`, `public/assets/icons/pets/*.webp`, `project_memory.md`, `game_design.md`.
 - Commands used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, local Playwright mobile Pet asset check.
 
+2026-07-05: Full Class icon pass.
+
+- Original problem: Classes still used placeholder category icons, and the app needed a distinct visual language so Classes would not be confused with Characters.
+- Successful solution: generate eight Class icons as equipment/emblem objects, remove chroma-key backgrounds locally, normalize to transparent 256x256 WebP assets, and wire all Class entries in `src/data.ts`.
+- Why it works: class icons communicate roles through gear and symbols rather than portraits, which keeps the compact grid readable and leaves portraits/figures for the Characters category.
+- Files involved: `src/data.ts`, `public/assets/icons/classes/*.webp`, `project_memory.md`, `game_design.md`.
+- Commands used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, local Playwright mobile Class asset check.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
-- Non-Skill collectible icon coverage is not complete yet. Mounts and Pets are complete; Characters, Classes, and Races still need generated transparent icons.
+- Non-Skill collectible icon coverage is not complete yet. Mounts, Pets, and Classes are complete; Characters and Races still need generated transparent icons.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.

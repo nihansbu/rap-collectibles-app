@@ -104,6 +104,7 @@ export const collectibles: Collectible[] = [
     name: "Iron Vanguard",
     description: "A front-line defender trained to hold ground when the battle line breaks.",
     type: "Melee Tank",
+    icon: "assets/icons/classes/class-iron-vanguard.webp",
     cost: 14_000,
     rarity: "Common",
     requirements: [],
@@ -114,6 +115,7 @@ export const collectibles: Collectible[] = [
     name: "Blade Dancer",
     description: "A fast melee striker who turns footwork and timing into lethal pressure.",
     type: "Melee DPS",
+    icon: "assets/icons/classes/class-blade-dancer.webp",
     cost: 26_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "attack", level: 20 }],
@@ -124,6 +126,7 @@ export const collectibles: Collectible[] = [
     name: "Oathkeeper",
     description: "A disciplined support fighter who protects allies through vows and presence.",
     type: "Melee Support",
+    icon: "assets/icons/classes/class-oathkeeper.webp",
     cost: 38_000,
     rarity: "Rare",
     requirements: [
@@ -137,6 +140,7 @@ export const collectibles: Collectible[] = [
     name: "Deadeye",
     description: "A patient ranged damage dealer who waits for one clean shot.",
     type: "Ranged DPS",
+    icon: "assets/icons/classes/class-deadeye.webp",
     cost: 24_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "ranged", level: 22 }],
@@ -147,6 +151,7 @@ export const collectibles: Collectible[] = [
     name: "Trail Warden",
     description: "A ranged support scout who keeps companions supplied, hidden, and moving.",
     type: "Ranged Support",
+    icon: "assets/icons/classes/class-trail-warden.webp",
     cost: 44_000,
     rarity: "Rare",
     requirements: [
@@ -160,6 +165,7 @@ export const collectibles: Collectible[] = [
     name: "Ember Mage",
     description: "A volatile spellcaster who specializes in controlled destruction.",
     type: "Magic DPS",
+    icon: "assets/icons/classes/class-ember-mage.webp",
     cost: 30_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "magic", level: 25 }],
@@ -170,6 +176,7 @@ export const collectibles: Collectible[] = [
     name: "Rune Sage",
     description: "A magical support class that shapes wards, sigils, and battlefield focus.",
     type: "Magic Support",
+    icon: "assets/icons/classes/class-rune-sage.webp",
     cost: 62_000,
     rarity: "Epic",
     requirements: [
@@ -183,6 +190,7 @@ export const collectibles: Collectible[] = [
     name: "Hexblade",
     description: "A hybrid fighter who binds blade work and curse magic into one style.",
     type: "Hybrid",
+    icon: "assets/icons/classes/class-hexblade.webp",
     cost: 95_000,
     rarity: "Epic",
     requirements: [
