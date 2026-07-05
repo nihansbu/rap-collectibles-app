@@ -94,14 +94,28 @@ Design direction:
 
 ## Skill System
 
-Skills are trained with RAP.
+Skills are trained with RAP through time-based training jobs.
 
 Design rules:
 
 - Use only skills that exist in RuneScape 3 and/or Old School RuneScape.
 - Do not invent new skills.
 - Skills serve primarily as progression gates for collectibles.
-- Skill training should remain simple at first: spend RAP to increase skill level.
+- Skill training should remain simple at first: choose a training duration, then RAP is gradually converted into XP over time.
+- Up to three skills can train at the same time.
+- Training duration buttons are `Train 1 Hour`, `Train 2 Hours`, `Train 5 Hours`, and `Train 12 Hours`.
+- Each active skill consumes up to 10,000 RAP/hour. Training can start with less than 10,000 RAP and stops automatically if RAP reaches zero.
+- Active training should be visible through an animated gold state on the Skill tile and status copy in the Skill detail panel.
+- Training jobs continue through reloads/closed-app time by processing saved timestamps.
+- XP/hour should be conservative because later real-world activity can generate roughly 20,000 to 50,000 RAP/hour. Current XP rates per active skill are:
+  - Level 1-9: 4,000 XP/hour
+  - Level 10-29: 6,000 XP/hour
+  - Level 30-49: 8,000 XP/hour
+  - Level 50-69: 10,000 XP/hour
+  - Level 70-89: 12,000 XP/hour
+  - Level 90-99: 14,000 XP/hour
+  - Level 100-109: 16,000 XP/hour
+  - Level 110-120: 18,000 XP/hour
 
 Skill requirement example:
 
@@ -126,7 +140,7 @@ The first usable screen should focus on the mount purchase loop.
 Current first screen elements:
 
 - RAP balance at the top.
-- Button: gain 10,000 RP.
+- Button: gain 10,000 RAP.
 - Page title in the topbar.
 - Four category tiles: Characters, Skills, Pets, Mounts.
 - No bottom navigation.
@@ -202,7 +216,7 @@ Build only:
 - Button to gain 10,000 RAP.
 - Mount purchasing with RAP.
 - Skill levels required by some mounts.
-- Simple RAP-based skill training.
+- Time-based RAP skill training with up to three concurrent skills.
 - Codex overview with category progress.
 - All RuneScape/Old School RuneScape skills, max level 120.
 - Shared collection page pattern for Characters, Pets, and Mounts.

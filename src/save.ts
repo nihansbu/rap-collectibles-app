@@ -1,37 +1,59 @@
 import { collectibles, skills, type SkillId } from "./data";
+import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
 
 export type PlayerState = {
   rp: number;
   owned: string[];
   skillXp: Record<SkillId, number>;
+  activeTrainings: ActiveTraining[];
+};
+
+type SavePlayerV1 = {
+  rp: number;
+  owned: string[];
+  skillXp: Partial<Record<SkillId, number>>;
+};
+
+type SavePlayerV2 = SavePlayerV1 & {
+  activeTrainings?: ActiveTraining[];
 };
 
 type SaveFileV1 = {
   version: 1;
   savedAt: string;
-  player: {
-    rp: number;
-    owned: string[];
-    skillXp: Partial<Record<SkillId, number>>;
-  };
+  player: SavePlayerV1;
+};
+
+type SaveFileV2 = {
+  version: 2;
+  savedAt: string;
+  player: SavePlayerV2;
 };
 
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-const CURRENT_SAVE_VERSION = 1;
-const SAVE_KEY = "rap-collectibles.save.v1";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.1", "rap-collectibles.save.backup.2"];
-const MAX_RP = Number.MAX_SAFE_INTEGER;
+const CURRENT_SAVE_VERSION = 2;
+const SAVE_KEY = "rap-collectibles.save.v2";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v2";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v2.1", "rap-collectibles.save.backup.v2.2"];
+const LEGACY_KEYS = [
+  "rap-collectibles.save.v1",
+  "rap-collectibles.save.lastKnownGood",
+  "rap-collectibles.save.backup.1",
+  "rap-collectibles.save.backup.2",
+];
+const MAX_RAP = Number.MAX_SAFE_INTEGER;
 
 const collectibleIds = new Set(collectibles.map((item) => item.id));
+const skillIds = new Set(skills.map((skill) => skill.id));
 
 export function createInitialPlayerState(): PlayerState {
   return {
     rp: 0,
     owned: [],
-    skillXp: Object.fromEntries(skills.map((skill) => [skill.id, 0])) as Record<SkillId, number>,
+    skillXp: createEmptySkillXp(),
+    activeTrainings: [],
   };
 }
 
@@ -39,12 +61,12 @@ export function loadPlayerState(): PlayerState {
   const storage = getStorage();
   if (!storage) return createInitialPlayerState();
 
-  for (const key of [SAVE_KEY, LAST_KNOWN_GOOD_KEY, ...BACKUP_KEYS]) {
+  for (const key of [SAVE_KEY, LAST_KNOWN_GOOD_KEY, ...BACKUP_KEYS, ...LEGACY_KEYS]) {
     const rawSave = storage.getItem(key);
     if (!rawSave) continue;
 
     const player = parsePlayerState(rawSave);
-    if (player) return player;
+    if (player) return processActiveTrainings(player);
   }
 
   return createInitialPlayerState();
@@ -80,7 +102,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState): string {
-  const saveFile: SaveFileV1 = {
+  const saveFile: SaveFileV2 = {
     version: CURRENT_SAVE_VERSION,
     savedAt: new Date().toISOString(),
     player: normalizePlayerState(player),
@@ -92,24 +114,24 @@ function serializeSave(player: PlayerState): string {
 function parsePlayerState(rawSave: string): PlayerState | null {
   try {
     const parsed = JSON.parse(rawSave) as unknown;
-    if (!isSaveFileV1(parsed)) return null;
+    if (!isSaveFile(parsed)) return null;
     return normalizePlayerState(parsed.player);
   } catch {
     return null;
   }
 }
 
-function isSaveFileV1(value: unknown): value is SaveFileV1 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (candidate.version !== CURRENT_SAVE_VERSION) return false;
+  if (candidate.version !== 1 && candidate.version !== CURRENT_SAVE_VERSION) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SaveFileV1["player"]): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -124,15 +146,53 @@ function normalizePlayerState(player: SaveFileV1["player"]): PlayerState {
     : [];
 
   return {
-    rp: sanitizeNumber(player.rp, 0, MAX_RP),
+    rp: sanitizeNumber(player.rp, 0, MAX_RAP),
     owned,
     skillXp,
+    activeTrainings: normalizeActiveTrainings("activeTrainings" in player ? player.activeTrainings : undefined),
   };
+}
+
+function normalizeActiveTrainings(value: unknown): ActiveTraining[] {
+  if (!Array.isArray(value)) return [];
+
+  const usedSkillIds = new Set<SkillId>();
+  const normalized: ActiveTraining[] = [];
+
+  for (const training of value) {
+    if (!training || typeof training !== "object") continue;
+
+    const candidate = training as ActiveTraining;
+    if (typeof candidate.id !== "string") continue;
+    if (!skillIds.has(candidate.skillId)) continue;
+    if (usedSkillIds.has(candidate.skillId)) continue;
+    if (!Number.isFinite(candidate.startedAt)) continue;
+    if (!Number.isFinite(candidate.lastUpdatedAt)) continue;
+    if (!Number.isFinite(candidate.endsAt)) continue;
+    if (candidate.endsAt <= candidate.lastUpdatedAt) continue;
+
+    normalized.push({
+      id: candidate.id,
+      skillId: candidate.skillId,
+      startedAt: candidate.startedAt,
+      lastUpdatedAt: candidate.lastUpdatedAt,
+      endsAt: candidate.endsAt,
+    });
+    usedSkillIds.add(candidate.skillId);
+
+    if (normalized.length >= MAX_ACTIVE_TRAININGS) break;
+  }
+
+  return normalized;
+}
+
+function createEmptySkillXp() {
+  return Object.fromEntries(skills.map((skill) => [skill.id, 0])) as Record<SkillId, number>;
 }
 
 function sanitizeNumber(value: unknown, min: number, max: number) {
   if (typeof value !== "number" || !Number.isFinite(value)) return min;
-  return Math.min(max, Math.max(min, Math.floor(value)));
+  return Math.min(max, Math.max(min, value));
 }
 
 function rotateBackups(storage: StorageLike) {

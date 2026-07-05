@@ -14,7 +14,18 @@ import {
 } from "lucide-react";
 import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { loadPlayerState, savePlayerState, type PlayerState } from "./save";
-import { MAX_LEVEL, levelFromXp, xpIntoLevel, xpTable } from "./xp";
+import {
+  formatDuration,
+  isSkillTraining,
+  MAX_ACTIVE_TRAININGS,
+  processActiveTrainings,
+  remainingTrainingMs,
+  startSkillTraining,
+  TRAINING_DURATIONS,
+  TRAINING_RAP_PER_HOUR,
+  trainingXpPerHour,
+} from "./training";
+import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -31,7 +42,7 @@ const rarityClass: Record<Collectible["rarity"], string> = {
 };
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(value);
+  return new Intl.NumberFormat("en-US").format(Math.floor(value));
 }
 
 function skillName(skillId: SkillId) {
@@ -76,8 +87,15 @@ function requirementsMet(item: Collectible, player: PlayerState) {
 function collectibleActionLabel(item: Collectible, player: PlayerState) {
   if (player.owned.includes(item.id)) return "Unlocked";
   if (!requirementsMet(item, player)) return "Requirements not met";
-  if (player.rp < item.cost) return "Not enough RP";
+  if (player.rp < item.cost) return "Not enough RAP";
   return "Buy";
+}
+
+function skillNameFontSize(name: string) {
+  if (name.length >= 12) return "7.2px";
+  if (name.length >= 11) return "7.7px";
+  if (name.length >= 10) return "8.4px";
+  return "10px";
 }
 
 function AppIcon({ category }: { category: CategoryId }) {
@@ -125,25 +143,24 @@ export function App() {
     savePlayerState(player);
   }, [player]);
 
+  useEffect(() => {
+    if (player.activeTrainings.length === 0) return;
+
+    const intervalId = window.setInterval(() => {
+      setPlayer((current) => processActiveTrainings(current));
+    }, 1_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [player.activeTrainings.length]);
+
   function grantRp() {
     setPlayer((current) => ({ ...current, rp: current.rp + 10_000 }));
   }
 
-  function trainSkill(skillId: SkillId) {
+  function trainSkill(skillId: SkillId, hours: number) {
     setPlayer((current) => {
-      const xp = current.skillXp[skillId];
-      const remaining = xpTable[MAX_LEVEL] - xp;
-      const spent = Math.min(10_000, current.rp, remaining);
-      if (spent <= 0) return current;
-
-      return {
-        ...current,
-        rp: current.rp - spent,
-        skillXp: {
-          ...current.skillXp,
-          [skillId]: xp + spent,
-        },
-      };
+      if (current.rp <= 0) return current;
+      return startSkillTraining(current, skillId, hours);
     });
   }
 
@@ -163,8 +180,8 @@ export function App() {
   const categoryProgress = useMemo(() => {
     return categories.map((category) => {
       if (category.id === "skills") {
-        const trained = skills.filter((skill) => levelFromXp(player.skillXp[skill.id]) > 1).length;
-        return { ...category, unlocked: trained, total: skills.length };
+        const totalLevel = skills.reduce((total, skill) => total + levelFromXp(player.skillXp[skill.id]), 0);
+        return { ...category, unlocked: totalLevel, total: skills.length * MAX_LEVEL };
       }
 
       const items = collectibles.filter((item) => item.category === category.id);
@@ -207,7 +224,7 @@ export function App() {
             skillId={detailView.skillId}
             player={player}
             onClose={() => setDetailView(null)}
-            onTrain={() => trainSkill(detailView.skillId)}
+            onTrain={(hours) => trainSkill(detailView.skillId, hours)}
           />
         ) : page.type === "home" ? (
           <HomePage progress={categoryProgress} onOpen={(id) => setPage({ type: "category", id })} />
@@ -257,8 +274,8 @@ function TopBar({
         <h1>{title}</h1>
       </div>
       <div className="wallet">
-        <span>{formatNumber(rp)} RP</span>
-        <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RP">
+        <span>{formatNumber(rp)} RAP</span>
+        <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RAP">
           <Plus size={18} />
         </button>
       </div>
@@ -437,10 +454,11 @@ function SkillsPage({
         {visibleSkills.map((skill) => {
           const xp = player.skillXp[skill.id];
           const levelInfo = xpIntoLevel(xp);
+          const training = isSkillTraining(player, skill.id);
           return (
-            <article className="icon-tile skill-tile" key={skill.id} onClick={() => onOpenSkill(skill.id)}>
+            <article className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
               <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} />
-              <h2>{skill.name}</h2>
+              <h2 style={{ fontSize: skillNameFontSize(skill.name) }}>{skill.name}</h2>
               <span>Lv. {levelInfo.level}</span>
             </article>
           );
@@ -505,7 +523,7 @@ function CollectibleDetailView({
       <div className="sheet-meta">
         <span className={rarityClass[item.rarity]}>{item.rarity}</span>
         <span>{item.type}</span>
-        <span>{formatNumber(item.cost)} RP</span>
+        <span>{formatNumber(item.cost)} RAP</span>
       </div>
       <RequirementList item={item} player={player} />
       <button className="primary-action detail-action" disabled={!unlockable} onClick={onBuy}>
@@ -524,16 +542,25 @@ function SkillDetailView({
   skillId: SkillId;
   player: PlayerState;
   onClose: () => void;
-  onTrain: () => void;
+  onTrain: (hours: number) => void;
 }) {
   const skill = skills.find((candidate) => candidate.id === skillId)!;
   const xp = player.skillXp[skillId];
   const levelInfo = xpIntoLevel(xp);
-  const spend = Math.min(10_000, player.rp, xpTable[MAX_LEVEL] - xp);
   const nextLevel = Math.min(levelInfo.level + 1, MAX_LEVEL);
+  const activeTraining = player.activeTrainings.find((training) => training.skillId === skillId);
+  const isMaxed = levelInfo.level >= MAX_LEVEL;
+  const canStartNewTraining = activeTraining || player.activeTrainings.length < MAX_ACTIVE_TRAININGS;
+  const disabledReason = isMaxed
+    ? "Maximum level reached"
+    : player.rp <= 0
+      ? "No RAP available"
+      : !canStartNewTraining
+        ? "Maximum 3 active skills"
+        : null;
 
   return (
-    <section className="detail-view" aria-label={`${skill.name} details`}>
+    <section className={`detail-view ${activeTraining ? "training" : ""}`} aria-label={`${skill.name} details`}>
       <button className="detail-close" onClick={onClose} aria-label="Close details">
         <X size={18} />
       </button>
@@ -542,12 +569,20 @@ function SkillDetailView({
       </div>
       <h2>{skill.name}</h2>
       <p>
-        Train this skill with RP to unlock collectibles that require {skill.name} levels.
+        Train this skill with RAP to unlock collectibles that require {skill.name} levels.
       </p>
       <div className="sheet-meta">
         <span>{skill.source}</span>
         <span>Level {levelInfo.level}</span>
+        <span>{formatNumber(trainingXpPerHour(levelInfo.level))} XP/h</span>
+        <span>{formatNumber(TRAINING_RAP_PER_HOUR)} RAP/h</span>
       </div>
+      {activeTraining && (
+        <div className="active-training-panel" aria-label={`${skill.name} training status`}>
+          <strong>Training active</strong>
+          <span>{formatDuration(remainingTrainingMs(activeTraining))} remaining</span>
+        </div>
+      )}
       <div className="skill-detail-track">
         <div className="xp-track" aria-label={`${skill.name} XP progress`}>
           <span style={{ width: `${Math.max(3, levelInfo.progress * 100)}%` }} />
@@ -561,9 +596,19 @@ function SkillDetailView({
           </span>
         </div>
       </div>
-      <button className="primary-action detail-action" disabled={spend <= 0} onClick={onTrain}>
-        Train {formatNumber(spend)} RP
-      </button>
+      <div className="training-actions">
+        {TRAINING_DURATIONS.map((duration) => (
+          <button
+            key={duration.hours}
+            className="primary-action"
+            disabled={disabledReason !== null}
+            onClick={() => onTrain(duration.hours)}
+          >
+            {duration.label}
+          </button>
+        ))}
+      </div>
+      {disabledReason && <p className="action-note">{disabledReason}</p>}
     </section>
   );
 }
@@ -598,7 +643,7 @@ function ConfirmDialog({ item, onCancel, onConfirm }: { item: Collectible; onCan
     <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
       <section className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Confirm purchase" onClick={(event) => event.stopPropagation()}>
         <h2>Buy {item.name}?</h2>
-        <p>This will spend {formatNumber(item.cost)} RP and unlock it in your Codex.</p>
+        <p>This will spend {formatNumber(item.cost)} RAP and unlock it in your Codex.</p>
         <div className="dialog-actions">
           <button className="secondary-action" onClick={onCancel}>
             No

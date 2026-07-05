@@ -40,7 +40,8 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 - `src/App.tsx`: app shell, pages, purchase dialog, full-content detail views, filters, skill training interactions.
 - `src/data.ts`: category, skill, collectible, and requirement data.
-- `src/save.ts`: versioned local save/load system, validation, normalization, and backup rotation for player progress.
+- `src/save.ts`: versioned local save/load system, v1-to-v2 migration, validation, normalization, active training persistence, offline training processing, and backup rotation for player progress.
+- `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
 - `index.html`: Vite HTML entry.
@@ -52,7 +53,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Home page title: `Collectibles`.
 - Main category tiles in order: Characters, Skills, Pets, Mounts.
 - No bottom navigation in the first prototype.
-- A sticky topbar always shows the current page name, current RP, and a plus button that grants 10,000 RP.
+- A sticky topbar always shows the current page name, current RAP, and a plus button that grants 10,000 RAP.
 - Subpages use a back button in the topbar.
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Skills have their own page but live under Collectibles as a category tile.
@@ -61,7 +62,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 Implemented early systems:
 
 - RAP wallet: persisted through versioned browser `localStorage`.
-- Skill progression: implemented as XP per skill, with 1 RP spent = 1 XP gained.
+- Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
+- Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
+- Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented in `src/data.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
 - Codex collection overview: implemented as category progress tiles.
@@ -168,8 +171,8 @@ Candidate combined skill roster to finalize:
   - home page title is `Collectibles`
   - category tile order is Characters, Skills, Pets, Mounts
   - tile counts are Characters 0/8, Skills 0/30, Pets 0/6, Mounts 0/8
-  - plus button grants 10,000 RP
-  - Skills page opens and a skill can be trained by spending up to 10,000 RP
+  - plus button grants 10,000 RAP
+  - Skills page opens and a skill can be trained through duration buttons
   - Mounts page opens
   - tapping an unlockable mount opens a purchase confirmation
   - confirming purchase marks the mount as owned
@@ -185,8 +188,8 @@ Candidate combined skill roster to finalize:
 - Dense grid implementation verified with Playwright at `390x844`: Skills render 30 icon tiles with five equal-width tiles in the first row; test batch loads 5 skill images and 3 mount images with no failed requests; card taps open full-content detail views; skill training still works; native text selection remains disabled.
 - Versioned local save implementation verified with Playwright at `390x844` against `http://127.0.0.1:5173/`:
   - cleared localStorage
-  - added 10,000 RP
-  - reloaded and confirmed RP persisted
+  - added 10,000 RAP
+  - reloaded and confirmed RAP persisted
   - trained Agility for 10,000 XP
   - reloaded and confirmed Agility XP persisted
   - bought Stable Pony
@@ -201,6 +204,17 @@ Candidate combined skill roster to finalize:
   - first row still renders as five equal-width tiles
   - Runecrafting detail view opens with the expected title
   - no console warnings/errors and no failed requests
+- Timestamped Skill training verified locally with Playwright at `390x844` against `http://127.0.0.1:5173/`:
+  - fresh save shows Skills progress as total level `30/3600` on the Collectibles overview
+  - visible UI copy uses `RAP` and no standalone `RP`
+  - long Skill names stay on one line in the five-column grid
+  - `Train 1 Hour`, `Train 2 Hours`, `Train 5 Hours`, and `Train 12 Hours` buttons render in Skill detail
+  - starting a training job adds the active detail status, drains RAP over time, and increases XP
+  - up to three skills can train concurrently and a fourth is blocked with `Maximum 3 active skills`
+  - active skill tiles receive the animated training class
+  - v2 save files process elapsed timestamp time on reload and stop training when RAP reaches zero
+  - old `rap-collectibles.save.v1` data still loads through the migration path
+  - `npm run build` succeeds after the implementation
 
 ## Successful Solutions
 
@@ -211,6 +225,14 @@ Candidate combined skill roster to finalize:
 - Why it works: the saved shape is independent of transient React page state, so progress survives reloads while UI navigation still resets cleanly. The loader tolerates future catalog changes by defaulting newly added skills to `0 XP` and dropping removed/unknown collectible IDs.
 - Files involved: `src/save.ts`, `src/App.tsx`.
 - Commands used: `npm run build`, `npx playwright install chromium`, local Playwright reload smoke test through `node`.
+
+2026-07-05: Timestamped Skill training with offline progress.
+
+- Original problem: Skill training was an immediate spend action, but the design requires hour-based training jobs that continue over time, support up to three concurrent skills, and process elapsed time after reloads.
+- Successful solution: add `src/training.ts` as the shared training engine, migrate saves to `rap-collectibles.save.v2`, store `activeTrainings` with `startedAt`, `lastUpdatedAt`, and `endsAt`, process active jobs once per second in React, and process elapsed time once during `loadPlayerState()`.
+- Why it works: training state is stored as durable timestamps rather than UI timers. Reload/offline progress is deterministic because the processor consumes RAP and awards XP based on elapsed milliseconds, bounded by available RAP, max level 120, job end time, and the three-skill concurrency cap.
+- Files involved: `src/training.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`.
+- Commands used: `npm run build`, local Playwright mobile training QA through `node`.
 
 2026-07-05: Transparent reusable Skill icons.
 
