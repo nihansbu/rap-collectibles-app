@@ -41,6 +41,8 @@ export type Collectible = {
   category: Exclude<CategoryId, "skills">;
   name: string;
   description: string;
+  type: string;
+  icon?: string;
   cost: number;
   rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
   requirements: Requirement[];
@@ -50,6 +52,7 @@ export type SkillDefinition = {
   id: SkillId;
   name: string;
   source: "RuneScape" | "Old School RuneScape" | "Both";
+  icon?: string;
 };
 
 export const categories: Array<{ id: CategoryId; name: string; totalLabel: string }> = [
@@ -60,9 +63,9 @@ export const categories: Array<{ id: CategoryId; name: string; totalLabel: strin
 ];
 
 export const skills: SkillDefinition[] = [
-  { id: "agility", name: "Agility", source: "Both" },
+  { id: "agility", name: "Agility", source: "Both", icon: "assets/icons/skills/agility.webp" },
   { id: "archaeology", name: "Archaeology", source: "RuneScape" },
-  { id: "attack", name: "Attack", source: "Both" },
+  { id: "attack", name: "Attack", source: "Both", icon: "assets/icons/skills/attack.webp" },
   { id: "construction", name: "Construction", source: "Both" },
   { id: "cooking", name: "Cooking", source: "Both" },
   { id: "crafting", name: "Crafting", source: "Both" },
@@ -73,12 +76,12 @@ export const skills: SkillDefinition[] = [
   { id: "firemaking", name: "Firemaking", source: "Both" },
   { id: "fishing", name: "Fishing", source: "Both" },
   { id: "fletching", name: "Fletching", source: "Both" },
-  { id: "herblore", name: "Herblore", source: "Both" },
+  { id: "herblore", name: "Herblore", source: "Both", icon: "assets/icons/skills/herblore.webp" },
   { id: "hitpoints", name: "Hitpoints", source: "Old School RuneScape" },
   { id: "hunter", name: "Hunter", source: "Both" },
   { id: "invention", name: "Invention", source: "RuneScape" },
-  { id: "magic", name: "Magic", source: "Both" },
-  { id: "mining", name: "Mining", source: "Both" },
+  { id: "magic", name: "Magic", source: "Both", icon: "assets/icons/skills/magic.webp" },
+  { id: "mining", name: "Mining", source: "Both", icon: "assets/icons/skills/mining.webp" },
   { id: "necromancy", name: "Necromancy", source: "RuneScape" },
   { id: "prayer", name: "Prayer", source: "Both" },
   { id: "ranged", name: "Ranged", source: "Both" },
@@ -98,6 +101,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Alden the Warden",
     description: "A disciplined human guardian sworn to protect old roads and border keeps.",
+    type: "Guardian",
     cost: 12_000,
     rarity: "Common",
     requirements: [],
@@ -107,6 +111,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Mycelle Greenhand",
     description: "A forest-born herbalist who understands roots, spores, and quiet magic.",
+    type: "Herbalist",
     cost: 28_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "herblore", level: 25 }],
@@ -116,6 +121,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Kael Emberlane",
     description: "A fire-touched battlemage with a talent for dangerous shortcuts.",
+    type: "Battlemage",
     cost: 55_000,
     rarity: "Rare",
     requirements: [
@@ -128,6 +134,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Seris Moonveil",
     description: "A silent ranger who follows tracks that most eyes cannot see.",
+    type: "Ranger",
     cost: 85_000,
     rarity: "Epic",
     requirements: [
@@ -140,6 +147,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Brannoc Ironwake",
     description: "A dwarven smith whose oaths are carved into every blade he carries.",
+    type: "Smith",
     cost: 72_000,
     rarity: "Rare",
     requirements: [
@@ -152,6 +160,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Elyra Starfall",
     description: "An elven astronomer who reads omens in falling light.",
+    type: "Astronomer",
     cost: 110_000,
     rarity: "Epic",
     requirements: [
@@ -164,6 +173,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Orren Tidecaller",
     description: "A coastal mystic who treats every voyage as a test of courage.",
+    type: "Mystic",
     cost: 38_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "sailing", level: 30 }],
@@ -173,6 +183,7 @@ export const collectibles: Collectible[] = [
     category: "characters",
     name: "Voss Gravebound",
     description: "A solemn necromancer followed by whispers from forgotten halls.",
+    type: "Necromancer",
     cost: 160_000,
     rarity: "Legendary",
     requirements: [
@@ -185,6 +196,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Lantern Mote",
     description: "A warm little spirit that glows brighter after long journeys.",
+    type: "Spirit",
     cost: 8_000,
     rarity: "Common",
     requirements: [],
@@ -194,6 +206,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Pocket Spriggan",
     description: "A tiny woodland companion with leaves that change color by mood.",
+    type: "Woodland",
     cost: 18_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "woodcutting", level: 20 }],
@@ -203,6 +216,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Cinder Imp",
     description: "A mischievous familiar that hoards sparks and warm stones.",
+    type: "Demon",
     cost: 42_000,
     rarity: "Rare",
     requirements: [{ type: "skill", skillId: "firemaking", level: 44 }],
@@ -212,6 +226,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Runic Orb",
     description: "A floating companion that hums softly near old runes.",
+    type: "Arcane",
     cost: 76_000,
     rarity: "Epic",
     requirements: [
@@ -224,6 +239,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Compass Crab",
     description: "A clever shore pet that always points one claw toward home.",
+    type: "Aquatic",
     cost: 26_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "fishing", level: 28 }],
@@ -233,6 +249,7 @@ export const collectibles: Collectible[] = [
     category: "pets",
     name: "Glass Wyrmling",
     description: "A translucent little wyrm that curls around polished gems.",
+    type: "Wyrm",
     cost: 120_000,
     rarity: "Legendary",
     requirements: [
@@ -245,6 +262,8 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Stable Pony",
     description: "A reliable first mount for new collectors.",
+    type: "Beast",
+    icon: "assets/icons/mounts/stable-pony.webp",
     cost: 10_000,
     rarity: "Common",
     requirements: [],
@@ -254,6 +273,7 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Greyfang Wolf",
     description: "A swift wolf mount raised by northern pathfinders.",
+    type: "Beast",
     cost: 24_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "hunter", level: 18 }],
@@ -263,6 +283,8 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Verdant Stag",
     description: "A proud forest stag whose antlers bloom with rare herbs.",
+    type: "Beast",
+    icon: "assets/icons/mounts/verdant-stag.webp",
     cost: 90_000,
     rarity: "Epic",
     requirements: [{ type: "skill", skillId: "herblore", level: 73 }],
@@ -272,6 +294,7 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Granite Ram",
     description: "A sure-footed mountain ram with armor-like stone plates.",
+    type: "Beast",
     cost: 65_000,
     rarity: "Rare",
     requirements: [
@@ -284,6 +307,8 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Ashwing Drake",
     description: "A young drake with ember-veined wings and an impatient temper.",
+    type: "Drake",
+    icon: "assets/icons/mounts/ashwing-drake.webp",
     cost: 180_000,
     rarity: "Legendary",
     requirements: [
@@ -297,6 +322,7 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Moonlit Skiff",
     description: "A small enchanted boat that glides over water and mist.",
+    type: "Aquatic",
     cost: 58_000,
     rarity: "Rare",
     requirements: [{ type: "skill", skillId: "sailing", level: 50 }],
@@ -306,6 +332,7 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Silkclimb Spider",
     description: "A trained cavern mount prized by miners and deep scouts.",
+    type: "Beast",
     cost: 96_000,
     rarity: "Epic",
     requirements: [
@@ -318,6 +345,7 @@ export const collectibles: Collectible[] = [
     category: "mounts",
     name: "Runestone Golem",
     description: "A slow but tireless construct animated by ancient rune work.",
+    type: "Construct",
     cost: 145_000,
     rarity: "Legendary",
     requirements: [

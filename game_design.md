@@ -127,12 +127,11 @@ Current first screen elements:
 
 Collection subpages should show:
 
-- compact item cards
-- placeholder icon space
+- dense icon-based grid tiles
+- as many visible entries as practical on mobile
+- icon as the main visual element
 - name
-- short description
-- RP cost
-- skill and collectible requirements
+- at most one secondary info line
 - owned/unlockable/locked state
 - filters for All, Owned, Unlockable, Locked
 - sorting for cost and requirement level
@@ -145,6 +144,27 @@ Interaction decision:
 - The detail panel fills the content area under the topbar.
 - Buying collectibles and training skills happens from the detail panel, not directly from the list card.
 - Native browser text selection should never appear during normal app interaction.
+
+Grid tile direction:
+
+- Subpages should move away from text-heavy list cards toward dense icon grids.
+- Skills should use very compact tiles, likely five columns per row on mobile.
+- Skills show only icon, skill name, and current level such as `Lv. 73`.
+- Pets show icon, pet name, and pet type.
+- Mounts show icon, mount name, and mount type.
+- Characters can show icon/portrait, character name, and class/archetype.
+- Costs, descriptions, requirements, source game, rarity, and actions belong in the full-content detail panel.
+- Scroll behavior must remain available on every subpage when content exceeds the viewport.
+
+Icon art direction:
+
+- Follow the approved dense grid mockup style for Skills and Mounts.
+- Icons should be high-fantasy inventory/codex icons with strong readable silhouettes.
+- Preferred look: dark emerald/charcoal background, muted gold accents, centered object, crisp painterly game-icon rendering, readable at small sizes.
+- Icon images should not contain baked-in text. Text stays native UI.
+- Icons should work inside compact square tiles and larger detail panels.
+- Approved test-batch subjects: Agility, Attack, Magic, Mining, Herblore, Stable Pony, Verdant Stag, Ashwing Drake.
+- Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting
 

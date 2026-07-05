@@ -78,17 +78,19 @@ function getRequirementState(requirement: Requirement, player: PlayerState) {
 function canUnlock(item: Collectible, player: PlayerState) {
   return (
     player.rp >= item.cost &&
-    item.requirements.every((requirement) => getRequirementState(requirement, player).met)
+    requirementsMet(item, player)
   );
 }
 
-function requirementsText(item: Collectible) {
-  if (item.requirements.length === 0) return "No requirements";
-  return item.requirements
-    .map((requirement) =>
-      requirement.type === "skill" ? `${skillName(requirement.skillId)} ${requirement.level}` : requirement.label,
-    )
-    .join(", ");
+function requirementsMet(item: Collectible, player: PlayerState) {
+  return item.requirements.every((requirement) => getRequirementState(requirement, player).met);
+}
+
+function collectibleActionLabel(item: Collectible, player: PlayerState) {
+  if (player.owned.includes(item.id)) return "Unlocked";
+  if (!requirementsMet(item, player)) return "Requirements not met";
+  if (player.rp < item.cost) return "Not enough RP";
+  return "Buy";
 }
 
 function AppIcon({ category }: { category: CategoryId }) {
@@ -97,6 +99,11 @@ function AppIcon({ category }: { category: CategoryId }) {
   if (category === "skills") return <Swords {...common} />;
   if (category === "pets") return <Sparkles {...common} />;
   return <Gem {...common} />;
+}
+
+function categoryForSkill(skillId: SkillId): CategoryId {
+  void skillId;
+  return "skills";
 }
 
 export function App() {
@@ -394,24 +401,12 @@ function CollectibleCard({
 
   return (
     <article
-      className={`item-card ${owned ? "owned" : ""} ${unlockable ? "unlockable" : ""}`}
+      className={`icon-tile ${owned ? "owned" : ""} ${unlockable ? "unlockable" : ""}`}
       onClick={() => onOpenDetails(item)}
     >
-      <div className="item-icon">
-        {owned ? <Check size={22} /> : unlockable ? <Gem size={22} /> : <Lock size={21} />}
-      </div>
-      <div className="item-copy">
-        <div className="item-title-row">
-          <h2>{item.name}</h2>
-          <ChevronRight className="card-chevron" size={17} />
-        </div>
-        <p>{item.description}</p>
-        <div className="meta-row">
-          <span className={rarityClass[item.rarity]}>{item.rarity}</span>
-          <span>{formatNumber(item.cost)} RP</span>
-        </div>
-        <div className="requirement-line">{requirementsText(item)}</div>
-      </div>
+      <TileVisual icon={item.icon} category={item.category} locked={!owned && !unlockable} owned={owned} />
+      <h2>{item.name}</h2>
+      <span>{item.type}</span>
     </article>
   );
 }
@@ -452,29 +447,43 @@ function SkillsPage({
           const xp = player.skillXp[skill.id];
           const levelInfo = xpIntoLevel(xp);
           return (
-            <article className="skill-card" key={skill.id} onClick={() => onOpenSkill(skill.id)}>
-              <div className="skill-topline">
-                <div>
-                  <h2>{skill.name}</h2>
-                  <p>{skill.source}</p>
-                </div>
-                <strong>Level {levelInfo.level}</strong>
-              </div>
-              <div className="xp-track" aria-label={`${skill.name} XP progress`}>
-                <span style={{ width: `${Math.max(3, levelInfo.progress * 100)}%` }} />
-              </div>
-              <div className="skill-footer">
-                <span>
-                  {formatNumber(xp)} XP
-                  {levelInfo.level < MAX_LEVEL ? ` / ${formatNumber(levelInfo.next)} XP` : ""}
-                </span>
-                <ChevronRight className="card-chevron" size={17} />
-              </div>
+            <article className="icon-tile skill-tile" key={skill.id} onClick={() => onOpenSkill(skill.id)}>
+              <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} />
+              <h2>{skill.name}</h2>
+              <span>Lv. {levelInfo.level}</span>
             </article>
           );
         })}
       </section>
     </>
+  );
+}
+
+function TileVisual({
+  icon,
+  category,
+  locked = false,
+  owned = false,
+}: {
+  icon?: string;
+  category: CategoryId;
+  locked?: boolean;
+  owned?: boolean;
+}) {
+  return (
+    <div className={`tile-art ${locked ? "locked" : ""} ${owned ? "owned" : ""}`}>
+      {icon ? <img src={icon} alt="" draggable="false" /> : <AppIcon category={category} />}
+      {locked && (
+        <span className="tile-lock" aria-hidden="true">
+          <Lock size={12} />
+        </span>
+      )}
+      {owned && (
+        <span className="tile-owned" aria-hidden="true">
+          <Check size={12} />
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -498,17 +507,18 @@ function CollectibleDetailView({
         <X size={18} />
       </button>
       <div className="sheet-icon">
-        {owned ? <Check size={32} /> : unlockable ? <Gem size={32} /> : <Lock size={32} />}
+        {item.icon ? <img src={item.icon} alt="" draggable="false" /> : owned ? <Check size={32} /> : unlockable ? <Gem size={32} /> : <Lock size={32} />}
       </div>
       <h2>{item.name}</h2>
       <p>{item.description}</p>
       <div className="sheet-meta">
         <span className={rarityClass[item.rarity]}>{item.rarity}</span>
+        <span>{item.type}</span>
         <span>{formatNumber(item.cost)} RP</span>
       </div>
       <RequirementList item={item} player={player} />
       <button className="primary-action detail-action" disabled={!unlockable} onClick={onBuy}>
-        {owned ? "Unlocked" : unlockable ? "Buy" : "Requirements not met"}
+        {collectibleActionLabel(item, player)}
       </button>
     </section>
   );
@@ -537,7 +547,7 @@ function SkillDetailView({
         <X size={18} />
       </button>
       <div className="sheet-icon">
-        <Swords size={32} />
+        {skill.icon ? <img src={skill.icon} alt="" draggable="false" /> : <Swords size={32} />}
       </div>
       <h2>{skill.name}</h2>
       <p>

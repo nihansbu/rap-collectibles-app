@@ -65,6 +65,7 @@ Expected early systems:
 - Purchase/unlock logic: implemented with RAP costs and requirements.
 - Codex collection overview: implemented as category progress tiles.
 - Mobile-only UI navigation: implemented with topbar and page state.
+- Planned collection subpage direction: replace text-heavy list cards with dense icon-based grids. The approved mockup direction uses five compact tiles per row for Skills and a similar icon-first grid for Mounts.
 
 ## Data Model Notes
 
@@ -75,6 +76,28 @@ Likely entities:
 - Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state.
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
+- Future asset fields should include stable icon paths, for example `icon`, `iconPrompt`, and possibly `type` for the one-line tile subtitle.
+
+## Icon Pipeline Notes
+
+- The user approved the generated mockup style for compact Skills and Mounts grids.
+- Use the internal image generator for icon creation.
+- Target icon source size should likely be square, for example 512x512 PNG/WebP.
+- Store generated project icons under a stable public asset path such as `public/assets/icons/{category}/{id}.webp`.
+- Data entries should reference icons by path instead of hardcoded component icons.
+- Start with a small test batch before generating all assets: a few Skills and a few Mounts.
+- Do not bake text into icon images.
+- The icon style should be consistent: high-fantasy inventory icon, centered subject, dark emerald/charcoal background, muted gold accent/rim light, crisp painterly rendering, readable at small tile sizes.
+- Icons must support both compact grid tiles and larger detail views.
+- Current icon asset pipeline uses built-in Image Gen output copied into `public/assets/icons/...`, then resized to 512x512 WebP at roughly quality 82 with Pillow.
+- Use relative icon paths in app data, for example `assets/icons/skills/agility.webp`, so GitHub Pages project-subpath deployment works.
+- Current committed test batch covers Skills: Agility, Attack, Magic, Mining, Herblore; Mounts: Stable Pony, Verdant Stag, Ashwing Drake.
+
+## Commit And Push Policy
+
+- Code and program changes must be committed and pushed when a task is finished.
+- Design-only documentation changes should be recorded in the docs, but should not trigger their own commit/push.
+- Design-only documentation changes can be included with the next commit/push that contains code or program changes.
 
 ## RuneScape/OSRS Skill Source Notes
 
@@ -128,6 +151,7 @@ Candidate combined skill roster to finalize:
 - Build production bundle: `npm run build`
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
+- Convert copied generated icons to optimized WebP: use Pillow to resize source PNGs to 512x512 and save as WebP quality 82 under `public/assets/icons/...`.
 
 ## Verified Workflows
 
@@ -148,15 +172,16 @@ Candidate combined skill roster to finalize:
   - Mounts page opens
   - tapping an unlockable mount opens a purchase confirmation
   - confirming purchase marks the mount as owned
-  - detail sheet opens from the item info button
+  - detail view opens from an item card tap
 
 2026-07-05:
 
 - First GitHub Pages deployment failed after creating the repository because Pages was not enabled yet. The deploy job failed with `Failed to create deployment (status: 404)` and pointed to repository Pages settings.
 - Successful solution: enable Pages with GitHub Actions build type via `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`, then rerun `.github/workflows/deploy-pages.yml`.
 - After enabling Pages, workflow run `28722585961` completed successfully and deployed to `https://nihansbu.github.io/rap-collectibles-app/`.
-- User-provided phone screenshots confirmed that the GitHub Pages URL loads on Android Chrome and that the Pets page plus item detail sheet render on-device.
+- User-provided phone screenshots confirmed that the GitHub Pages URL loads on Android Chrome and that the Pets page plus item detail view render on-device.
 - Android Chrome screenshots showed unwanted Google text selection overlays after long-pressing app text. Successful solution: disable selection/callouts in CSS and prevent `selectstart`, `contextmenu`, and `dragstart` events at document level, then clear selection ranges on `selectionchange`.
+- Dense grid implementation verified with Playwright at `390x844`: Skills render 30 icon tiles with five equal-width tiles in the first row; test batch loads 5 skill images and 3 mount images with no failed requests; card taps open full-content detail views; skill training still works; native text selection remains disabled.
 
 ## Known Issues
 
