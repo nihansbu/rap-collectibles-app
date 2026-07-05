@@ -458,6 +458,7 @@ export const collectibles: Collectible[] = [
     name: "Greyfang Wolf",
     description: "A swift wolf mount raised by northern pathfinders.",
     type: "Beast",
+    icon: "assets/icons/mounts/greyfang-wolf.webp",
     cost: 24_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "hunter", level: 18 }],
@@ -479,6 +480,7 @@ export const collectibles: Collectible[] = [
     name: "Granite Ram",
     description: "A sure-footed mountain ram with armor-like stone plates.",
     type: "Beast",
+    icon: "assets/icons/mounts/granite-ram.webp",
     cost: 65_000,
     rarity: "Rare",
     requirements: [
@@ -507,6 +509,7 @@ export const collectibles: Collectible[] = [
     name: "Moonlit Skiff",
     description: "A small enchanted boat that glides over water and mist.",
     type: "Aquatic",
+    icon: "assets/icons/mounts/moonlit-skiff.webp",
     cost: 58_000,
     rarity: "Rare",
     requirements: [{ type: "skill", skillId: "sailing", level: 50 }],
@@ -517,6 +520,7 @@ export const collectibles: Collectible[] = [
     name: "Silkclimb Spider",
     description: "A trained cavern mount prized by miners and deep scouts.",
     type: "Beast",
+    icon: "assets/icons/mounts/silkclimb-spider.webp",
     cost: 96_000,
     rarity: "Epic",
     requirements: [
@@ -530,6 +534,7 @@ export const collectibles: Collectible[] = [
     name: "Runestone Golem",
     description: "A slow but tireless construct animated by ancient rune work.",
     type: "Construct",
+    icon: "assets/icons/mounts/runestone-golem.webp",
     cost: 145_000,
     rarity: "Legendary",
     requirements: [

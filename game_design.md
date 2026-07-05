@@ -272,6 +272,8 @@ Icon art direction:
 - Icon images should not contain baked-in text. Text stays native UI.
 - Icons should work inside compact square tiles and larger detail panels.
 - The first full Skill icon pass covers all 30 skills as transparent 256x256 WebP assets.
+- The first full Mount icon pass covers all 8 mounts as transparent 256x256 WebP assets.
+- Characters, Classes, Races, and Pets still need their generated transparent icon passes.
 - Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting

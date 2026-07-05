@@ -2,6 +2,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
+    "icons:prepare": "node scripts/prepare-icon-prompts.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

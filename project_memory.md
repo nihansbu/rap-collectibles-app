@@ -46,6 +46,8 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
 - `index.html`: Vite HTML entry.
+- `scripts/prepare-icon-prompts.mjs`: reads `src/data.ts` with the TypeScript AST and writes missing collectible icon prompts to `tmp/icon-pipeline/missing-icons.jsonl`.
+- `scripts/normalize-icon.py`: converts chroma-key generated icon sources into transparent 256x256 WebP files.
 
 ## Architecture Overview
 
@@ -109,7 +111,8 @@ Likely entities:
 - Data entries should reference icons by relative path, for example `assets/icons/skills/agility.webp`, so GitHub Pages project-subpath deployment works.
 - Do not bake text into icon images.
 - Current committed Skill icon batch covers all 30 skills with transparent 256x256 WebP assets.
-- A generic transparent Mount style preview is saved as `public/assets/icons/mounts/_style-preview.webp`; current production Mount icons have not yet been replaced.
+- Current committed Mount icon batch covers all 8 mounts with transparent 256x256 WebP assets in the approved gritty old-school inventory style.
+- Remaining collectible icon coverage gap after the Mount batch: 30 missing icons across Characters, Classes, Races, and Pets.
 
 ## Commit And Push Policy
 
@@ -170,6 +173,8 @@ Candidate combined skill roster to finalize:
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 - Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.
+- Prepare missing collectible icon prompts: `npm run icons:prepare`
+- Normalize one generated icon source: `python scripts\normalize-icon.py --input tmp\icon-pipeline\source\<id>-alpha.png --out public\assets\icons\<category>\<id>.webp --key "#00ff00"`
 
 ## Verified Workflows
 
@@ -257,6 +262,12 @@ Candidate combined skill roster to finalize:
   - Races progress updates to `1/8` and `13%`
   - locked requirement detail rows show a requirement icon, current level, required level, and `Needed`
   - no console warnings/errors and no failed requests
+- Mount icon pipeline verified locally:
+  - `npm run icons:prepare` reports 38 collectibles and 30 remaining missing icons after the full Mount pass
+  - all 8 Mount data entries now reference transparent WebP icon assets
+  - generated Mount sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
+  - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
+  - contact sheet inspection confirmed all Mounts are background-free and visually consistent enough for compact grid tiles
 
 ## Successful Solutions
 
@@ -300,11 +311,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `src/data.ts`, `public/assets/icons/skills/*.webp`, `public/assets/icons/mounts/_style-preview.webp`.
 - Commands used: built-in Image Gen, `remove_chroma_key.py`, Pillow normalization, `npm run build`, local Playwright mobile asset check.
 
+2026-07-05: Reusable collectible icon pipeline and full Mount icon pass.
+
+- Original problem: non-Skill collectibles still used placeholder category icons or earlier Mount art with baked-in backgrounds/glows, which conflicted with the approved transparent old-school inventory icon direction.
+- Successful solution: add `scripts/prepare-icon-prompts.mjs` to produce missing-icon prompts and target paths from `src/data.ts`, add `scripts/normalize-icon.py` to center transparent 256x256 WebP icons, regenerate all Mount icons on chroma-key backgrounds, remove the key locally, and wire all Mount entries to asset paths.
+- Why it works: source generation, chroma-key removal, normalization, and data wiring are now repeatable. The UI remains responsible for tile backgrounds, lock state, owned state, and glows; image files are reusable subject-only assets.
+- Files involved: `scripts/prepare-icon-prompts.mjs`, `scripts/normalize-icon.py`, `src/data.ts`, `public/assets/icons/mounts/*.webp`, `package.json`, `.gitignore`.
+- Commands used: built-in Image Gen, `npm run icons:prepare`, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, contact sheet inspection with Pillow.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
+- Non-Skill collectible icon coverage is not complete yet. Mounts are complete; Characters, Classes, Races, and Pets still need generated transparent icons.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
