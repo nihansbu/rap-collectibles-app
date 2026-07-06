@@ -55,9 +55,10 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
 - Home page title: `Menu`.
-- The main menu links to `Collectibles` and `Adventure`.
+- The main menu links to `Collectibles`, `Adventure`, and `Handbook`.
 - The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Pets, Mounts.
 - The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
+- The `Handbook` page is a player-facing rules guide for systems that should not clutter the main gameplay UI.
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, current RAP, and a plus button that grants 10,000 RAP.
 - Subpages use a back button in the topbar.
@@ -75,6 +76,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 - Tapping an Activity card opens a full-content detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
+- The Activity Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
 
 Implemented early systems:
 
@@ -84,6 +86,7 @@ Implemented early systems:
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active gameplay Activity runs: supports timestamped short runs, persisted in save v4 and processed from timestamps on reload.
 - Activity run counts and recent Activity results are persisted in save v4.
+- Handbook content is static UI text in `src/App.tsx` and currently has no save data.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented in `src/data.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -134,6 +137,7 @@ Likely entities:
 - Code and program changes must be committed and pushed when a task is finished.
 - Design-only documentation changes should be recorded in the docs, but should not trigger their own commit/push.
 - Design-only documentation changes can be included with the next commit/push that contains code or program changes.
+- When player-facing mechanics are added or changed, review and update the in-app Handbook as part of the same implementation.
 
 ## RuneScape/OSRS Skill Source Notes
 
@@ -302,6 +306,12 @@ Candidate combined skill roster to finalize:
   - Mobile Playwright check confirmed `Menu -> Adventure -> Activities -> Fisher's Trawler`, requirement display, `Current 1 / 500` base drop chance, starting a 3-second run, RAP decreasing from 50,000 to 40,000, run count persistence, saved activity result persistence, and Fishing XP gain.
   - Mobile Playwright check confirmed Bad Luck Protection display at 1,000 runs: `Current 3 / 500` and active protection copy.
   - No console warnings/errors and no failed requests were observed in the Activity QA run.
+- Handbook verified locally:
+  - Browser plugin path was attempted first, but the in-app browser returned `Browser is not available: iab`; Playwright was used as fallback.
+  - `npm run build` succeeds after adding the Handbook page.
+  - Mobile Playwright check at `390x844` confirmed `Menu -> Handbook` renders Handbook sections including Bad Luck Protection.
+  - Mobile Playwright check confirmed `Menu -> Adventure -> Activities -> Fisher's Trawler` still renders the Drop Table, shows compact chance text, shows `Protected` when Bad Luck Protection is active, and no longer visibly repeats the full Bad Luck Protection explanation in the Drop Table.
+  - No console warnings/errors and no failed requests were observed in the Handbook QA run.
 
 ## Successful Solutions
 
@@ -376,6 +386,14 @@ Candidate combined skill roster to finalize:
 - Why it works: Activity runs are timestamped and prepaid, so they survive reloads without creating free rewards. The processor awards XP at 75% of direct training efficiency using reward shares such as 50% + 25%, rolls every unowned drop, and awards at most one collectible by choosing the rarest successful roll. Bad Luck Protection is derived from run count and triples chance once runs reach twice the drop denominator.
 - Files involved: `src/activities.ts`, `src/App.tsx`, `src/data.ts`, `src/save.ts`, `src/styles.css`, `project_memory.md`, `game_design.md`.
 - Commands used: `npm run build`, local Playwright mobile Activity QA through `node`, `view_image` inspection of the QA screenshot.
+
+2026-07-06: In-app Handbook.
+
+- Original problem: system explanations such as Bad Luck Protection are important but make core Activity panels too dense if repeated everywhere.
+- Successful solution: add a player-facing `Handbook` page from the main menu and move detailed system explanations there. Keep Activity Drop Tables compact by showing base/current chance and `Protected` only when active.
+- Why it works: complex mechanics remain discoverable without bloating the main gameplay UI. Future player-facing mechanics now have a defined place for explanation.
+- Files involved: `src/App.tsx`, `src/styles.css`, `project_memory.md`, `game_design.md`.
+- Commands used: `npm run build`, local Playwright mobile Handbook QA through `node`, `view_image` inspection of the Activity Drop Table screenshot.
 
 ## Known Issues
 

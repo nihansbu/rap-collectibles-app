@@ -54,6 +54,27 @@ Early collectible cost bands:
 - Epic: 75,000-160,000 RAP
 - Legendary: 150,000-350,000 RAP
 
+## Handbook
+
+The Handbook is a player-facing rules and guidance section reachable from the main menu.
+
+Design rules:
+
+- The Handbook should explain core systems that are important but too detailed for the main UI.
+- The Handbook is not a developer design document; it should use clear in-game language.
+- Whenever a new mechanic is added or an existing mechanic changes, the Handbook must be reviewed and updated if that mechanic affects player-facing rules.
+- Detailed system explanations should prefer the Handbook over repeated dense copy inside core gameplay panels.
+
+Current Handbook topics:
+
+- Basics
+- RAP
+- Skills
+- Activities
+- Drops
+- Bad Luck Protection
+- Codex States
+
 ## Collections And Codex
 
 The Codex is the central collection overview. It should make the player feel immediate progress.
@@ -211,10 +232,10 @@ Activity Drop Tables:
 
 Bad Luck Protection:
 
-- Bad Luck Protection should be implemented and visible in the Drop Table.
+- Bad Luck Protection should be implemented and explained in the Handbook.
 - Once completed runs reach twice the base drop denominator, the chance is tripled.
 - Example: a `1 / 500` drop becomes `3 / 500` at 1,000 completed runs.
-- The Drop Table should show base chance, current effective chance, and the run count where protection activates.
+- Activity Drop Tables should keep this compact: show base chance, current effective chance, and a `Protected` state only when protection is active.
 
 Current Activities:
 
@@ -283,7 +304,7 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Main menu tiles: Collectibles and Adventure.
+- Main menu tiles: Collectibles, Adventure, and Handbook.
 - The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
@@ -372,6 +393,7 @@ Build only:
 - Manual one-hour activity logging that grants RAP.
 - Mount purchasing with RAP.
 - Main Menu with Collectibles and Adventure.
+- Handbook reachable from the Main Menu.
 - Repeatable Activities under Adventure.
 - Activity-only collectible drops visible in their normal Codex categories.
 - Bad Luck Protection display for Activity drops.

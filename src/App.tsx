@@ -59,7 +59,13 @@ type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
 type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "requirements-desc";
 type CollectibleStatus = "owned" | "ready" | "locked";
-type Page = { type: "main" } | { type: "collectibles" } | { type: "adventure" } | { type: "activities" } | { type: "category"; id: CategoryId };
+type Page =
+  | { type: "main" }
+  | { type: "collectibles" }
+  | { type: "adventure" }
+  | { type: "handbook" }
+  | { type: "activities" }
+  | { type: "category"; id: CategoryId };
 type DetailView =
   | { type: "collectible"; item: Collectible }
   | { type: "skill"; skillId: SkillId }
@@ -235,9 +241,11 @@ export function App() {
       ? "Collectibles"
       : page.type === "adventure"
         ? "Adventure"
-        : page.type === "activities"
-          ? "Activities"
-          : categories.find((category) => category.id === page.id)?.name ?? "";
+        : page.type === "handbook"
+          ? "Handbook"
+          : page.type === "activities"
+            ? "Activities"
+            : categories.find((category) => category.id === page.id)?.name ?? "";
   const pageKey = page.type === "category" ? page.id : page.type;
 
   useEffect(() => {
@@ -483,6 +491,7 @@ export function App() {
             }}
             onOpenCollectibles={() => setPage({ type: "collectibles" })}
             onOpenAdventure={() => setPage({ type: "adventure" })}
+            onOpenHandbook={() => setPage({ type: "handbook" })}
           />
         ) : page.type === "collectibles" ? (
           <CollectiblesOverviewPage
@@ -495,6 +504,8 @@ export function App() {
             player={player}
             onOpenActivities={() => setPage({ type: "activities" })}
           />
+        ) : page.type === "handbook" ? (
+          <HandbookPage />
         ) : page.type === "activities" ? (
           <ActivitiesPage
             player={player}
@@ -577,6 +588,7 @@ function MainMenuPage({
   onImportSave,
   onOpenCollectibles,
   onOpenAdventure,
+  onOpenHandbook,
 }: {
   activities: ActivityOption[];
   activityLog: ActivityLogEntry[];
@@ -588,6 +600,7 @@ function MainMenuPage({
   onImportSave: () => void;
   onOpenCollectibles: () => void;
   onOpenAdventure: () => void;
+  onOpenHandbook: () => void;
 }) {
   return (
     <>
@@ -609,6 +622,16 @@ function MainMenuPage({
           <span className="tile-text">
             <strong>Adventure</strong>
             <small>Activities and future gameplay systems</small>
+          </span>
+          <ChevronRight className="tile-chevron" size={18} />
+        </button>
+        <button className="category-tile main-menu-tile handbook-entry" onClick={onOpenHandbook}>
+          <span className="tile-icon">
+            <BookOpen size={23} strokeWidth={1.8} />
+          </span>
+          <span className="tile-text">
+            <strong>Handbook</strong>
+            <small>Rules, progression, drops, and Codex states</small>
           </span>
           <ChevronRight className="tile-chevron" size={18} />
         </button>
@@ -759,6 +782,58 @@ function AdventurePage({
           </div>
         </section>
       )}
+    </section>
+  );
+}
+
+function HandbookPage() {
+  return (
+    <section className="handbook-page" aria-label="Handbook">
+      <article className="handbook-section">
+        <h2>Basics</h2>
+        <p>
+          Earn RAP, train Skills, unlock Collectibles, and run Activities to fill your Codex over time.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>RAP</h2>
+        <p>
+          RAP means Real Life Activity Points. RAP is spent on Skill training, direct Collectible unlocks, and repeatable Activities.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Skills</h2>
+        <p>
+          Skills use RuneScape-style XP and can reach Level 120. Skill levels unlock Collectibles and Activities.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Activities</h2>
+        <p>
+          Activities cost RAP, run for a set duration, then award XP and roll their Drop Table. Activity XP is less efficient than direct Skill training because Activities can also drop exclusive Collectibles.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Drops</h2>
+        <p>
+          Every unowned drop in an Activity table is rolled when the Activity finishes. A run can award at most one Collectible. If multiple drops succeed, the rarest successful drop is awarded.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Bad Luck Protection</h2>
+        <p>
+          When completed runs reach twice a drop's base denominator, that drop's chance is tripled. Example: a 1 / 500 drop becomes 3 / 500 at 1,000 runs.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Codex States</h2>
+        <ul>
+          <li>Green means owned.</li>
+          <li>Yellow means requirements are met, but RAP may still be needed.</li>
+          <li>Red means locked or not yet obtained.</li>
+          <li>Indigo marks Activity-drop Collectibles.</li>
+        </ul>
+      </article>
     </section>
   );
 }
@@ -1342,13 +1417,16 @@ function ActivityDropTable({
               <span className="drop-copy">
                 <strong>{item?.name ?? drop.collectibleId}</strong>
                 <small>
+                  Base 1 / {drop.chance} - Current {formatDropChance(drop, runCount)}
+                </small>
+                <small>
                   Base 1 / {drop.chance} · Current {formatDropChance(drop, runCount)}
                 </small>
                 <small>
                   Bad Luck Protection at {formatNumber(chance.badLuckActiveAt)} runs{chance.isProtected ? " · active" : ""}
                 </small>
               </span>
-              <span className="drop-state">{owned ? "Owned" : item?.rarity ?? "Drop"}</span>
+              <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : item?.rarity ?? "Drop"}</span>
             </div>
           );
         })

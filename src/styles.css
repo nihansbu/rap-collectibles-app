@@ -271,6 +271,21 @@ button {
     rgba(255, 255, 255, 0.04);
 }
 
+.handbook-entry {
+  border-color: rgba(128, 207, 172, 0.26);
+  background:
+    linear-gradient(135deg, rgba(77, 143, 111, 0.2), rgba(39, 62, 48, 0.12)),
+    #17211d;
+}
+
+.handbook-entry .tile-icon {
+  color: #a9e7c6;
+  border-color: rgba(128, 207, 172, 0.26);
+  background:
+    linear-gradient(180deg, rgba(128, 207, 172, 0.16), rgba(55, 101, 71, 0.08)),
+    rgba(255, 255, 255, 0.04);
+}
+
 .filter-panel {
   display: grid;
   gap: 10px;
@@ -443,6 +458,43 @@ button {
   color: #8fd99b;
   font-size: 10px;
   font-weight: 820;
+}
+
+.handbook-page {
+  display: grid;
+  gap: 10px;
+}
+
+.handbook-section {
+  border: 1px solid rgba(224, 202, 142, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(224, 202, 142, 0.06), rgba(39, 62, 48, 0.12)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.handbook-section h2 {
+  margin: 0 0 7px;
+  color: #fff8e8;
+  font-size: 14px;
+  font-weight: 840;
+  line-height: 1.15;
+}
+
+.handbook-section p,
+.handbook-section li {
+  margin: 0;
+  color: #b7c0b5;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.handbook-section ul {
+  margin: 0;
+  padding-left: 17px;
+  display: grid;
+  gap: 4px;
 }
 
 .save-tools {
@@ -1257,6 +1309,10 @@ button {
   color: #8f9d91;
   font-size: 10px;
   line-height: 1.15;
+}
+
+.drop-copy small:not(:first-of-type) {
+  display: none;
 }
 
 .drop-state {
