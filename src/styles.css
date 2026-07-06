@@ -248,6 +248,29 @@ button {
   background: linear-gradient(90deg, #65c37d, #e5c264);
 }
 
+.main-menu-tile {
+  grid-template-columns: 50px 1fr 18px;
+}
+
+.main-menu-tile .tile-chevron {
+  justify-self: end;
+}
+
+.adventure-entry {
+  border-color: rgba(110, 138, 255, 0.28);
+  background:
+    linear-gradient(135deg, rgba(72, 89, 191, 0.24), rgba(39, 62, 48, 0.12)),
+    #181d24;
+}
+
+.adventure-entry .tile-icon {
+  color: #c4cbff;
+  border-color: rgba(110, 138, 255, 0.28);
+  background:
+    linear-gradient(180deg, rgba(110, 138, 255, 0.18), rgba(55, 101, 71, 0.08)),
+    rgba(255, 255, 255, 0.04);
+}
+
 .filter-panel {
   display: grid;
   gap: 10px;
@@ -609,6 +632,35 @@ button {
   box-shadow: inset 0 0 0 1px rgba(255, 111, 92, 0.1);
 }
 
+.icon-tile.activity-source {
+  position: relative;
+}
+
+.icon-tile.activity-source.owned {
+  border-color: rgba(110, 138, 255, 0.82);
+  background:
+    linear-gradient(180deg, rgba(72, 89, 191, 0.42), rgba(29, 42, 111, 0.24)),
+    rgba(49, 64, 164, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(158, 174, 255, 0.14);
+}
+
+.icon-tile.activity-source.locked {
+  padding-bottom: 11px;
+}
+
+.source-strip {
+  height: 5px;
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  color: transparent;
+  background: linear-gradient(90deg, #5267f3, #8a98ff);
+  pointer-events: none;
+}
+
 .icon-tile.training {
   border-color: rgba(244, 213, 123, 0.9);
   box-shadow:
@@ -674,6 +726,16 @@ button {
   background:
     radial-gradient(circle at 50% 34%, rgba(117, 245, 148, 0.2), transparent 54%),
     linear-gradient(180deg, rgba(95, 183, 124, 0.24), rgba(33, 92, 51, 0.16)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.icon-tile.activity-source.owned .tile-art,
+.tile-art.activity-source.owned {
+  color: #c4cbff;
+  border-color: rgba(158, 174, 255, 0.38);
+  background:
+    radial-gradient(circle at 50% 34%, rgba(130, 146, 255, 0.24), transparent 54%),
+    linear-gradient(180deg, rgba(90, 107, 216, 0.26), rgba(31, 45, 119, 0.2)),
     rgba(255, 255, 255, 0.04);
 }
 
@@ -970,6 +1032,15 @@ button {
   background: #e26c5b;
 }
 
+.status-pill.activity {
+  color: #eef0ff;
+  background: #5267f3;
+}
+
+.source-meta {
+  color: #c4cbff !important;
+}
+
 .detail-action {
   width: 100%;
   min-height: 48px;
@@ -1020,6 +1091,183 @@ button {
 .active-training-panel span {
   font-size: 12px;
   line-height: 1.2;
+}
+
+.activity-card-list {
+  display: grid;
+  gap: 10px;
+}
+
+.activity-card {
+  min-height: 92px;
+  position: relative;
+  border: 1px solid rgba(224, 202, 142, 0.14);
+  border-radius: 8px;
+  padding: 12px 12px 16px;
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  color: #f5eedf;
+  background:
+    linear-gradient(135deg, rgba(224, 202, 142, 0.09), rgba(39, 62, 48, 0.12)),
+    rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.activity-card.ready {
+  border-color: rgba(244, 204, 80, 0.42);
+}
+
+.activity-card.locked {
+  border-color: rgba(217, 83, 72, 0.36);
+  opacity: 0.76;
+}
+
+.activity-card.running {
+  border-color: rgba(244, 213, 123, 0.9);
+  animation: trainingGlow 1.8s ease-in-out infinite;
+}
+
+.activity-card-icon {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(110, 138, 255, 0.28);
+  border-radius: 8px;
+  color: #c4cbff;
+  background:
+    linear-gradient(180deg, rgba(110, 138, 255, 0.18), rgba(55, 101, 71, 0.08)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.activity-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.activity-card-copy strong {
+  color: #fff8e8;
+  font-size: 15px;
+  font-weight: 820;
+  line-height: 1.08;
+}
+
+.activity-card-copy small,
+.activity-card-stats small {
+  color: #aeb9ad;
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.activity-card-stats {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  text-align: right;
+}
+
+.activity-card-stats strong {
+  color: #e6c66d;
+  font-size: 12px;
+  font-weight: 820;
+  line-height: 1.05;
+}
+
+.activity-card .source-strip {
+  height: 5px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0;
+}
+
+.activity-sheet-icon {
+  color: #c4cbff;
+  border-color: rgba(110, 138, 255, 0.28);
+}
+
+.activity-run-track span {
+  background: linear-gradient(90deg, #5267f3, #e5c264);
+}
+
+.reward-list,
+.drop-table {
+  margin: 16px 0;
+}
+
+.reward-list h3,
+.drop-table h3 {
+  margin: 0 0 8px;
+  color: #f6eddb;
+  font-size: 13px;
+}
+
+.reward-row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  color: #aeb9ad;
+  font-size: 12px;
+}
+
+.reward-row strong {
+  color: #e6c66d;
+}
+
+.drop-table p {
+  margin: 0;
+  color: #aeb9ad;
+  font-size: 12px;
+}
+
+.drop-row {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 42px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.drop-item-icon .tile-art {
+  width: 38px;
+  height: 38px;
+}
+
+.drop-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.drop-copy strong {
+  color: #efe6cf;
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.drop-copy small {
+  color: #8f9d91;
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.drop-state {
+  color: #c4cbff;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.drop-row.owned .drop-state {
+  color: #85db9a;
 }
 
 .training-actions {

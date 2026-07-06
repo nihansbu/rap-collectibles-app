@@ -38,10 +38,11 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 ## Folder Structure
 
-- `src/App.tsx`: app shell, pages, purchase dialog, full-content detail views, filters, skill training interactions.
+- `src/App.tsx`: app shell, main menu, pages, purchase dialog, full-content detail views, filters, skill training interactions, and Activity UI.
+- `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/data.ts`: category, skill, collectible, and requirement data.
 - `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
-- `src/save.ts`: versioned local save/load system, v1/v2-to-v3 migration, validation, normalization, active training persistence, offline training processing, activity log persistence, and backup rotation for player progress.
+- `src/save.ts`: versioned local save/load system, v1/v2/v3-to-v4 migration, validation, normalization, active training persistence, active Activity run persistence, offline processing, activity log persistence, and backup rotation for player progress.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
@@ -53,8 +54,10 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
-- Home page title: `Collectibles`.
-- Main category tiles in order: Characters, Classes, Races, Skills, Pets, Mounts.
+- Home page title: `Menu`.
+- The main menu links to `Collectibles` and `Adventure`.
+- The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Pets, Mounts.
+- The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, current RAP, and a plus button that grants 10,000 RAP.
 - Subpages use a back button in the topbar.
@@ -63,11 +66,15 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
 - Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
 - The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
-- The Collectibles home page includes manual Save Export and Import tools. Export produces the same normalized v3 save JSON used by localStorage; Import reuses the save parser/migration path and still accepts older supported save versions.
-- The Collectibles home page shows category progress bars, completion percentages, recent unlocks, quick manual activity logging, and local save status.
+- The main menu includes manual Save Export and Import tools. Export produces the same normalized v4 save JSON used by localStorage; Import reuses the save parser/migration path and still accepts older supported save versions.
+- The main menu shows quick manual activity logging and local save status.
+- The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
+- Gameplay Activities are separate from manual real-life activity logging. Activities live under `Adventure`, cost RAP, run for a short timestamped duration in the prototype, award reduced skill XP, and can drop exclusive collectibles.
+- Activity-only collectible drops still appear in their normal Codex categories. Unowned Activity drops render as red locked tiles with an indigo source strip. Owned Activity drops render as indigo source-owned tiles. They cannot be bought directly.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
+- Tapping an Activity card opens a full-content detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
 
 Implemented early systems:
 
@@ -75,6 +82,8 @@ Implemented early systems:
 - Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
 - Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
+- Active gameplay Activity runs: supports timestamped short runs, persisted in save v4 and processed from timestamps on reload.
+- Activity run counts and recent Activity results are persisted in save v4.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented in `src/data.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -90,12 +99,16 @@ Likely entities:
 
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
 - Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
+- Gameplay Activity: ID, name, type, RAP cost, runtime, requirements, XP reward split, Drop Table, and Bad Luck Protection state derived from run count.
+- Active Activity run: activity ID, startedAt, endsAt, and prepaid RAP cost.
+- Activity result: completed activity, run count, XP awarded, and optional dropped collectible ID.
 - Skill: ID, display name, source game(s), XP, derived level, max level 120.
-- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state.
+- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, and optional source such as an Activity drop.
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
 - Class/Race grouping: use `Collectible.type` for broad labels such as `Melee Tank`, `Magic Support`, `Dwarf`, or `Machine`. Avoid deeper subpage routing until content volume proves it is needed.
 - Collectible status logic: do not treat missing RAP as a red lock. Red means progression requirements are missing; yellow means the entry is qualified by requirements and may only need RAP.
+- Activity-only collectible drops are not directly purchasable. If unowned, they stay locked/red with an indigo source strip; if owned, the tile uses an indigo owned source state.
 - Future asset fields should include stable icon paths, for example `icon`, `iconPrompt`, and possibly `type` for the one-line tile subtitle.
 
 ## Icon Pipeline Notes
@@ -114,7 +127,7 @@ Likely entities:
 - Current committed Mount icon batch covers all 8 mounts with transparent 256x256 WebP assets in the approved gritty old-school inventory style.
 - Current committed Pet icon batch covers all 6 pets with transparent 256x256 WebP assets. `Pocket Spriggan` is represented by a woodland leaf/root charm because direct Spriggan/Woodland familiar prompts were rejected by the image-generation safety system.
 - Current committed Class icon batch covers all 8 classes with transparent 256x256 WebP assets. Class visuals are equipment/emblem objects rather than character portraits, so they remain distinct from the Characters category.
-- Remaining collectible icon coverage gap after the Class batch: 16 missing icons across Characters and Races.
+- Remaining collectible icon coverage gap after the first Activity implementation: 18 missing icons across Characters, Races, and the two new Activity-only drops.
 
 ## Commit And Push Policy
 
@@ -282,6 +295,13 @@ Candidate combined skill roster to finalize:
   - generated Class sources were copied from `C:\Users\nikla\.codex\generated_images\...` into ignored `tmp/icon-pipeline/source`
   - chroma-key removal used the installed Image Gen helper plus `scripts/normalize-icon.py`
   - mobile Playwright check confirmed 8 Class tiles and 8 loaded Class images, with no console warnings/errors and no failed requests
+- Adventure Activities verified locally:
+  - Browser plugin path was attempted first, but the in-app browser returned `Browser is not available: iab`; Playwright was used as fallback.
+  - `npm run build` succeeds after adding `src/activities.ts`, save v4, main menu navigation, and Activity UI.
+  - Mobile Playwright check at `390x844` confirmed the app opens on `Menu`, navigates to `Collectibles`, and Activity-only `Trawler Gull` appears under `Pets` with `Source: Fisher's Trawler` and a disabled `Activity Drop` action.
+  - Mobile Playwright check confirmed `Menu -> Adventure -> Activities -> Fisher's Trawler`, requirement display, `Current 1 / 500` base drop chance, starting a 3-second run, RAP decreasing from 50,000 to 40,000, run count persistence, saved activity result persistence, and Fishing XP gain.
+  - Mobile Playwright check confirmed Bad Luck Protection display at 1,000 runs: `Current 3 / 500` and active protection copy.
+  - No console warnings/errors and no failed requests were observed in the Activity QA run.
 
 ## Successful Solutions
 
@@ -349,12 +369,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `src/data.ts`, `public/assets/icons/classes/*.webp`, `project_memory.md`, `game_design.md`.
 - Commands used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, local Playwright mobile Class asset check.
 
+2026-07-06: Adventure Activities with Activity-only drops.
+
+- Original problem: the app had collection and skill progression, but no repeatable gameplay system that spent RAP for rewards, XP, and rare source-specific collectible drops.
+- Successful solution: add `src/activities.ts` with data-driven Activity definitions and processing, add save v4 fields for active Activity runs, run counts, and recent Activity results, split navigation into `Menu`, `Collectibles`, and `Adventure`, and mark Activity-only Collectibles with `source`.
+- Why it works: Activity runs are timestamped and prepaid, so they survive reloads without creating free rewards. The processor awards XP at 75% of direct training efficiency using reward shares such as 50% + 25%, rolls every unowned drop, and awards at most one collectible by choosing the rarest successful roll. Bad Luck Protection is derived from run count and triples chance once runs reach twice the drop denominator.
+- Files involved: `src/activities.ts`, `src/App.tsx`, `src/data.ts`, `src/save.ts`, `src/styles.css`, `project_memory.md`, `game_design.md`.
+- Commands used: `npm run build`, local Playwright mobile Activity QA through `node`, `view_image` inspection of the QA screenshot.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
-- Non-Skill collectible icon coverage is not complete yet. Mounts, Pets, and Classes are complete; Characters and Races still need generated transparent icons.
+- Non-Skill collectible icon coverage is not complete yet. The original Mounts, Pets, and Classes are complete; Characters, Races, and the first two Activity-only drops still need generated transparent icons.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.

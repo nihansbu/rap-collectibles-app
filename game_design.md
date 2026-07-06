@@ -19,9 +19,10 @@ Long-term loop:
 
 1. Player earns RAP from real-life activities.
 2. Player trains skills with RAP.
-3. Player meets skill requirements for collectibles.
-4. Player spends RAP to unlock collectibles.
-5. Player watches Codex completion increase.
+3. Player meets skill requirements for collectibles and repeatable Activities.
+4. Player spends RAP to unlock direct-purchase collectibles or run Activities.
+5. Activities award reduced skill XP and can drop exclusive collectibles.
+6. Player watches Codex completion increase.
 
 ## RAP
 
@@ -31,6 +32,7 @@ Design rules:
 
 - RAP is the only currency at the start.
 - RAP can be used for all purchases and skill training.
+- RAP can be spent on repeatable gameplay Activities.
 - The first prototype uses a simple grant button instead of real tracking.
 - The first player-facing earning placeholder is a manual `Log Activity` panel. Each tap logs 1 hour and grants RAP immediately.
 - Real activity tracking can be added later without changing the core economy.
@@ -89,6 +91,10 @@ Collectible tile status colors:
 - Locked collectibles are red when at least one non-currency requirement is missing.
 - The lock icon should only appear on red locked tiles.
 - Default collection ordering is Owned first, then Ready, then Locked.
+- Activity-only drops stay visible in their normal category, such as Pets or Mounts.
+- Unowned Activity-only drops are red locked tiles with an indigo source strip.
+- Owned Activity-only drops use an indigo owned/source tile state.
+- Activity-only drops cannot be bought directly; their detail panel points to the source Activity.
 
 ## Collectibles
 
@@ -104,6 +110,11 @@ Planned collectible types:
 - Skills
 - Items
 - Future high-fantasy categories
+
+Collectibles can have a source:
+
+- Direct purchase with RAP.
+- Activity Drop from a named Activity such as `Fisher's Trawler`.
 
 Collectibles can require:
 
@@ -164,6 +175,60 @@ Current Race type direction:
 
 Race names can be specific variants while the type remains the broader fantasy family. Example: `Ironhold Dwarf` has type `Dwarf`.
 
+## Adventure And Activities
+
+`Adventure` is the home for repeatable gameplay systems. It is separate from `Collectibles`, because `Collectibles` is the Codex and answers "What do I own?", while `Adventure` answers "What can I do?"
+
+The first Adventure subpage is `Activities`.
+
+Activity design rules:
+
+- Activities are repeatable RAP sinks.
+- Activities are not Collectibles.
+- Activities can have skill requirements.
+- Activities cost RAP and have a runtime.
+- The prototype runtime is intentionally short, currently around 3 seconds, so the future non-instant design can be tested quickly.
+- RAP is paid when the Activity starts.
+- XP and drops are awarded when the Activity finishes.
+- Active Activity runs and completed run counts are save data.
+- Activity runs are timestamped and should process correctly after reload.
+
+Activity XP:
+
+- Activities are less XP-efficient than direct Skill training because they also provide drop chances.
+- Total Activity XP efficiency should be 75% of direct Skill training for the same RAP spend.
+- XP can be split across multiple skills, for example `Fishing 50%` and `Cooking 25%`.
+- Reward shares should normally sum to 75%.
+
+Activity Drop Tables:
+
+- Activities can contain multiple possible collectible drops.
+- Every unowned drop in the table is rolled on completion.
+- A run can award at most one collectible.
+- If multiple drops succeed in one run, the player receives the item with the lower drop chance, meaning the rarer item.
+- Owned drops are not awarded again in the current prototype.
+- Activity drops remain visible in their normal Codex category.
+
+Bad Luck Protection:
+
+- Bad Luck Protection should be implemented and visible in the Drop Table.
+- Once completed runs reach twice the base drop denominator, the chance is tripled.
+- Example: a `1 / 500` drop becomes `3 / 500` at 1,000 completed runs.
+- The Drop Table should show base chance, current effective chance, and the run count where protection activates.
+
+Current Activities:
+
+- `Fisher's Trawler`
+  - Type: Fishing
+  - Cost: 10,000 RAP
+  - Runtime: 3 seconds in the prototype
+  - Requirement: Fishing 40
+  - XP split: Fishing 50%, Cooking 25%
+  - Drops: `Trawler Gull` at 1 / 500 and `Brine Ray` at 1 / 2,500
+- `Haunted Burial`
+- `Ember Kiln`
+- `Deep Mine Survey`
+
 ## Skill System
 
 Skills are trained with RAP through time-based training jobs.
@@ -205,8 +270,8 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Manual save export/import is available as a safety fallback.
-- Save v3 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, and recent manual activity log entries.
-- The home page exposes local autosave status and lifetime RAP earned.
+- Save v4 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Activity runs, Activity run counts, recent Activity results, and recent manual activity log entries.
+- The main menu exposes local autosave status and lifetime RAP earned.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
 ## First Screen Concept
@@ -218,10 +283,11 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
-- Category tiles show count, percentage, and progress bar.
-- The home page includes a compact manual `Log Activity` panel for one-hour activity entries.
-- The home page includes Save Status, Export Save, and Import Save controls.
+- Main menu tiles: Collectibles and Adventure.
+- The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
+- Collectibles category tiles show count, percentage, and progress bar.
+- The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
+- The main menu includes Save Status, Export Save, and Import Save controls.
 - No bottom navigation.
 - Subpages are reached by tapping category tiles.
 
@@ -275,7 +341,7 @@ Icon art direction:
 - The first full Mount icon pass covers all 8 mounts as transparent 256x256 WebP assets.
 - The first full Pet icon pass covers all 6 pets as transparent 256x256 WebP assets. Pocket Spriggan currently uses a woodland leaf/root charm visual.
 - The first full Class icon pass covers all 8 classes as transparent 256x256 WebP assets. Classes use role equipment/emblems instead of portraits.
-- Characters and Races still need their generated transparent icon passes.
+- Characters, Races, and the first Activity-only drops still need their generated transparent icon passes.
 - Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting
@@ -295,6 +361,7 @@ The first version should prioritize clarity and fast collection feedback over de
 - Items.
 - Skill-based unlock trees.
 - Better Codex presentation with category completion.
+- More Activities, Activity milestones, and deeper Bad Luck Protection tuning.
 
 ## Current MVP Scope
 
@@ -304,6 +371,10 @@ Build only:
 - Button to gain 10,000 RAP.
 - Manual one-hour activity logging that grants RAP.
 - Mount purchasing with RAP.
+- Main Menu with Collectibles and Adventure.
+- Repeatable Activities under Adventure.
+- Activity-only collectible drops visible in their normal Codex categories.
+- Bad Luck Protection display for Activity drops.
 - Skill levels required by some mounts.
 - Time-based RAP skill training with up to three concurrent skills.
 - Codex overview with category progress.

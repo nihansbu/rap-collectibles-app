@@ -46,6 +46,7 @@ export type Collectible = {
   cost: number;
   rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
   requirements: Requirement[];
+  source?: { type: "activity"; activityId: string; label: string };
 };
 
 export type SkillDefinition = {
@@ -442,6 +443,17 @@ export const collectibles: Collectible[] = [
     requirements: [{ type: "skill", skillId: "fishing", level: 28 }],
   },
   {
+    id: "pet-trawler-gull",
+    category: "pets",
+    name: "Trawler Gull",
+    description: "A stubborn harbor companion that follows lucky fishing crews.",
+    type: "Aquatic",
+    cost: 0,
+    rarity: "Rare",
+    requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
+    source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
+  },
+  {
     id: "pet-wyrmling",
     category: "pets",
     name: "Glass Wyrmling",
@@ -527,6 +539,17 @@ export const collectibles: Collectible[] = [
     cost: 58_000,
     rarity: "Rare",
     requirements: [{ type: "skill", skillId: "sailing", level: 50 }],
+  },
+  {
+    id: "mount-brine-ray",
+    category: "mounts",
+    name: "Brine Ray",
+    description: "A broad-winged sea ray trained by crews who survive impossible storms.",
+    type: "Aquatic",
+    cost: 0,
+    rarity: "Epic",
+    requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
+    source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
   },
   {
     id: "mount-spider",
