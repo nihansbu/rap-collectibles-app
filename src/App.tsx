@@ -12,6 +12,7 @@ import {
   Dumbbell,
   Footprints,
   Gem,
+  Hammer,
   Headphones,
   Lock,
   Music,
@@ -20,7 +21,6 @@ import {
   Shield,
   Sparkles,
   Swords,
-  Trophy,
   Upload,
   Users,
   X,
@@ -29,16 +29,20 @@ import {
   activityDropChance,
   activityDropItem,
   activityRequirementsMet,
+  activitySkillAdvantage,
   canStartActivity,
+  effectiveActivityRun,
   formatDropChance,
   GAMEPLAY_ACTIVITIES,
   getActivity,
   isActivityRunning,
   processActiveActivityRuns,
   startActivityRun,
+  type ActivityRunResult,
   type GameplayActivity,
   type GameplayActivityId,
 } from "./activities";
+import { collectAccountBonuses, formatBonusLabel, skillXpBonusPercent } from "./bonuses";
 import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { exportPlayerState, importPlayerState, loadPlayerState, savePlayerState, type PlayerState } from "./save";
@@ -186,6 +190,7 @@ function AppIcon({ category }: { category: CategoryId }) {
   if (category === "classes") return <BookOpen {...common} />;
   if (category === "races") return <Users {...common} />;
   if (category === "skills") return <Swords {...common} />;
+  if (category === "tools") return <Hammer {...common} />;
   if (category === "pets") return <Sparkles {...common} />;
   return <Gem {...common} />;
 }
@@ -231,6 +236,7 @@ export function App() {
   const [importText, setImportText] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
+  const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
   const [handledActivityResultId, setHandledActivityResultId] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
@@ -299,8 +305,8 @@ export function App() {
       ? collectibles.find((item) => item.id === latest.droppedCollectibleId)
       : null;
 
+    setActivityResultNotice(latest);
     if (droppedItem) {
-      setUnlockNotice(droppedItem);
       setRecentUnlocks((current) => [droppedItem, ...current.filter((candidate) => candidate.id !== droppedItem.id)].slice(0, 3));
     }
   }, [handledActivityResultId, player.activityResults]);
@@ -540,6 +546,7 @@ export function App() {
         />
       )}
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
+      {activityResultNotice && <ActivityResultPanel result={activityResultNotice} onClose={() => setActivityResultNotice(null)} />}
     </div>
   );
 }
@@ -761,27 +768,6 @@ function AdventurePage({
         </span>
         <ChevronRight className="tile-chevron" size={18} />
       </button>
-      {player.activityResults.length > 0 && (
-        <section className="recent-unlocks activity-results" aria-label="Recent activity results">
-          <h2>Recent Activity Results</h2>
-          <div>
-            {player.activityResults.slice(0, 3).map((result) => {
-              const item = result.droppedCollectibleId ? collectibles.find((candidate) => candidate.id === result.droppedCollectibleId) : null;
-              return (
-                <article key={result.id} className="recent-unlock">
-                  <span className="mini-result-icon">
-                    {item ? <TileVisual icon={item.icon} category={item.category} owned sourceType={item.source?.type} /> : <Trophy size={20} />}
-                  </span>
-                  <span>
-                    <strong>{result.activityName}</strong>
-                    <small>{item ? `${item.name} dropped` : `${result.xp.map((entry) => `${skillName(entry.skillId)} +${formatNumber(entry.amount)}`).join(", ")}`}</small>
-                  </span>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
     </section>
   );
 }
@@ -810,13 +796,31 @@ function HandbookPage() {
       <article className="handbook-section">
         <h2>Activities</h2>
         <p>
-          Activities cost RAP, run for a set duration, then award XP and roll their Drop Table. Activity XP is less efficient than direct Skill training because Activities can also drop exclusive Collectibles.
+          Activities cost RAP, run for a set duration, then award XP and roll their Drop Table. Skill levels above the minimum can improve Activity XP, RAP cost, and runtime by up to 15%.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Tools</h2>
+        <p>
+          Tools are permanent Collectibles. Some are bought with RAP, while rare Tools can drop from Activities. Owned Tools can grant Account Bonuses such as extra Skill XP.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Account Bonuses</h2>
+        <p>
+          Account Bonuses are always-on rewards from owned Collectibles. The first bonuses are simple Skill XP bonuses and a rare Additional Roll chance.
         </p>
       </article>
       <article className="handbook-section">
         <h2>Drops</h2>
         <p>
-          Every unowned drop in an Activity table is rolled when the Activity finishes. A run can award at most one Collectible. If multiple drops succeed, the rarest successful drop is awarded.
+          Every unowned drop in an Activity table is rolled when the Activity finishes. A run can award at most one Collectible. If multiple rolls succeed, the rarest successful drop is awarded.
+        </p>
+      </article>
+      <article className="handbook-section">
+        <h2>Additional Roll</h2>
+        <p>
+          Additional Roll chance can create one extra Activity drop roll after the normal roll. It is shown in the Activity result panel when a run finishes.
         </p>
       </article>
       <article className="handbook-section">
@@ -866,6 +870,7 @@ function ActivityCard({
   const running = isActivityRunning(player, activity.id);
   const requirementsReady = activityRequirementsMet(activity, player);
   const runCount = player.activityRunCounts[activity.id] ?? 0;
+  const effective = effectiveActivityRun(activity, player);
   const bestDrop = activity.drops.length > 0
     ? activity.drops.reduce((best, drop) => (drop.chance > best.chance ? drop : best), activity.drops[0])
     : null;
@@ -883,7 +888,7 @@ function ActivityCard({
         <small>{activity.type}</small>
       </span>
       <span className="activity-card-stats">
-        <strong>{formatNumber(activity.cost)} RAP</strong>
+        <strong>{formatNumber(effective.cost)} RAP</strong>
         <small>{runCount} Runs</small>
       </span>
       {bestDrop && (
@@ -1165,6 +1170,7 @@ function CollectibleDetailView({
         {sourceActivity && <span className="source-meta">Source: {sourceActivity.name}</span>}
       </div>
       <RequirementList item={item} player={player} />
+      {item.bonuses && item.bonuses.length > 0 && <CollectibleBonusList item={item} />}
       <div className="purchase-panel">
         <div>
           <strong>{sourceActivity ? "Source" : "Unlock"}</strong>
@@ -1175,6 +1181,22 @@ function CollectibleDetailView({
         </button>
       </div>
     </section>
+  );
+}
+
+function CollectibleBonusList({ item }: { item: Collectible }) {
+  if (!item.bonuses || item.bonuses.length === 0) return null;
+
+  return (
+    <div className="activity-bonus-panel">
+      <h3>Account Bonuses</h3>
+      {item.bonuses.map((bonus, index) => (
+        <div key={`${item.id}-${bonus.type}-${index}`} className="bonus-row">
+          <span>Permanent</span>
+          <strong>{formatBonusLabel(bonus)}</strong>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1273,6 +1295,12 @@ function ActivityDetailView({
   const activeRun = player.activeActivityRuns.find((run) => run.activityId === activityId);
   const requirementsReady = activityRequirementsMet(activity, player);
   const runCount = player.activityRunCounts[activityId] ?? 0;
+  const effective = effectiveActivityRun(activity, player);
+  const advantage = activitySkillAdvantage(activity, player);
+  const activeBonuses = collectAccountBonuses(player.owned).filter((bonus) => {
+    if (bonus.type === "all-skill-xp" || bonus.type === "additional-roll-chance") return true;
+    return activity.xpRewards.some((reward) => reward.skillId === bonus.skillId);
+  });
   const canRun = canStartActivity(activity, player);
   const now = Date.now();
   const runProgress = activeRun
@@ -1282,7 +1310,7 @@ function ActivityDetailView({
     ? "Activity already running"
     : !requirementsReady
       ? "Requirements not met"
-      : player.rp < activity.cost
+      : player.rp < effective.cost
         ? "Not enough RAP"
         : null;
 
@@ -1296,8 +1324,8 @@ function ActivityDetailView({
       </div>
       <div className="detail-status-row">
         <span className={`status-pill ${requirementsReady ? "ready" : "locked"}`}>{requirementsReady ? "Ready" : "Locked"}</span>
-        <span>{formatNumber(activity.cost)} RAP</span>
-        <span>{formatDuration(activity.runtimeMs)}</span>
+        <span>{formatNumber(effective.cost)} RAP</span>
+        <span>{formatDuration(effective.runtimeMs)}</span>
       </div>
       <h2>{activity.name}</h2>
       <p>{activity.description}</p>
@@ -1305,6 +1333,28 @@ function ActivityDetailView({
         <span>{activity.type}</span>
         <span>{formatNumber(runCount)} Runs</span>
         <span>75% XP efficiency</span>
+      </div>
+      <div className="activity-bonus-panel">
+        <h3>Bonuses</h3>
+        <div className="bonus-row">
+          <span>Skill Advantage</span>
+          <strong>
+            +{advantage.xpBonusPercent.toFixed(1)}% XP, -{advantage.costReductionPercent.toFixed(1)}% RAP, -{advantage.runtimeReductionPercent.toFixed(1)}% runtime
+          </strong>
+        </div>
+        {activeBonuses.length === 0 ? (
+          <div className="bonus-row muted">
+            <span>Account Bonuses</span>
+            <strong>None active</strong>
+          </div>
+        ) : (
+          activeBonuses.map((bonus) => (
+            <div key={`${bonus.collectibleId}-${bonus.type}`} className="bonus-row">
+              <span>{bonus.collectibleName}</span>
+              <strong>{formatBonusLabel(bonus)}</strong>
+            </div>
+          ))
+        )}
       </div>
       {activeRun && (
         <div className="active-training-panel" aria-label={`${activity.name} run status`}>
@@ -1325,7 +1375,7 @@ function ActivityDetailView({
         {activity.xpRewards.map((reward) => (
           <div key={reward.skillId} className="reward-row">
             <span>{skillName(reward.skillId)}</span>
-            <strong>{Math.round(reward.share * 100)}%</strong>
+            <strong>{Math.round(reward.share * 100)}%{skillXpBonusPercent(player.owned, reward.skillId) > 0 ? ` +${skillXpBonusPercent(player.owned, reward.skillId)}%` : ""}</strong>
           </div>
         ))}
       </div>
@@ -1408,6 +1458,7 @@ function ActivityDropTable({
           const item = activityDropItem(drop);
           const chance = activityDropChance(drop, runCount);
           const owned = item ? player.owned.includes(item.id) : false;
+          const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
 
           return (
             <div key={drop.collectibleId} className={`drop-row ${owned ? "owned" : ""}`}>
@@ -1416,17 +1467,10 @@ function ActivityDropTable({
               </span>
               <span className="drop-copy">
                 <strong>{item?.name ?? drop.collectibleId}</strong>
-                <small>
-                  Base 1 / {drop.chance} - Current {formatDropChance(drop, runCount)}
-                </small>
-                <small>
-                  Base 1 / {drop.chance} · Current {formatDropChance(drop, runCount)}
-                </small>
-                <small>
-                  Bad Luck Protection at {formatNumber(chance.badLuckActiveAt)} runs{chance.isProtected ? " · active" : ""}
-                </small>
+                <small>{item ? `${item.rarity} ${categoryName}` : "Collectible Drop"}</small>
+                <small>Base 1 / {drop.chance} - Current {formatDropChance(drop, runCount)}</small>
               </span>
-              <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : item?.rarity ?? "Drop"}</span>
+              <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Unowned"}</span>
             </div>
           );
         })
@@ -1503,6 +1547,87 @@ function UnlockNotice({ item, onClose }: { item: Collectible; onClose: () => voi
         <span className="unlock-kicker">Unlocked</span>
         <h2>{item.name}</h2>
         <p>Added to your {categoryName} Codex.</p>
+        <button className="primary-action" onClick={onClose}>
+          Continue
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function ActivityResultPanel({ result, onClose }: { result: ActivityRunResult; onClose: () => void }) {
+  const droppedItem = result.droppedCollectibleId
+    ? collectibles.find((item) => item.id === result.droppedCollectibleId)
+    : null;
+
+  return (
+    <div className="sheet-backdrop result-backdrop" role="presentation" onClick={onClose}>
+      <section className="result-panel" role="dialog" aria-modal="true" aria-label={`${result.activityName} result`} onClick={(event) => event.stopPropagation()}>
+        <button className="detail-close" onClick={onClose} aria-label="Close result">
+          <X size={18} />
+        </button>
+        <span className="unlock-kicker">Activity Complete</span>
+        <h2>{result.activityName}</h2>
+        <div className="result-summary">
+          <span>
+            <small>Run</small>
+            <strong>{formatNumber(result.runCount)}</strong>
+          </span>
+          <span>
+            <small>RAP Spent</small>
+            <strong>{formatNumber(result.rapSpent)}</strong>
+          </span>
+          <span>
+            <small>Runtime</small>
+            <strong>{formatDuration(result.runtimeMs)}</strong>
+          </span>
+        </div>
+        <div className="result-section">
+          <h3>XP</h3>
+          {result.xp.length === 0 ? (
+            <p>No XP gained.</p>
+          ) : (
+            result.xp.map((entry) => (
+              <div key={entry.skillId} className="result-row">
+                <span>{skillName(entry.skillId)}</span>
+                <strong>
+                  +{formatNumber(entry.amount)} XP{entry.bonusPercent > 0 ? ` (+${entry.bonusPercent.toFixed(1)}%)` : ""}
+                </strong>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="result-section">
+          <h3>Rolls</h3>
+          {result.rolls.map((roll) => {
+            const item = roll.droppedCollectibleId ? collectibles.find((candidate) => candidate.id === roll.droppedCollectibleId) : null;
+            return (
+              <div key={roll.label} className={`result-row ${roll.triggered ? "" : "muted"}`}>
+                <span>{roll.label}</span>
+                <strong>{!roll.triggered ? "Not triggered" : item ? item.name : "No drop"}</strong>
+              </div>
+            );
+          })}
+          {result.additionalRollChancePercent > 0 && (
+            <p>{result.additionalRollChancePercent.toFixed(1)}% Additional Roll chance was active.</p>
+          )}
+        </div>
+        <div className={`result-drop ${droppedItem ? "hit" : ""}`}>
+          {droppedItem ? (
+            <>
+              <TileVisual icon={droppedItem.icon} category={droppedItem.category} owned sourceType={droppedItem.source?.type} />
+              <span>
+                <strong>{droppedItem.name}</strong>
+                <small>Added to Codex</small>
+              </span>
+            </>
+          ) : (
+            <span>
+              <strong>No collectible drop</strong>
+              <small>Try another run.</small>
+            </span>
+          )}
+        </div>
         <button className="primary-action" onClick={onClose}>
           Continue
         </button>

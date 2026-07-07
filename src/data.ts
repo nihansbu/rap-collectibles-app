@@ -1,4 +1,4 @@
-export type CategoryId = "characters" | "classes" | "races" | "skills" | "pets" | "mounts";
+export type CategoryId = "characters" | "classes" | "races" | "skills" | "tools" | "pets" | "mounts";
 
 export type SkillId =
   | "agility"
@@ -36,6 +36,11 @@ export type Requirement =
   | { type: "skill"; skillId: SkillId; level: number }
   | { type: "collectible"; collectibleId: string; label: string };
 
+export type AccountBonus =
+  | { type: "skill-xp"; skillId: SkillId; percent: number }
+  | { type: "all-skill-xp"; percent: number }
+  | { type: "additional-roll-chance"; percent: number };
+
 export type Collectible = {
   id: string;
   category: Exclude<CategoryId, "skills">;
@@ -47,6 +52,7 @@ export type Collectible = {
   rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
   requirements: Requirement[];
   source?: { type: "activity"; activityId: string; label: string };
+  bonuses?: AccountBonus[];
 };
 
 export type SkillDefinition = {
@@ -61,6 +67,7 @@ export const categories: Array<{ id: CategoryId; name: string; totalLabel: strin
   { id: "classes", name: "Classes", totalLabel: "Unlocked classes" },
   { id: "races", name: "Races", totalLabel: "Unlocked races" },
   { id: "skills", name: "Skills", totalLabel: "Trained skills" },
+  { id: "tools", name: "Tools", totalLabel: "Unlocked tools" },
   { id: "pets", name: "Pets", totalLabel: "Collected pets" },
   { id: "mounts", name: "Mounts", totalLabel: "Collected mounts" },
 ];
@@ -382,6 +389,44 @@ export const collectibles: Collectible[] = [
     requirements: [
       { type: "skill", skillId: "necromancy", level: 85 },
       { type: "skill", skillId: "prayer", level: 72 },
+    ],
+  },
+  {
+    id: "tool-harpoon",
+    category: "tools",
+    name: "Harpoon",
+    description: "A reliable fishing tool carried by crews who work rough water.",
+    type: "Fishing Tool",
+    cost: 18_000,
+    rarity: "Common",
+    requirements: [],
+    bonuses: [{ type: "skill-xp", skillId: "fishing", percent: 2 }],
+  },
+  {
+    id: "tool-dragon-harpoon",
+    category: "tools",
+    name: "Dragon Harpoon",
+    description: "A heavy dragon-forged harpoon prized by trawler veterans.",
+    type: "Fishing Tool",
+    cost: 0,
+    rarity: "Epic",
+    requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
+    source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
+    bonuses: [{ type: "skill-xp", skillId: "fishing", percent: 6 }],
+  },
+  {
+    id: "tool-storm-harpoon",
+    category: "tools",
+    name: "Storm Harpoon",
+    description: "A storm-bitten chaser tool said to pull fortune from black water.",
+    type: "Fishing Tool",
+    cost: 0,
+    rarity: "Legendary",
+    requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
+    source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
+    bonuses: [
+      { type: "skill-xp", skillId: "fishing", percent: 10 },
+      { type: "additional-roll-chance", percent: 0.5 },
     ],
   },
   {

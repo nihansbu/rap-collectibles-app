@@ -1,5 +1,6 @@
 import {
   GAMEPLAY_ACTIVITIES,
+  getActivity,
   processActiveActivityRuns,
   type ActiveActivityRun,
   type ActivityRunResult,
@@ -43,6 +44,8 @@ type SavePlayerV4 = SavePlayerV3 & {
   activityResults?: ActivityRunResult[];
 };
 
+type SavePlayerV5 = SavePlayerV4;
+
 type SaveFileV1 = {
   version: 1;
   savedAt: string;
@@ -67,13 +70,23 @@ type SaveFileV4 = {
   player: SavePlayerV4;
 };
 
+type SaveFileV5 = {
+  version: 5;
+  savedAt: string;
+  player: SavePlayerV5;
+};
+
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-const CURRENT_SAVE_VERSION = 4;
-const SAVE_KEY = "rap-collectibles.save.v4";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v4";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v4.1", "rap-collectibles.save.backup.v4.2"];
+const CURRENT_SAVE_VERSION = 5;
+const SAVE_KEY = "rap-collectibles.save.v5";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v5";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v5.1", "rap-collectibles.save.backup.v5.2"];
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v4",
+  "rap-collectibles.save.lastKnownGood.v4",
+  "rap-collectibles.save.backup.v4.1",
+  "rap-collectibles.save.backup.v4.2",
   "rap-collectibles.save.v3",
   "rap-collectibles.save.lastKnownGood.v3",
   "rap-collectibles.save.backup.v3.1",
@@ -163,7 +176,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState): string {
-  const saveFile: SaveFileV4 = {
+  const saveFile: SaveFileV5 = {
     version: CURRENT_SAVE_VERSION,
     savedAt: new Date().toISOString(),
     player: normalizePlayerState(player),
@@ -182,17 +195,17 @@ function parsePlayerState(rawSave: string): PlayerState | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (candidate.version !== 1 && candidate.version !== 2 && candidate.version !== 3 && candidate.version !== CURRENT_SAVE_VERSION) return false;
+  if (![1, 2, 3, 4, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -298,6 +311,10 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
     if (!Number.isFinite(candidate.endsAt)) continue;
     if (!Number.isFinite(candidate.cost) || candidate.cost < 0 || candidate.cost > MAX_RAP) continue;
     if (candidate.endsAt <= candidate.startedAt) continue;
+    const activity = getActivity(candidate.activityId);
+    if (!activity) continue;
+    const runtimeMs = sanitizeNumber(candidate.runtimeMs, 1_000, 86_400_000);
+    const baseRuntimeMs = sanitizeNumber(candidate.baseRuntimeMs, 1_000, 86_400_000);
 
     normalized.push({
       id: candidate.id,
@@ -305,6 +322,10 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
       startedAt: candidate.startedAt,
       endsAt: candidate.endsAt,
       cost: sanitizeNumber(candidate.cost, 0, MAX_RAP),
+      baseCost: sanitizeNumber(candidate.baseCost, 0, MAX_RAP) || activity.cost,
+      runtimeMs: runtimeMs || Math.max(1_000, candidate.endsAt - candidate.startedAt),
+      baseRuntimeMs: baseRuntimeMs || activity.runtimeMs,
+      skillAdvantagePercent: sanitizeNumber(candidate.skillAdvantagePercent, 0, 15),
     });
   }
 
@@ -343,7 +364,29 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
 
     const xp = candidate.xp
       .filter((entry) => skillIds.has(entry.skillId) && Number.isFinite(entry.amount) && entry.amount >= 0)
-      .map((entry) => ({ skillId: entry.skillId, amount: sanitizeNumber(entry.amount, 0, xpTable[MAX_LEVEL]) }));
+      .map((entry) => ({
+        skillId: entry.skillId,
+        amount: sanitizeNumber(entry.amount, 0, xpTable[MAX_LEVEL]),
+        bonusPercent: sanitizeNumber(entry.bonusPercent, 0, 10_000),
+      }));
+    const activity = getActivity(candidate.activityId);
+    const rolls = Array.isArray(candidate.rolls)
+      ? candidate.rolls
+        .filter((roll) => roll && typeof roll === "object")
+        .map((roll) => {
+          const source = roll as ActivityRunResult["rolls"][number];
+          return {
+            label: typeof source.label === "string" ? source.label : "Roll",
+            triggered: Boolean(source.triggered),
+            droppedCollectibleId: source.droppedCollectibleId && collectibleIds.has(source.droppedCollectibleId)
+              ? source.droppedCollectibleId
+              : undefined,
+          };
+        })
+      : [
+        { label: "Roll 1", triggered: true, droppedCollectibleId: candidate.droppedCollectibleId },
+        { label: "Additional Roll", triggered: false, droppedCollectibleId: undefined },
+      ];
 
     normalized.push({
       id: candidate.id,
@@ -351,7 +394,15 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
       activityName: candidate.activityName,
       completedAt: candidate.completedAt,
       runCount: sanitizeNumber(candidate.runCount, 0, MAX_RAP),
+      rapSpent: sanitizeNumber(candidate.rapSpent, 0, MAX_RAP),
+      baseRapCost: sanitizeNumber(candidate.baseRapCost, 0, MAX_RAP) || activity?.cost || 0,
+      runtimeMs: sanitizeNumber(candidate.runtimeMs, 1_000, 86_400_000) || activity?.runtimeMs || 1_000,
+      baseRuntimeMs: sanitizeNumber(candidate.baseRuntimeMs, 1_000, 86_400_000) || activity?.runtimeMs || 1_000,
+      skillAdvantagePercent: sanitizeNumber(candidate.skillAdvantagePercent, 0, 15),
+      additionalRollChancePercent: sanitizeNumber(candidate.additionalRollChancePercent, 0, 100),
+      additionalRollTriggered: Boolean(candidate.additionalRollTriggered),
       xp,
+      rolls,
       droppedCollectibleId: candidate.droppedCollectibleId,
     });
 

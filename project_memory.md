@@ -19,7 +19,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - No separated currencies for different activity types at this stage.
 - Collectibles are the main progression system.
 - The Codex is the collection overview and should make progress visible quickly.
-- Collection categories should be tile-based, for example Characters, Classes, Races, Mounts, Pets, Items, and future categories.
+- Collection categories should be tile-based, for example Characters, Classes, Races, Skills, Tools, Mounts, Pets, Items, and future categories.
 - The setting is high fantasy.
 - Characters are collectibles too. A player may own multiple characters, but they are not actively played in the first version.
 - Characters may later have fantasy races and classes.
@@ -40,6 +40,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 - `src/App.tsx`: app shell, main menu, pages, purchase dialog, full-content detail views, filters, skill training interactions, and Activity UI.
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
+- `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
 - `src/data.ts`: category, skill, collectible, and requirement data.
 - `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
 - `src/save.ts`: versioned local save/load system, v1/v2/v3-to-v4 migration, validation, normalization, active training persistence, active Activity run persistence, offline processing, activity log persistence, and backup rotation for player progress.
@@ -56,7 +57,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 
 - Home page title: `Menu`.
 - The main menu links to `Collectibles`, `Adventure`, and `Handbook`.
-- The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Pets, Mounts.
+- The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
 - The `Handbook` page is a player-facing rules guide for systems that should not clutter the main gameplay UI.
 - No bottom navigation in the first prototype.
@@ -73,6 +74,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
 - Gameplay Activities are separate from manual real-life activity logging. Activities live under `Adventure`, cost RAP, run for a short timestamped duration in the prototype, award reduced skill XP, and can drop exclusive collectibles.
 - Activity-only collectible drops still appear in their normal Codex categories. Unowned Activity drops render as red locked tiles with an indigo source strip. Owned Activity drops render as indigo source-owned tiles. They cannot be bought directly.
+- Tools are standard Collectibles. Some are direct purchases and some are Activity drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 - Tapping an Activity card opens a full-content detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
@@ -84,8 +86,12 @@ Implemented early systems:
 - Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
 - Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
-- Active gameplay Activity runs: supports timestamped short runs, persisted in save v4 and processed from timestamps on reload.
-- Activity run counts and recent Activity results are persisted in save v4.
+- Active gameplay Activity runs: supports timestamped short runs, persisted in save v5 and processed from timestamps on reload.
+- Activity run counts and recent Activity results are persisted in save v5.
+- Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
+- Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
+- Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
+- Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
 - Handbook content is static UI text in `src/App.tsx` and currently has no save data.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented in `src/data.ts`.
@@ -103,10 +109,11 @@ Likely entities:
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
 - Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
 - Gameplay Activity: ID, name, type, RAP cost, runtime, requirements, XP reward split, Drop Table, and Bad Luck Protection state derived from run count.
-- Active Activity run: activity ID, startedAt, endsAt, and prepaid RAP cost.
-- Activity result: completed activity, run count, XP awarded, and optional dropped collectible ID.
+- Active Activity run: activity ID, startedAt, endsAt, prepaid effective RAP cost, base RAP cost, effective runtime, base runtime, and Skill Advantage percent.
+- Activity result: completed activity, run count, RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped collectible ID.
 - Skill: ID, display name, source game(s), XP, derived level, max level 120.
-- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, and optional source such as an Activity drop.
+- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, optional source such as an Activity drop, and optional Account Bonuses.
+- Collectible Account Bonuses: optional `bonuses` array in `src/data.ts`; current bonus types are `skill-xp`, `all-skill-xp`, and `additional-roll-chance`.
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
 - Class/Race grouping: use `Collectible.type` for broad labels such as `Melee Tank`, `Magic Support`, `Dwarf`, or `Machine`. Avoid deeper subpage routing until content volume proves it is needed.
@@ -312,6 +319,15 @@ Candidate combined skill roster to finalize:
   - Mobile Playwright check at `390x844` confirmed `Menu -> Handbook` renders Handbook sections including Bad Luck Protection.
   - Mobile Playwright check confirmed `Menu -> Adventure -> Activities -> Fisher's Trawler` still renders the Drop Table, shows compact chance text, shows `Protected` when Bad Luck Protection is active, and no longer visibly repeats the full Bad Luck Protection explanation in the Drop Table.
   - No console warnings/errors and no failed requests were observed in the Handbook QA run.
+- Tools, Account Bonuses, and Activity Result Panels verified locally:
+  - Browser plugin path was attempted first, but the in-app browser returned `Browser is not available: iab`; Playwright was used as fallback.
+  - `npm run build` succeeds after adding `src/bonuses.ts`, save v5, Tools, Activity Result Panel, Skill Advantage, Account Bonuses, and Additional Roll state.
+  - Mobile Playwright check at `390x844` confirmed `Collectibles -> Tools` shows `Harpoon`, `Dragon Harpoon`, and `Storm Harpoon`.
+  - Mobile Playwright check confirmed `Harpoon` shows `+2% Fishing XP`, can be bought with 20,000 RAP from a fresh save, and appears as a normal Tool collectible.
+  - Mobile Playwright check confirmed `Adventure` no longer shows the old `Recent Activity Results` list.
+  - Mobile Playwright check confirmed `Fisher's Trawler` shows Skill Advantage, owned Tool bonuses, the expanded Drop Table including `Storm Harpoon` at `1 / 25000`, and a result panel after completion.
+  - The Activity Result Panel showed RAP spent, runtime, XP by skill, Roll 1, Additional Roll, and the active Additional Roll chance from `Storm Harpoon`.
+  - No console warnings/errors and no failed requests were observed in the Tools/Activity Result QA run.
 
 ## Successful Solutions
 
@@ -394,6 +410,14 @@ Candidate combined skill roster to finalize:
 - Why it works: complex mechanics remain discoverable without bloating the main gameplay UI. Future player-facing mechanics now have a defined place for explanation.
 - Files involved: `src/App.tsx`, `src/styles.css`, `project_memory.md`, `game_design.md`.
 - Commands used: `npm run build`, local Playwright mobile Handbook QA through `node`, `view_image` inspection of the Activity Drop Table screenshot.
+
+2026-07-08: Tools, Account Bonuses, Skill Advantage, and Activity Results.
+
+- Original problem: Activities needed more long-term progression hooks than simple XP and rare drops, while the UI needed a clearer completion moment than a small recent-results list.
+- Successful solution: add `src/bonuses.ts`, the `Tools` Collectibles category, bonus metadata on Collectibles, save v5 Activity run/result fields, Skill Advantage economics, expanded Fisher's Trawler drops, and a full Activity Result Panel.
+- Why it works: Account Bonuses are derived from owned Collectibles, so adding future bonus-granting drops is data-first. Skill Advantage is computed from existing skill requirements, so Activities automatically reward over-leveling without custom per-Activity code. Activity Results are saved as structured rows, so the UI can display Roll 1, Additional Roll, XP, RAP spent, and drops after reload-safe timestamp processing.
+- Files involved: `src/data.ts`, `src/bonuses.ts`, `src/activities.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`, `project_memory.md`, `game_design.md`.
+- Commands used: `npm run build`, local Playwright mobile Tools/Activity Result QA through `node`.
 
 ## Known Issues
 

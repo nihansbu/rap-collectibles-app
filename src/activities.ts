@@ -1,3 +1,4 @@
+import { additionalRollChancePercent, skillXpBonusPercent } from "./bonuses";
 import { collectibles, type Requirement, type SkillId } from "./data";
 import { trainingXpPerRap } from "./training";
 import { levelFromXp, xpTable, MAX_LEVEL } from "./xp";
@@ -26,12 +27,29 @@ export type GameplayActivity = {
   drops: ActivityDrop[];
 };
 
+export type ActivitySkillAdvantage = {
+  percent: number;
+  xpBonusPercent: number;
+  costReductionPercent: number;
+  runtimeReductionPercent: number;
+};
+
 export type ActiveActivityRun = {
   id: string;
   activityId: GameplayActivityId;
   startedAt: number;
   endsAt: number;
   cost: number;
+  baseCost: number;
+  runtimeMs: number;
+  baseRuntimeMs: number;
+  skillAdvantagePercent: number;
+};
+
+export type ActivityRollResult = {
+  label: string;
+  triggered: boolean;
+  droppedCollectibleId?: string;
 };
 
 export type ActivityRunResult = {
@@ -40,7 +58,15 @@ export type ActivityRunResult = {
   activityName: string;
   completedAt: number;
   runCount: number;
-  xp: Array<{ skillId: SkillId; amount: number }>;
+  rapSpent: number;
+  baseRapCost: number;
+  runtimeMs: number;
+  baseRuntimeMs: number;
+  skillAdvantagePercent: number;
+  additionalRollChancePercent: number;
+  additionalRollTriggered: boolean;
+  xp: Array<{ skillId: SkillId; amount: number; bonusPercent: number }>;
+  rolls: ActivityRollResult[];
   droppedCollectibleId?: string;
 };
 
@@ -55,6 +81,7 @@ export type ActivityPlayerState = {
 
 const MAX_ACTIVITY_RESULTS = 6;
 const RUN_TIME_MS = 3_000;
+const MAX_SKILL_ADVANTAGE_PERCENT = 15;
 
 export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
   {
@@ -71,7 +98,9 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
     ],
     drops: [
       { collectibleId: "pet-trawler-gull", chance: 500 },
+      { collectibleId: "tool-dragon-harpoon", chance: 750 },
       { collectibleId: "mount-brine-ray", chance: 2_500 },
+      { collectibleId: "tool-storm-harpoon", chance: 25_000 },
     ],
   },
   {
@@ -130,8 +159,45 @@ export function activityRequirementsMet(activity: GameplayActivity, player: Pick
   });
 }
 
+export function activitySkillAdvantage(activity: GameplayActivity, player: Pick<ActivityPlayerState, "skillXp">): ActivitySkillAdvantage {
+  const skillRequirements = activity.requirements.filter((requirement): requirement is Extract<Requirement, { type: "skill" }> => requirement.type === "skill");
+  if (skillRequirements.length === 0) {
+    return { percent: 0, xpBonusPercent: 0, costReductionPercent: 0, runtimeReductionPercent: 0 };
+  }
+
+  const averageProgress = skillRequirements.reduce((total, requirement) => {
+    const currentLevel = levelFromXp(player.skillXp[requirement.skillId] ?? 0);
+    if (currentLevel <= requirement.level) return total;
+    const remainingLevels = Math.max(1, MAX_LEVEL - requirement.level);
+    return total + Math.min(1, (currentLevel - requirement.level) / remainingLevels);
+  }, 0) / skillRequirements.length;
+
+  const percent = roundPercent(averageProgress * MAX_SKILL_ADVANTAGE_PERCENT);
+  return {
+    percent,
+    xpBonusPercent: percent,
+    costReductionPercent: percent,
+    runtimeReductionPercent: percent,
+  };
+}
+
+export function effectiveActivityRun(activity: GameplayActivity, player: Pick<ActivityPlayerState, "skillXp">) {
+  const advantage = activitySkillAdvantage(activity, player);
+  const cost = Math.max(0, Math.round(activity.cost * (1 - advantage.costReductionPercent / 100)));
+  const runtimeMs = Math.max(1_000, Math.round(activity.runtimeMs * (1 - advantage.runtimeReductionPercent / 100)));
+
+  return {
+    cost,
+    baseCost: activity.cost,
+    runtimeMs,
+    baseRuntimeMs: activity.runtimeMs,
+    advantage,
+  };
+}
+
 export function canStartActivity(activity: GameplayActivity, player: ActivityPlayerState) {
-  return player.rp >= activity.cost && activityRequirementsMet(activity, player) && !isActivityRunning(player, activity.id);
+  const run = effectiveActivityRun(activity, player);
+  return player.rp >= run.cost && activityRequirementsMet(activity, player) && !isActivityRunning(player, activity.id);
 }
 
 export function isActivityRunning(player: Pick<ActivityPlayerState, "activeActivityRuns">, activityId: GameplayActivityId) {
@@ -141,19 +207,26 @@ export function isActivityRunning(player: Pick<ActivityPlayerState, "activeActiv
 export function startActivityRun<T extends ActivityPlayerState>(player: T, activityId: GameplayActivityId, now = Date.now()): T {
   const current = processActiveActivityRuns(player, now);
   const activity = getActivity(activityId);
-  if (!activity || !canStartActivity(activity, current)) return current;
+  if (!activity) return current;
+
+  const effective = effectiveActivityRun(activity, current);
+  if (current.rp < effective.cost || !activityRequirementsMet(activity, current) || isActivityRunning(current, activity.id)) return current;
 
   const run: ActiveActivityRun = {
     id: `${activity.id}-${now}`,
     activityId: activity.id,
     startedAt: now,
-    endsAt: now + activity.runtimeMs,
-    cost: activity.cost,
+    endsAt: now + effective.runtimeMs,
+    cost: effective.cost,
+    baseCost: effective.baseCost,
+    runtimeMs: effective.runtimeMs,
+    baseRuntimeMs: effective.baseRuntimeMs,
+    skillAdvantagePercent: effective.advantage.percent,
   };
 
   return {
     ...current,
-    rp: current.rp - activity.cost,
+    rp: current.rp - effective.cost,
     activeActivityRuns: [...current.activeActivityRuns, run],
   };
 }
@@ -213,11 +286,23 @@ function completeActivityRun<T extends ActivityPlayerState>(
   random: () => number,
 ): T {
   const completedRuns = (player.activityRunCounts[activity.id] ?? 0) + 1;
-  const xp = awardActivityXp(player, activity);
-  const droppedCollectibleId = rollActivityDrop(activity, player.owned, completedRuns, random);
+  const skillAdvantagePercent = sanitizePercent(run.skillAdvantagePercent);
+  const additionalChance = additionalRollChancePercent(player.owned);
+  const primaryRoll = rollActivityDrop(activity, player.owned, completedRuns, random);
+  const additionalRollTriggered = activity.drops.length > 0 && additionalChance > 0 && random() < additionalChance / 100;
+  const additionalRoll = additionalRollTriggered
+    ? rollActivityDrop(activity, player.owned, completedRuns, random)
+    : undefined;
+  const droppedCollectibleId = selectRarestDrop(activity, [primaryRoll, additionalRoll].filter((id): id is string => !!id));
+  const xp = awardActivityXp(player, activity, run, skillAdvantagePercent);
   const owned = droppedCollectibleId && !player.owned.includes(droppedCollectibleId)
     ? [...player.owned, droppedCollectibleId]
     : player.owned;
+
+  const rolls: ActivityRollResult[] = [
+    { label: "Roll 1", triggered: true, droppedCollectibleId: primaryRoll },
+    { label: "Additional Roll", triggered: additionalRollTriggered, droppedCollectibleId: additionalRoll },
+  ];
 
   const result: ActivityRunResult = {
     id: `${run.id}-result-${now}`,
@@ -225,7 +310,15 @@ function completeActivityRun<T extends ActivityPlayerState>(
     activityName: activity.name,
     completedAt: now,
     runCount: completedRuns,
+    rapSpent: run.cost,
+    baseRapCost: run.baseCost,
+    runtimeMs: run.runtimeMs,
+    baseRuntimeMs: run.baseRuntimeMs,
+    skillAdvantagePercent,
+    additionalRollChancePercent: additionalChance,
+    additionalRollTriggered,
     xp,
+    rolls,
     droppedCollectibleId,
   };
 
@@ -238,16 +331,26 @@ function completeActivityRun<T extends ActivityPlayerState>(
   };
 }
 
-function awardActivityXp(player: ActivityPlayerState, activity: GameplayActivity) {
-  const gained: Array<{ skillId: SkillId; amount: number }> = [];
+function awardActivityXp(
+  player: ActivityPlayerState,
+  activity: GameplayActivity,
+  run: ActiveActivityRun,
+  skillAdvantagePercent: number,
+) {
+  const gained: Array<{ skillId: SkillId; amount: number; bonusPercent: number }> = [];
 
   for (const reward of activity.xpRewards) {
     const currentXp = player.skillXp[reward.skillId] ?? 0;
     const level = levelFromXp(currentXp);
-    const amount = Math.min(xpTable[MAX_LEVEL] - currentXp, activity.cost * trainingXpPerRap(level) * reward.share);
+    const accountBonus = skillXpBonusPercent(player.owned, reward.skillId);
+    const bonusPercent = accountBonus + skillAdvantagePercent;
+    const amount = Math.min(
+      xpTable[MAX_LEVEL] - currentXp,
+      run.baseCost * trainingXpPerRap(level) * reward.share * (1 + bonusPercent / 100),
+    );
     if (amount <= 0) continue;
     player.skillXp[reward.skillId] = currentXp + amount;
-    gained.push({ skillId: reward.skillId, amount });
+    gained.push({ skillId: reward.skillId, amount, bonusPercent });
   }
 
   return gained;
@@ -267,6 +370,25 @@ function rollActivityDrop(
 
   if (hits.length === 0) return undefined;
   return hits.sort((a, b) => b.chance - a.chance)[0].collectibleId;
+}
+
+function selectRarestDrop(activity: GameplayActivity, collectibleIds: string[]) {
+  if (collectibleIds.length === 0) return undefined;
+
+  return collectibleIds.sort((a, b) => {
+    const aChance = activity.drops.find((drop) => drop.collectibleId === a)?.chance ?? 0;
+    const bChance = activity.drops.find((drop) => drop.collectibleId === b)?.chance ?? 0;
+    return bChance - aChance;
+  })[0];
+}
+
+function sanitizePercent(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.min(MAX_SKILL_ADVANTAGE_PERCENT, value);
+}
+
+function roundPercent(value: number) {
+  return Math.round(value * 10) / 10;
 }
 
 export function activityDropItem(drop: ActivityDrop) {

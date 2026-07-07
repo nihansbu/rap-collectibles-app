@@ -71,7 +71,10 @@ Current Handbook topics:
 - RAP
 - Skills
 - Activities
+- Tools
+- Account Bonuses
 - Drops
+- Additional Roll
 - Bad Luck Protection
 - Codex States
 
@@ -85,6 +88,7 @@ The Codex starts as the main `Collectibles` page and should show category tiles 
 - Classes
 - Races
 - Skills
+- Tools
 - Pets
 - Mounts
 
@@ -129,6 +133,7 @@ Planned collectible types:
 - Classes
 - Races
 - Skills
+- Tools
 - Items
 - Future high-fantasy categories
 
@@ -136,6 +141,30 @@ Collectibles can have a source:
 
 - Direct purchase with RAP.
 - Activity Drop from a named Activity such as `Fisher's Trawler`.
+
+Collectibles can grant Account Bonuses:
+
+- Skill-specific XP bonuses, for example +2% Fishing XP.
+- All-Skill XP bonuses later.
+- Additional Roll chance for Activities.
+
+## Tools
+
+Tools are a permanent Collectibles category.
+
+Design decisions:
+
+- Tools are not inventory items and do not use equipment slots in the current prototype.
+- Owned Tools are account-wide unlocks.
+- Tools can be bought directly or dropped from Activities.
+- Tools can grant simple Account Bonuses.
+- Tool icons can be generated later; no new icon pass is required for the first Tools implementation.
+
+Current Tools:
+
+- `Harpoon`: direct purchase, +2% Fishing XP.
+- `Dragon Harpoon`: Fisher's Trawler drop, +6% Fishing XP.
+- `Storm Harpoon`: Fisher's Trawler chaser drop, +10% Fishing XP and +0.5% Additional Roll chance.
 
 Collectibles can require:
 
@@ -213,6 +242,7 @@ Activity design rules:
 - XP and drops are awarded when the Activity finishes.
 - Active Activity runs and completed run counts are save data.
 - Activity runs are timestamped and should process correctly after reload.
+- Completed runs show an Activity Result panel with RAP spent, XP gained, Roll 1, Additional Roll state, and any dropped Collectible.
 
 Activity XP:
 
@@ -220,15 +250,27 @@ Activity XP:
 - Total Activity XP efficiency should be 75% of direct Skill training for the same RAP spend.
 - XP can be split across multiple skills, for example `Fishing 50%` and `Cooking 25%`.
 - Reward shares should normally sum to 75%.
+- Account Bonuses can increase the XP for specific Skills or all Skills.
+- Skill Advantage can add up to +15% Activity XP when the player exceeds the Activity's required skill level.
+
+Skill Advantage:
+
+- Skill Advantage is based on skill levels above the Activity's minimum requirements.
+- It scales proportionally from the required level to Level 120.
+- Maximum bonus is +15% XP, -15% RAP cost, and -15% runtime.
+- The bonus should remain modest so required levels still matter without making Activities feel mandatory to overlevel first.
 
 Activity Drop Tables:
 
 - Activities can contain multiple possible collectible drops.
 - Every unowned drop in the table is rolled on completion.
 - A run can award at most one collectible.
-- If multiple drops succeed in one run, the player receives the item with the lower drop chance, meaning the rarer item.
+- If multiple rolls or drops succeed in one run, the player receives the item with the lower drop chance, meaning the rarer item.
 - Owned drops are not awarded again in the current prototype.
 - Activity drops remain visible in their normal Codex category.
+- Additional Roll chance can create one extra drop roll after the normal roll.
+- Additional Roll starts as a rare Account Bonus, currently +0.5% from Storm Harpoon.
+- Chaser items are allowed as very rare drops, for example 1 / 25,000.
 
 Bad Luck Protection:
 
@@ -245,7 +287,7 @@ Current Activities:
   - Runtime: 3 seconds in the prototype
   - Requirement: Fishing 40
   - XP split: Fishing 50%, Cooking 25%
-  - Drops: `Trawler Gull` at 1 / 500 and `Brine Ray` at 1 / 2,500
+  - Drops: `Trawler Gull` at 1 / 500, `Dragon Harpoon` at 1 / 750, `Brine Ray` at 1 / 2,500, and `Storm Harpoon` at 1 / 25,000
 - `Haunted Burial`
 - `Ember Kiln`
 - `Deep Mine Survey`
@@ -306,6 +348,7 @@ Current first screen elements:
 - Page title in the topbar.
 - Main menu tiles: Collectibles, Adventure, and Handbook.
 - The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
+- The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
 - The main menu includes Save Status, Export Save, and Import Save controls.
