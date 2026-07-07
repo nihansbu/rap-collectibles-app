@@ -346,13 +346,13 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Main menu tiles: Collectibles, Adventure, and Handbook.
+- Main menu dashboard with compact Adventure entries, direct Collectibles category tiles, a Handbook link, and manual Log Activity tiles.
 - The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
 - The main menu includes Save Status, Export Save, and Import Save controls.
 - No bottom navigation.
-- Subpages are reached by tapping category tiles.
+- Subpages are reached by tapping compact dashboard/category tiles. If a subpage was opened directly from the main dashboard, Back returns to the dashboard.
 
 Collection subpages should show:
 
@@ -370,9 +370,14 @@ Collection subpages should show:
 
 Interaction decision:
 
-- Tapping any collectible or skill card opens its detail panel.
+- Short tap is the primary action whenever a tile has one.
+- Long press opens the detail/info panel.
 - The detail panel fills the content area under the topbar.
-- Buying collectibles and training skills happens from the detail panel, not directly from the list card.
+- Direct-purchase Collectible tiles use tap as the buy action, but still show a confirmation dialog before RAP is spent.
+- Collectible tiles with no valid direct action, such as owned entries, unavailable entries, or Activity-only drops, open the detail panel on tap.
+- Activity tiles use tap to start a run when the Activity is available and long press for details.
+- Manual Log Activity tiles use tap to log one hour and long press for details.
+- Skill tiles still open the Skill detail panel on tap because training requires choosing a duration.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
 - Requirement rows should show a requirement icon plus current and needed progress, for example `Attack Level 1 / 20`.
 - Native browser text selection should never appear during normal app interaction.

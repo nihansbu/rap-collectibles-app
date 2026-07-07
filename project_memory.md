@@ -64,7 +64,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
 - Home page title: `Menu`.
-- The main menu links to `Collectibles`, `Adventure`, and `Handbook`.
+- The main menu is a compact dashboard. It shows Adventure entries, direct Collectibles category tiles, a Handbook link, manual Log Activity tiles, and save tools on one screen where possible.
 - The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
 - The `Handbook` page is a player-facing rules guide for systems that should not clutter the main gameplay UI.
@@ -77,15 +77,18 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
 - The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
 - The main menu includes manual Save Export and Import tools. Export produces the same normalized v4 save JSON used by localStorage; Import reuses the save parser/migration path and still accepts older supported save versions.
-- The main menu shows quick manual activity logging and local save status.
+- The main menu shows quick manual activity logging and local save status. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
 - The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
 - Gameplay Activities are separate from manual real-life activity logging. Activities live under `Adventure`, cost RAP, run for a short timestamped duration in the prototype, award reduced skill XP, and can drop exclusive collectibles.
 - Activity-only collectible drops still appear in their normal Codex categories. Unowned Activity drops render as red locked tiles with an indigo source strip. Owned Activity drops render as indigo source-owned tiles. They cannot be bought directly.
 - Tools are standard Collectibles. Some are direct purchases and some are Activity drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
-- Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
-- Tapping an Activity card opens a full-content detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
+- Direct main-menu entries remember their origin: backing out of a category or Activities page opened from the main dashboard returns to the main dashboard, not to the older intermediate overview page.
+- Tapping a direct-purchase Collectible card is the primary buy action and opens the purchase confirmation when the item is affordable and requirements are met. Long-pressing opens the full-content detail view under the topbar.
+- Tapping an unavailable, owned, or Activity-drop Collectible falls back to the detail view because there is no valid buy action.
+- Tapping an Activity card starts the run when requirements and RAP are sufficient. Long-pressing opens the full-content Activity detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
+- Skill cards still open the Skill detail view because training requires choosing a duration.
 - The Activity Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
 - Katalogdaten are modularized by domain/category. `src/data.ts` remains the stable import facade so existing systems can keep importing from `./data`.
 - Catalog lookup and unlock rules live in `src/catalog.ts` rather than page components. Future database/indexing work should attach at this selector layer before touching UI components.
@@ -345,6 +348,14 @@ Candidate combined skill roster to finalize:
   - `src/data.ts` is now a small stable facade, while category-specific data lives under `src/data/collectibles/`.
   - `src/App.tsx` was reduced from about 59.9 KB to about 41.7 KB by moving shared rules, formatting, visual primitives, dialogs, TopBar, Main Menu, and Handbook into separate modules.
   - No gameplay behavior was intentionally changed in this refactor.
+- Dashboard navigation and Long Press interactions verified locally:
+  - `npm run build` succeeds after adding the compact main dashboard, origin-aware Back routing, manual Activity detail view, and shared `useLongPress` helper.
+  - `npm run icons:prepare` succeeds and still reports 43 Collectibles with 21 missing icons.
+  - Mobile Playwright check at `390x844` confirmed the main dashboard shows Adventure, Collectibles, and Log Activity on the first page.
+  - Mobile Playwright check confirmed tapping Walking grants RAP, long-pressing Reading opens the manual Activity detail view, tapping Skills opens the Skills page directly, and Back returns to the main dashboard.
+  - Mobile Playwright check confirmed tapping Stable Pony opens the purchase confirmation while long-pressing the same Mount opens its detail view.
+  - Mobile Playwright check confirmed long-pressing Fisher's Trawler opens its Activity detail view.
+  - No console warnings/errors and no failed requests were observed in the dashboard/Long Press QA run.
 
 ## Successful Solutions
 

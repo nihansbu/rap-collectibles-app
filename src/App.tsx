@@ -60,6 +60,7 @@ import { MainMenuPage } from "./pages/MainMenuPage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
+import { useLongPress } from "./ui/useLongPress";
 import { exportPlayerState, importPlayerState, loadPlayerState, savePlayerState, type PlayerState } from "./save";
 import {
   formatDuration,
@@ -82,12 +83,13 @@ type Page =
   | { type: "collectibles" }
   | { type: "adventure" }
   | { type: "handbook" }
-  | { type: "activities" }
-  | { type: "category"; id: CategoryId };
+  | { type: "activities"; from?: "main" | "adventure" }
+  | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type DetailView =
   | { type: "collectible"; item: Collectible }
   | { type: "skill"; skillId: SkillId }
-  | { type: "activity"; activityId: GameplayActivityId };
+  | { type: "activity"; activityId: GameplayActivityId }
+  | { type: "manual-activity"; activity: ActivityOption };
 type CategoryProgress = {
   id: CategoryId;
   name: string;
@@ -253,6 +255,25 @@ export function App() {
     setDetailView(null);
   }
 
+  function handleCollectiblePrimaryAction(item: Collectible) {
+    if (canUnlock(item, player)) {
+      setConfirmItem(item);
+      return;
+    }
+
+    setDetailView({ type: "collectible", item });
+  }
+
+  function handleGameplayActivityPrimaryAction(activityId: GameplayActivityId) {
+    const activity = getActivity(activityId);
+    if (activity && canStartActivity(activity, player)) {
+      runGameplayActivity(activityId);
+      return;
+    }
+
+    setDetailView({ type: "activity", activityId });
+  }
+
   async function exportSave() {
     const current = processActiveTrainings(player);
     setPlayer(current);
@@ -302,6 +323,7 @@ export function App() {
       return { ...category, unlocked, total: items.length, percent: completionPercent(unlocked, items.length) };
     });
   }, [player]);
+  const totalActivityRuns = useMemo(() => Object.values(player.activityRunCounts).reduce((total, runs) => total + runs, 0), [player.activityRunCounts]);
 
   return (
     <div
@@ -324,11 +346,11 @@ export function App() {
             return;
           }
           if (page.type === "category") {
-            setPage({ type: "collectibles" });
+            setPage(page.from === "main" ? { type: "main" } : { type: "collectibles" });
             return;
           }
           if (page.type === "activities") {
-            setPage({ type: "adventure" });
+            setPage(page.from === "main" ? { type: "main" } : { type: "adventure" });
             return;
           }
           setPage({ type: "main" });
@@ -358,33 +380,46 @@ export function App() {
             onClose={() => setDetailView(null)}
             onRun={() => runGameplayActivity(detailView.activityId)}
           />
+        ) : detailView?.type === "manual-activity" ? (
+          <ManualActivityDetailView
+            activity={detailView.activity}
+            onClose={() => setDetailView(null)}
+            onLog={() => {
+              logActivity(detailView.activity);
+              setDetailView(null);
+            }}
+          />
         ) : page.type === "main" ? (
           <MainMenuPage
             activities={ACTIVITY_OPTIONS}
             activityLog={player.activityLog}
+            categoryProgress={categoryProgress}
+            totalActivityRuns={totalActivityRuns}
+            activeActivityCount={player.activeActivityRuns.length}
             lifetimeRap={player.lifetimeRap}
             lastSavedAt={lastSavedAt}
             saveMessage={saveMessage}
             onLogActivity={logActivity}
+            onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
             onExportSave={exportSave}
             onImportSave={() => {
               setImportOpen(true);
               setSaveMessage("");
             }}
-            onOpenCollectibles={() => setPage({ type: "collectibles" })}
-            onOpenAdventure={() => setPage({ type: "adventure" })}
+            onOpenActivities={() => setPage({ type: "activities", from: "main" })}
+            onOpenCategory={(id) => setPage({ type: "category", id, from: "main" })}
             onOpenHandbook={() => setPage({ type: "handbook" })}
           />
         ) : page.type === "collectibles" ? (
           <CollectiblesOverviewPage
             progress={categoryProgress}
             recentUnlocks={recentUnlocks}
-            onOpen={(id) => setPage({ type: "category", id })}
+            onOpen={(id) => setPage({ type: "category", id, from: "collectibles" })}
           />
         ) : page.type === "adventure" ? (
           <AdventurePage
             player={player}
-            onOpenActivities={() => setPage({ type: "activities" })}
+            onOpenActivities={() => setPage({ type: "activities", from: "adventure" })}
           />
         ) : page.type === "handbook" ? (
           <HandbookPage />
@@ -392,6 +427,7 @@ export function App() {
           <ActivitiesPage
             player={player}
             onOpenActivity={(activityId) => setDetailView({ type: "activity", activityId })}
+            onRunActivity={handleGameplayActivityPrimaryAction}
           />
         ) : page.id === "skills" ? (
           <SkillsPage player={player} skillFilter={skillFilter} onFilter={setSkillFilter} onOpenSkill={(skillId) => setDetailView({ type: "skill", skillId })} />
@@ -406,6 +442,7 @@ export function App() {
             onTypeFilter={setTypeFilter}
             onSort={setSort}
             onOpenDetails={(item) => setDetailView({ type: "collectible", item })}
+            onPrimaryAction={handleCollectiblePrimaryAction}
           />
         )}
       </main>
@@ -509,17 +546,62 @@ function AdventurePage({
   );
 }
 
+function ManualActivityDetailView({
+  activity,
+  onClose,
+  onLog,
+}: {
+  activity: ActivityOption;
+  onClose: () => void;
+  onLog: () => void;
+}) {
+  return (
+    <section className="detail-view manual-activity-detail" aria-label={`${activity.name} details`}>
+      <button className="detail-close" onClick={onClose} aria-label="Close details">
+        <X size={18} />
+      </button>
+      <div className="sheet-icon manual-activity-sheet-icon">
+        <ActivityIcon activityId={activity.id} />
+      </div>
+      <div className="detail-status-row">
+        <span className="status-pill ready">Manual Log</span>
+        <span>1 hour</span>
+        <span>+{formatNumber(activityRap(activity, 1))} RAP</span>
+      </div>
+      <h2>{activity.name}</h2>
+      <p>Log one hour of real-life activity and add RAP to your account immediately.</p>
+      <div className="purchase-panel">
+        <div>
+          <strong>Log Activity</strong>
+          <span>This prototype uses fixed one-hour entries until real tracking is added later.</span>
+        </div>
+        <button className="primary-action detail-action" onClick={onLog}>
+          Log 1 Hour
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function ActivitiesPage({
   player,
   onOpenActivity,
+  onRunActivity,
 }: {
   player: PlayerState;
   onOpenActivity: (activityId: GameplayActivityId) => void;
+  onRunActivity: (activityId: GameplayActivityId) => void;
 }) {
   return (
     <section className="activity-card-list">
       {GAMEPLAY_ACTIVITIES.map((activity) => (
-        <ActivityCard key={activity.id} activity={activity} player={player} onOpenActivity={onOpenActivity} />
+        <ActivityCard
+          key={activity.id}
+          activity={activity}
+          player={player}
+          onOpenActivity={onOpenActivity}
+          onRunActivity={onRunActivity}
+        />
       ))}
     </section>
   );
@@ -529,10 +611,12 @@ function ActivityCard({
   activity,
   player,
   onOpenActivity,
+  onRunActivity,
 }: {
   activity: GameplayActivity;
   player: PlayerState;
   onOpenActivity: (activityId: GameplayActivityId) => void;
+  onRunActivity: (activityId: GameplayActivityId) => void;
 }) {
   const running = isActivityRunning(player, activity.id);
   const requirementsReady = activityRequirementsMet(activity, player);
@@ -541,11 +625,15 @@ function ActivityCard({
   const bestDrop = activity.drops.length > 0
     ? activity.drops.reduce((best, drop) => (drop.chance > best.chance ? drop : best), activity.drops[0])
     : null;
+  const longPress = useLongPress({
+    onPress: () => onRunActivity(activity.id),
+    onLongPress: () => onOpenActivity(activity.id),
+  });
 
   return (
     <article
       className={`activity-card ${running ? "running" : ""} ${requirementsReady ? "ready" : "locked"}`}
-      onClick={() => onOpenActivity(activity.id)}
+      {...longPress}
     >
       <span className="activity-card-icon">
         <GameplayActivityIcon activity={activity} />
@@ -629,6 +717,7 @@ function CollectionPage({
   onTypeFilter,
   onSort,
   onOpenDetails,
+  onPrimaryAction,
 }: {
   category: Exclude<CategoryId, "skills">;
   player: PlayerState;
@@ -639,6 +728,7 @@ function CollectionPage({
   onTypeFilter: (type: string) => void;
   onSort: (sort: SortMode) => void;
   onOpenDetails: (item: Collectible) => void;
+  onPrimaryAction: (item: Collectible) => void;
 }) {
   const categoryItems = useMemo(() => getCollectiblesByCategory(category), [category]);
   const types = useMemo(() => [...new Set(categoryItems.map((item) => item.type))].sort(), [categoryItems]);
@@ -681,7 +771,13 @@ function CollectionPage({
       />
       <section className="card-grid">
         {items.map((item) => (
-          <CollectibleCard key={item.id} item={item} player={player} onOpenDetails={onOpenDetails} />
+          <CollectibleCard
+            key={item.id}
+            item={item}
+            player={player}
+            onOpenDetails={onOpenDetails}
+            onPrimaryAction={onPrimaryAction}
+          />
         ))}
       </section>
     </>
@@ -692,18 +788,24 @@ function CollectibleCard({
   item,
   player,
   onOpenDetails,
+  onPrimaryAction,
 }: {
   item: Collectible;
   player: PlayerState;
   onOpenDetails: (item: Collectible) => void;
+  onPrimaryAction: (item: Collectible) => void;
 }) {
   const owned = player.owned.includes(item.id);
   const status = collectibleStatus(item, player);
+  const longPress = useLongPress({
+    onPress: () => onPrimaryAction(item),
+    onLongPress: () => onOpenDetails(item),
+  });
 
   return (
     <article
       className={`icon-tile ${status} ${isActivityDrop(item) ? "activity-source" : ""}`}
-      onClick={() => onOpenDetails(item)}
+      {...longPress}
     >
       <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} sourceType={item.source?.type} />
       <h2>{item.name}</h2>
