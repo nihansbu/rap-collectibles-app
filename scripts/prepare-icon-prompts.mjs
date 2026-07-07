@@ -3,12 +3,9 @@ import path from "node:path";
 import ts from "typescript";
 
 const root = process.cwd();
-const dataPath = path.join(root, "src", "data.ts");
+const collectibleDataDir = path.join(root, "src", "data", "collectibles");
 const outputDir = path.join(root, "tmp", "icon-pipeline");
 const outputPath = path.join(outputDir, "missing-icons.jsonl");
-
-const sourceText = fs.readFileSync(dataPath, "utf8");
-const sourceFile = ts.createSourceFile(dataPath, sourceText, ts.ScriptTarget.Latest, true);
 
 const collectibleObjects = [];
 
@@ -31,24 +28,38 @@ function objectProperty(objectLiteral, propertyName) {
 
 function visit(node) {
   if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "collectibles" && node.initializer && ts.isArrayLiteralExpression(node.initializer)) {
-    for (const element of node.initializer.elements) {
-      if (!ts.isObjectLiteralExpression(element)) continue;
-      const id = literalValue(objectProperty(element, "id"));
-      const category = literalValue(objectProperty(element, "category"));
-      const name = literalValue(objectProperty(element, "name"));
-      const type = literalValue(objectProperty(element, "type"));
-      const description = literalValue(objectProperty(element, "description"));
-      const icon = literalValue(objectProperty(element, "icon"));
-      if (id && category && name && type) {
-        collectibleObjects.push({ id, category, name, type, description, icon });
-      }
-    }
+    collectObjectsFromArray(node.initializer);
+  }
+
+  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text.endsWith("Collectibles") && node.initializer && ts.isArrayLiteralExpression(node.initializer)) {
+    collectObjectsFromArray(node.initializer);
   }
 
   ts.forEachChild(node, visit);
 }
 
-visit(sourceFile);
+function collectObjectsFromArray(arrayLiteral) {
+  for (const element of arrayLiteral.elements) {
+    if (!ts.isObjectLiteralExpression(element)) continue;
+    const id = literalValue(objectProperty(element, "id"));
+    const category = literalValue(objectProperty(element, "category"));
+    const name = literalValue(objectProperty(element, "name"));
+    const type = literalValue(objectProperty(element, "type"));
+    const description = literalValue(objectProperty(element, "description"));
+    const icon = literalValue(objectProperty(element, "icon"));
+    if (id && category && name && type) {
+      collectibleObjects.push({ id, category, name, type, description, icon });
+    }
+  }
+}
+
+for (const entry of fs.readdirSync(collectibleDataDir)) {
+  if (!entry.endsWith(".ts")) continue;
+  const dataPath = path.join(collectibleDataDir, entry);
+  const sourceText = fs.readFileSync(dataPath, "utf8");
+  const sourceFile = ts.createSourceFile(dataPath, sourceText, ts.ScriptTarget.Latest, true);
+  visit(sourceFile);
+}
 
 fs.mkdirSync(outputDir, { recursive: true });
 
@@ -66,6 +77,7 @@ const singularCategory = {
   races: "race",
   pets: "pet",
   mounts: "mount",
+  tools: "tool",
 };
 
 const lines = missing.map((item) => {

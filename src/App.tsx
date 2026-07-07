@@ -1,28 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Anchor,
   ArrowLeft,
   BookOpen,
-  Briefcase,
   Check,
   ChevronRight,
   Compass,
   Dice5,
   Download,
-  Dumbbell,
-  Footprints,
   Gem,
-  Hammer,
-  Headphones,
   Lock,
-  Music,
   Plus,
   Search,
-  Shield,
-  Sparkles,
   Swords,
   Upload,
-  Users,
   X,
 } from "lucide-react";
 import {
@@ -43,8 +33,33 @@ import {
   type GameplayActivityId,
 } from "./activities";
 import { collectAccountBonuses, formatBonusLabel, skillXpBonusPercent } from "./bonuses";
-import { categories, collectibles, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import {
+  canUnlock,
+  collectibleActionLabel,
+  collectibleSortIndex,
+  collectibleStatus,
+  collectibleStatusRank,
+  categoryForSkill,
+  getCollectibleById,
+  getCollectiblesByCategory,
+  getRequirementState,
+  highestRequirement,
+  isActivityDrop,
+  rarityClass,
+  requirementsMet,
+  skillName,
+  skillNameFontSize,
+  sourceActivityFor,
+  statusLabel,
+} from "./catalog";
+import { categories, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
+import { completionPercent, formatNumber, formatSavedTime } from "./format";
+import { HandbookPage } from "./pages/HandbookPage";
+import { MainMenuPage } from "./pages/MainMenuPage";
+import { TopBar } from "./ui/TopBar";
+import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
+import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
 import { exportPlayerState, importPlayerState, loadPlayerState, savePlayerState, type PlayerState } from "./save";
 import {
   formatDuration,
@@ -62,7 +77,6 @@ import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
 type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "requirements-desc";
-type CollectibleStatus = "owned" | "ready" | "locked";
 type Page =
   | { type: "main" }
   | { type: "collectibles" }
@@ -82,142 +96,6 @@ type CategoryProgress = {
   total: number;
   percent: number;
 };
-
-const rarityClass: Record<Collectible["rarity"], string> = {
-  Common: "rarity-common",
-  Uncommon: "rarity-uncommon",
-  Rare: "rarity-rare",
-  Epic: "rarity-epic",
-  Legendary: "rarity-legendary",
-};
-
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("en-US").format(Math.floor(value));
-}
-
-function completionPercent(unlocked: number, total: number) {
-  if (total <= 0) return 0;
-  return Math.min(100, Math.round((unlocked / total) * 100));
-}
-
-function formatSavedTime(date: Date | null) {
-  if (!date) return "Not saved yet";
-  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-}
-
-function skillName(skillId: SkillId) {
-  return skills.find((skill) => skill.id === skillId)?.name ?? skillId;
-}
-
-function highestRequirement(item: Collectible) {
-  return item.requirements.reduce((highest, requirement) => {
-    if (requirement.type !== "skill") return highest;
-    return Math.max(highest, requirement.level);
-  }, 0);
-}
-
-function getRequirementState(requirement: Requirement, player: PlayerState) {
-  if (requirement.type === "collectible") {
-    return {
-      label: requirement.label,
-      met: player.owned.includes(requirement.collectibleId),
-      current: player.owned.includes(requirement.collectibleId) ? "Owned" : "Missing",
-    };
-  }
-
-  const currentLevel = levelFromXp(player.skillXp[requirement.skillId]);
-  return {
-    label: `${skillName(requirement.skillId)} ${requirement.level}`,
-    met: currentLevel >= requirement.level,
-    current: `Level ${currentLevel}`,
-  };
-}
-
-function canUnlock(item: Collectible, player: PlayerState) {
-  if (isActivityDrop(item)) return false;
-  return (
-    player.rp >= item.cost &&
-    requirementsMet(item, player)
-  );
-}
-
-function requirementsMet(item: Collectible, player: PlayerState) {
-  return item.requirements.every((requirement) => getRequirementState(requirement, player).met);
-}
-
-function isActivityDrop(item: Collectible) {
-  return item.source?.type === "activity";
-}
-
-function collectibleActionLabel(item: Collectible, player: PlayerState) {
-  if (player.owned.includes(item.id)) return "Unlocked";
-  if (isActivityDrop(item)) return "Activity Drop";
-  if (!requirementsMet(item, player)) return "Requirements not met";
-  if (player.rp < item.cost) return "Not enough RAP";
-  return "Buy";
-}
-
-const statusLabel: Record<CollectibleStatus, string> = {
-  owned: "Owned",
-  ready: "Ready",
-  locked: "Locked",
-};
-
-function collectibleStatus(item: Collectible, player: PlayerState): CollectibleStatus {
-  if (player.owned.includes(item.id)) return "owned";
-  if (isActivityDrop(item)) return "locked";
-  if (requirementsMet(item, player)) return "ready";
-  return "locked";
-}
-
-function collectibleStatusRank(item: Collectible, player: PlayerState) {
-  const status = collectibleStatus(item, player);
-  if (status === "owned") return 0;
-  if (status === "ready") return 1;
-  return 2;
-}
-
-function skillNameFontSize(name: string) {
-  if (name.length >= 12) return "7.2px";
-  if (name.length >= 11) return "7.7px";
-  if (name.length >= 10) return "8.4px";
-  return "10px";
-}
-
-function AppIcon({ category }: { category: CategoryId }) {
-  const common = { size: 22, strokeWidth: 1.8 };
-  if (category === "characters") return <Shield {...common} />;
-  if (category === "classes") return <BookOpen {...common} />;
-  if (category === "races") return <Users {...common} />;
-  if (category === "skills") return <Swords {...common} />;
-  if (category === "tools") return <Hammer {...common} />;
-  if (category === "pets") return <Sparkles {...common} />;
-  return <Gem {...common} />;
-}
-
-function ActivityIcon({ activityId }: { activityId: ActivityOption["id"] }) {
-  const common = { size: 18, strokeWidth: 1.9 };
-  if (activityId === "walking") return <Footprints {...common} />;
-  if (activityId === "reading") return <BookOpen {...common} />;
-  if (activityId === "podcast") return <Headphones {...common} />;
-  if (activityId === "gym") return <Dumbbell {...common} />;
-  if (activityId === "work") return <Briefcase {...common} />;
-  return <Music {...common} />;
-}
-
-function GameplayActivityIcon({ activity }: { activity: GameplayActivity }) {
-  const common = { size: 28, strokeWidth: 1.75 };
-  if (activity.type === "Fishing") return <Anchor {...common} />;
-  if (activity.type === "Ritual") return <Sparkles {...common} />;
-  if (activity.type === "Crafting") return <Gem {...common} />;
-  if (activity.type === "Gathering") return <Compass {...common} />;
-  return <Dice5 {...common} />;
-}
-
-function categoryForSkill(skillId: SkillId): CategoryId {
-  void skillId;
-  return "skills";
-}
 
 function isTextControl(target: EventTarget | null) {
   return target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
@@ -301,9 +179,7 @@ export function App() {
     if (!latest || latest.id === handledActivityResultId) return;
 
     setHandledActivityResultId(latest.id);
-    const droppedItem = latest.droppedCollectibleId
-      ? collectibles.find((item) => item.id === latest.droppedCollectibleId)
-      : null;
+    const droppedItem = latest.droppedCollectibleId ? getCollectibleById(latest.droppedCollectibleId) : null;
 
     setActivityResultNotice(latest);
     if (droppedItem) {
@@ -421,7 +297,7 @@ export function App() {
         return { ...category, unlocked: totalLevel, total, percent: completionPercent(totalLevel, total) };
       }
 
-      const items = collectibles.filter((item) => item.category === category.id);
+      const items = getCollectiblesByCategory(category.id);
       const unlocked = items.filter((item) => player.owned.includes(item.id)).length;
       return { ...category, unlocked, total: items.length, percent: completionPercent(unlocked, items.length) };
     });
@@ -551,145 +427,6 @@ export function App() {
   );
 }
 
-function TopBar({
-  title,
-  rp,
-  canGoBack,
-  onBack,
-  onGrantRp,
-}: {
-  title: string;
-  rp: number;
-  canGoBack: boolean;
-  onBack: () => void;
-  onGrantRp: () => void;
-}) {
-  return (
-    <header className="topbar">
-      <div className="title-cluster">
-        {canGoBack && (
-          <button className="icon-button ghost" onClick={onBack} aria-label="Back">
-            <ArrowLeft size={19} />
-          </button>
-        )}
-        <h1>{title}</h1>
-      </div>
-      <div className="wallet">
-        <span>{formatNumber(rp)} RAP</span>
-        <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RAP">
-          <Plus size={18} />
-        </button>
-      </div>
-    </header>
-  );
-}
-
-function MainMenuPage({
-  activities,
-  activityLog,
-  lifetimeRap,
-  lastSavedAt,
-  saveMessage,
-  onLogActivity,
-  onExportSave,
-  onImportSave,
-  onOpenCollectibles,
-  onOpenAdventure,
-  onOpenHandbook,
-}: {
-  activities: ActivityOption[];
-  activityLog: ActivityLogEntry[];
-  lifetimeRap: number;
-  lastSavedAt: Date | null;
-  saveMessage: string;
-  onLogActivity: (activity: ActivityOption) => void;
-  onExportSave: () => void;
-  onImportSave: () => void;
-  onOpenCollectibles: () => void;
-  onOpenAdventure: () => void;
-  onOpenHandbook: () => void;
-}) {
-  return (
-    <>
-      <section className="tile-grid main-menu-grid">
-        <button className="category-tile main-menu-tile" onClick={onOpenCollectibles}>
-          <span className="tile-icon">
-            <Gem size={23} strokeWidth={1.8} />
-          </span>
-          <span className="tile-text">
-            <strong>Collectibles</strong>
-            <small>Codex, skills, pets, mounts, classes, races</small>
-          </span>
-          <ChevronRight className="tile-chevron" size={18} />
-        </button>
-        <button className="category-tile main-menu-tile adventure-entry" onClick={onOpenAdventure}>
-          <span className="tile-icon">
-            <Compass size={23} strokeWidth={1.8} />
-          </span>
-          <span className="tile-text">
-            <strong>Adventure</strong>
-            <small>Activities and future gameplay systems</small>
-          </span>
-          <ChevronRight className="tile-chevron" size={18} />
-        </button>
-        <button className="category-tile main-menu-tile handbook-entry" onClick={onOpenHandbook}>
-          <span className="tile-icon">
-            <BookOpen size={23} strokeWidth={1.8} />
-          </span>
-          <span className="tile-text">
-            <strong>Handbook</strong>
-            <small>Rules, progression, drops, and Codex states</small>
-          </span>
-          <ChevronRight className="tile-chevron" size={18} />
-        </button>
-      </section>
-      <section className="activity-panel" aria-label="Activity log">
-        <div className="section-heading">
-          <h2>Log Activity</h2>
-          <span>1 hour</span>
-        </div>
-        <div className="activity-grid">
-          {activities.map((activity) => (
-            <button key={activity.id} className="activity-action" onClick={() => onLogActivity(activity)}>
-              <span>
-                <ActivityIcon activityId={activity.id} />
-              </span>
-              <strong>{activity.name}</strong>
-              <small>+{formatNumber(activity.rapPerHour)} RAP</small>
-            </button>
-          ))}
-        </div>
-        {activityLog.length > 0 && (
-          <div className="activity-history" aria-label="Recent activity history">
-            {activityLog.slice(0, 3).map((entry) => (
-              <span key={entry.id}>
-                <strong>{entry.name}</strong>
-                <small>+{formatNumber(entry.rap)} RAP</small>
-              </span>
-            ))}
-          </div>
-        )}
-      </section>
-      <section className="save-tools" aria-label="Save tools">
-        <div className="save-status">
-          <strong>Save Status</strong>
-          <span>Autosaved {formatSavedTime(lastSavedAt)}</span>
-          <small>{formatNumber(lifetimeRap)} lifetime RAP earned</small>
-        </div>
-        <button className="tool-action" onClick={onExportSave}>
-          <Download size={16} />
-          <span>Export Save</span>
-        </button>
-        <button className="tool-action" onClick={onImportSave}>
-          <Upload size={16} />
-          <span>Import Save</span>
-        </button>
-        {saveMessage && <p>{saveMessage}</p>}
-      </section>
-    </>
-  );
-}
-
 function CollectiblesOverviewPage({
   progress,
   recentUnlocks,
@@ -768,76 +505,6 @@ function AdventurePage({
         </span>
         <ChevronRight className="tile-chevron" size={18} />
       </button>
-    </section>
-  );
-}
-
-function HandbookPage() {
-  return (
-    <section className="handbook-page" aria-label="Handbook">
-      <article className="handbook-section">
-        <h2>Basics</h2>
-        <p>
-          Earn RAP, train Skills, unlock Collectibles, and run Activities to fill your Codex over time.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>RAP</h2>
-        <p>
-          RAP means Real Life Activity Points. RAP is spent on Skill training, direct Collectible unlocks, and repeatable Activities.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Skills</h2>
-        <p>
-          Skills use RuneScape-style XP and can reach Level 120. Skill levels unlock Collectibles and Activities.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Activities</h2>
-        <p>
-          Activities cost RAP, run for a set duration, then award XP and roll their Drop Table. Skill levels above the minimum can improve Activity XP, RAP cost, and runtime by up to 15%.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Tools</h2>
-        <p>
-          Tools are permanent Collectibles. Some are bought with RAP, while rare Tools can drop from Activities. Owned Tools can grant Account Bonuses such as extra Skill XP.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Account Bonuses</h2>
-        <p>
-          Account Bonuses are always-on rewards from owned Collectibles. The first bonuses are simple Skill XP bonuses and a rare Additional Roll chance.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Drops</h2>
-        <p>
-          Every unowned drop in an Activity table is rolled when the Activity finishes. A run can award at most one Collectible. If multiple rolls succeed, the rarest successful drop is awarded.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Additional Roll</h2>
-        <p>
-          Additional Roll chance can create one extra Activity drop roll after the normal roll. It is shown in the Activity result panel when a run finishes.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Bad Luck Protection</h2>
-        <p>
-          When completed runs reach twice a drop's base denominator, that drop's chance is tripled. Example: a 1 / 500 drop becomes 3 / 500 at 1,000 runs.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Codex States</h2>
-        <ul>
-          <li>Green means owned.</li>
-          <li>Yellow means requirements are met, but RAP may still be needed.</li>
-          <li>Red means locked or not yet obtained.</li>
-          <li>Indigo marks Activity-drop Collectibles.</li>
-        </ul>
-      </article>
     </section>
   );
 }
@@ -973,7 +640,7 @@ function CollectionPage({
   onSort: (sort: SortMode) => void;
   onOpenDetails: (item: Collectible) => void;
 }) {
-  const categoryItems = useMemo(() => collectibles.filter((item) => item.category === category), [category]);
+  const categoryItems = useMemo(() => getCollectiblesByCategory(category), [category]);
   const types = useMemo(() => [...new Set(categoryItems.map((item) => item.type))].sort(), [categoryItems]);
 
   const items = useMemo(() => {
@@ -997,7 +664,7 @@ function CollectionPage({
       if (sort === "cost-desc") return b.cost - a.cost;
       if (sort === "requirements-asc") return highestRequirement(a) - highestRequirement(b);
       if (sort === "requirements-desc") return highestRequirement(b) - highestRequirement(a);
-      return collectibles.indexOf(a) - collectibles.indexOf(b);
+      return collectibleSortIndex(a) - collectibleSortIndex(b);
     });
   }, [categoryItems, filter, player, sort, typeFilter]);
 
@@ -1095,36 +762,6 @@ function SkillsPage({
   );
 }
 
-function TileVisual({
-  icon,
-  category,
-  locked = false,
-  owned = false,
-  sourceType,
-}: {
-  icon?: string;
-  category: CategoryId;
-  locked?: boolean;
-  owned?: boolean;
-  sourceType?: Collectible["source"] extends infer Source ? Source extends { type: infer Type } ? Type : never : never;
-}) {
-  return (
-    <div className={`tile-art ${locked ? "locked" : ""} ${owned ? "owned" : ""} ${sourceType === "activity" ? "activity-source" : ""}`}>
-      {icon ? <img src={icon} alt="" draggable="false" /> : <AppIcon category={category} />}
-      {locked && (
-        <span className="tile-lock" aria-hidden="true">
-          <Lock size={12} />
-        </span>
-      )}
-      {owned && (
-        <span className="tile-owned" aria-hidden="true">
-          <Check size={12} />
-        </span>
-      )}
-    </div>
-  );
-}
-
 function CollectibleDetailView({
   item,
   player,
@@ -1139,7 +776,7 @@ function CollectibleDetailView({
   const owned = player.owned.includes(item.id);
   const unlockable = canUnlock(item, player) && !owned;
   const status = collectibleStatus(item, player);
-  const sourceActivity = item.source?.type === "activity" ? getActivity(item.source.activityId) : null;
+  const sourceActivity = sourceActivityFor(item);
   const purchaseNote = owned
     ? "Already added to your Codex."
     : sourceActivity
@@ -1499,7 +1136,7 @@ function RequirementList({ item, player }: { item: Collectible; player: PlayerSt
           const state = getRequirementState(requirement, player);
           const key = requirement.type === "skill" ? `${requirement.skillId}-${requirement.level}` : requirement.collectibleId;
           const skill = requirement.type === "skill" ? skills.find((candidate) => candidate.id === requirement.skillId) : null;
-          const requiredCollectible = requirement.type === "collectible" ? collectibles.find((candidate) => candidate.id === requirement.collectibleId) : null;
+          const requiredCollectible = requirement.type === "collectible" ? getCollectibleById(requirement.collectibleId) : null;
           const currentLevel = requirement.type === "skill" ? levelFromXp(player.skillXp[requirement.skillId]) : 0;
           const label = requirement.type === "skill" ? skillName(requirement.skillId) : requirement.label;
           const detail = requirement.type === "skill"
@@ -1531,161 +1168,6 @@ function RequirementList({ item, player }: { item: Collectible; player: PlayerSt
           );
         })
       )}
-    </div>
-  );
-}
-
-function UnlockNotice({ item, onClose }: { item: Collectible; onClose: () => void }) {
-  const categoryName = categories.find((category) => category.id === item.category)?.name ?? "Collectibles";
-
-  return (
-    <div className="sheet-backdrop unlock-backdrop" role="presentation" onClick={onClose}>
-      <section className="unlock-notice" role="dialog" aria-modal="true" aria-label={`${item.name} unlocked`} onClick={(event) => event.stopPropagation()}>
-        <div className="unlock-burst">
-          <TileVisual icon={item.icon} category={item.category} owned />
-        </div>
-        <span className="unlock-kicker">Unlocked</span>
-        <h2>{item.name}</h2>
-        <p>Added to your {categoryName} Codex.</p>
-        <button className="primary-action" onClick={onClose}>
-          Continue
-        </button>
-      </section>
-    </div>
-  );
-}
-
-function ActivityResultPanel({ result, onClose }: { result: ActivityRunResult; onClose: () => void }) {
-  const droppedItem = result.droppedCollectibleId
-    ? collectibles.find((item) => item.id === result.droppedCollectibleId)
-    : null;
-
-  return (
-    <div className="sheet-backdrop result-backdrop" role="presentation" onClick={onClose}>
-      <section className="result-panel" role="dialog" aria-modal="true" aria-label={`${result.activityName} result`} onClick={(event) => event.stopPropagation()}>
-        <button className="detail-close" onClick={onClose} aria-label="Close result">
-          <X size={18} />
-        </button>
-        <span className="unlock-kicker">Activity Complete</span>
-        <h2>{result.activityName}</h2>
-        <div className="result-summary">
-          <span>
-            <small>Run</small>
-            <strong>{formatNumber(result.runCount)}</strong>
-          </span>
-          <span>
-            <small>RAP Spent</small>
-            <strong>{formatNumber(result.rapSpent)}</strong>
-          </span>
-          <span>
-            <small>Runtime</small>
-            <strong>{formatDuration(result.runtimeMs)}</strong>
-          </span>
-        </div>
-        <div className="result-section">
-          <h3>XP</h3>
-          {result.xp.length === 0 ? (
-            <p>No XP gained.</p>
-          ) : (
-            result.xp.map((entry) => (
-              <div key={entry.skillId} className="result-row">
-                <span>{skillName(entry.skillId)}</span>
-                <strong>
-                  +{formatNumber(entry.amount)} XP{entry.bonusPercent > 0 ? ` (+${entry.bonusPercent.toFixed(1)}%)` : ""}
-                </strong>
-              </div>
-            ))
-          )}
-        </div>
-        <div className="result-section">
-          <h3>Rolls</h3>
-          {result.rolls.map((roll) => {
-            const item = roll.droppedCollectibleId ? collectibles.find((candidate) => candidate.id === roll.droppedCollectibleId) : null;
-            return (
-              <div key={roll.label} className={`result-row ${roll.triggered ? "" : "muted"}`}>
-                <span>{roll.label}</span>
-                <strong>{!roll.triggered ? "Not triggered" : item ? item.name : "No drop"}</strong>
-              </div>
-            );
-          })}
-          {result.additionalRollChancePercent > 0 && (
-            <p>{result.additionalRollChancePercent.toFixed(1)}% Additional Roll chance was active.</p>
-          )}
-        </div>
-        <div className={`result-drop ${droppedItem ? "hit" : ""}`}>
-          {droppedItem ? (
-            <>
-              <TileVisual icon={droppedItem.icon} category={droppedItem.category} owned sourceType={droppedItem.source?.type} />
-              <span>
-                <strong>{droppedItem.name}</strong>
-                <small>Added to Codex</small>
-              </span>
-            </>
-          ) : (
-            <span>
-              <strong>No collectible drop</strong>
-              <small>Try another run.</small>
-            </span>
-          )}
-        </div>
-        <button className="primary-action" onClick={onClose}>
-          Continue
-        </button>
-      </section>
-    </div>
-  );
-}
-
-function ConfirmDialog({ item, onCancel, onConfirm }: { item: Collectible; onCancel: () => void; onConfirm: () => void }) {
-  return (
-    <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
-      <section className="confirm-dialog" role="dialog" aria-modal="true" aria-label="Confirm purchase" onClick={(event) => event.stopPropagation()}>
-        <h2>Buy {item.name}?</h2>
-        <p>This will spend {formatNumber(item.cost)} RAP and unlock it in your Codex.</p>
-        <div className="dialog-actions">
-          <button className="secondary-action" onClick={onCancel}>
-            No
-          </button>
-          <button className="primary-action" onClick={onConfirm}>
-            Yes
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function ImportDialog({
-  value,
-  onChange,
-  onCancel,
-  onImport,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onCancel: () => void;
-  onImport: () => void;
-}) {
-  return (
-    <div className="sheet-backdrop" role="presentation" onClick={onCancel}>
-      <section className="confirm-dialog import-dialog" role="dialog" aria-modal="true" aria-label="Import save" onClick={(event) => event.stopPropagation()}>
-        <h2>Import Save</h2>
-        <p>Paste a RAP save JSON file. Importing replaces the current local progress.</p>
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="Paste save JSON"
-          aria-label="Save JSON"
-        />
-        <div className="dialog-actions">
-          <button className="secondary-action" onClick={onCancel}>
-            Cancel
-          </button>
-          <button className="primary-action" disabled={value.trim().length === 0} onClick={onImport}>
-            Import
-          </button>
-        </div>
-      </section>
     </div>
   );
 }

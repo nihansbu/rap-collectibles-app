@@ -38,17 +38,25 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 
 ## Folder Structure
 
-- `src/App.tsx`: app shell, main menu, pages, purchase dialog, full-content detail views, filters, skill training interactions, and Activity UI.
+- `src/App.tsx`: app shell, navigation state, player-state actions, autosave loop, and page/detail routing.
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
-- `src/data.ts`: category, skill, collectible, and requirement data.
+- `src/catalog.ts`: catalog selectors and rules such as collectible lookup, category filtering, requirement state, unlock state, status grouping, and catalog ordering.
+- `src/data.ts`: stable public facade that re-exports modular catalog data.
+- `src/data/types.ts`: shared catalog types.
+- `src/data/categories.ts`: category definitions.
+- `src/data/skills.ts`: skill definitions.
+- `src/data/collectibles/*.ts`: Collectible definitions split by category.
 - `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
+- `src/format.ts`: shared number, percent, and timestamp formatting helpers.
+- `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
 - `src/save.ts`: versioned local save/load system, v1/v2/v3-to-v4 migration, validation, normalization, active training persistence, active Activity run persistence, offline processing, activity log persistence, and backup rotation for player progress.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
+- `src/ui/`: reusable UI components such as `TopBar`, dialogs, icon renderers, and tile visuals.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
 - `index.html`: Vite HTML entry.
-- `scripts/prepare-icon-prompts.mjs`: reads `src/data.ts` with the TypeScript AST and writes missing collectible icon prompts to `tmp/icon-pipeline/missing-icons.jsonl`.
+- `scripts/prepare-icon-prompts.mjs`: reads modular collectible files under `src/data/collectibles/` with the TypeScript AST and writes missing collectible icon prompts to `tmp/icon-pipeline/missing-icons.jsonl`.
 - `scripts/normalize-icon.py`: converts chroma-key generated icon sources into transparent 256x256 WebP files.
 
 ## Architecture Overview
@@ -79,6 +87,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Tapping a collectible or skill card opens a full-content detail view under the topbar. Lists no longer trigger immediate buy/train actions.
 - Tapping an Activity card opens a full-content detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
 - The Activity Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
+- Katalogdaten are modularized by domain/category. `src/data.ts` remains the stable import facade so existing systems can keep importing from `./data`.
+- Catalog lookup and unlock rules live in `src/catalog.ts` rather than page components. Future database/indexing work should attach at this selector layer before touching UI components.
+- The app still uses a static client-side catalog and local save data. A real backend database is not needed for GitHub Pages yet; consider IndexedDB first for very large local player histories, and a server/cloud database when accounts or cross-device sync become active requirements.
 
 Implemented early systems:
 
@@ -94,7 +105,7 @@ Implemented early systems:
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
 - Handbook content is static UI text in `src/App.tsx` and currently has no save data.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
-- Collectible catalog: implemented in `src/data.ts`.
+- Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
 - Codex collection overview: implemented as category progress tiles.
 - Codex progress overview: category tiles show `current/total`, percentage, and a progress bar. Skills use total skill level out of maximum total level.
@@ -328,6 +339,12 @@ Candidate combined skill roster to finalize:
   - Mobile Playwright check confirmed `Fisher's Trawler` shows Skill Advantage, owned Tool bonuses, the expanded Drop Table including `Storm Harpoon` at `1 / 25000`, and a result panel after completion.
   - The Activity Result Panel showed RAP spent, runtime, XP by skill, Roll 1, Additional Roll, and the active Additional Roll chance from `Storm Harpoon`.
   - No console warnings/errors and no failed requests were observed in the Tools/Activity Result QA run.
+- Architecture refactor verified locally:
+  - `npm run build` succeeds after splitting catalog data, adding `src/catalog.ts`, adding `src/format.ts`, and extracting shared UI/page components.
+  - `npm run icons:prepare` succeeds after updating the icon prompt pipeline for modular `src/data/collectibles/*.ts` files. It currently reports 43 Collectibles and 21 missing icons.
+  - `src/data.ts` is now a small stable facade, while category-specific data lives under `src/data/collectibles/`.
+  - `src/App.tsx` was reduced from about 59.9 KB to about 41.7 KB by moving shared rules, formatting, visual primitives, dialogs, TopBar, Main Menu, and Handbook into separate modules.
+  - No gameplay behavior was intentionally changed in this refactor.
 
 ## Successful Solutions
 
@@ -418,6 +435,16 @@ Candidate combined skill roster to finalize:
 - Why it works: Account Bonuses are derived from owned Collectibles, so adding future bonus-granting drops is data-first. Skill Advantage is computed from existing skill requirements, so Activities automatically reward over-leveling without custom per-Activity code. Activity Results are saved as structured rows, so the UI can display Roll 1, Additional Roll, XP, RAP spent, and drops after reload-safe timestamp processing.
 - Files involved: `src/data.ts`, `src/bonuses.ts`, `src/activities.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`, `project_memory.md`, `game_design.md`.
 - Commands used: `npm run build`, local Playwright mobile Tools/Activity Result QA through `node`.
+
+2026-07-08: Architecture refactor for modular catalog and UI structure.
+
+- Original problem: `src/App.tsx` and `src/data.ts` were becoming too large and mixed UI, catalog rules, helper formatting, and static content. This would make future large content patches harder and risk inconsistent rule changes across pages.
+- Successful solution: split catalog data into `src/data/` modules, keep `src/data.ts` as a stable facade, add `src/catalog.ts` for lookup/unlock/status selectors, add `src/format.ts`, and extract reusable UI/page components to `src/ui/` and `src/pages/`.
+- Asset pipeline detail: `scripts/prepare-icon-prompts.mjs` now reads `src/data/collectibles/*.ts`; keeping it pointed at the old facade would produce `Collectibles: 0`.
+- Why it works: systems can still import the public catalog from `./data`, but future category additions now happen in smaller files. UI components call selectors such as `getCollectiblesByCategory`, `getCollectibleById`, `collectibleStatus`, and `requirementsMet`, which gives the project a clear future insertion point for indexing, IndexedDB, or backend catalog loading.
+- Database decision: do not add a server database for the current GitHub Pages prototype. Static TypeScript catalog data plus selector/index modules is the right current layer. Revisit IndexedDB for large local logs/histories and a backend database for account/cloud-sync requirements.
+- Files involved: `src/App.tsx`, `src/catalog.ts`, `src/format.ts`, `src/data.ts`, `src/data/**`, `src/pages/**`, `src/ui/**`, `project_memory.md`, `game_design.md`.
+- Commands used: `npm run build`, `npm run icons:prepare`.
 
 ## Known Issues
 

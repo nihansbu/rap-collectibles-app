@@ -333,7 +333,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Manual save export/import is available as a safety fallback.
-- Save v4 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Activity runs, Activity run counts, recent Activity results, and recent manual activity log entries.
+- Save v5 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Activity runs, Activity run counts, recent Activity results, and recent manual activity log entries.
 - The main menu exposes local autosave status and lifetime RAP earned.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -347,7 +347,6 @@ Current first screen elements:
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
 - Main menu tiles: Collectibles, Adventure, and Handbook.
-- The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Pets, Mounts.
 - The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
