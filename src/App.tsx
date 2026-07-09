@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  BookOpen,
   Check,
   ChevronRight,
   Compass,
   Dice5,
-  Download,
   Gem,
   Lock,
   Plus,
   Search,
   Swords,
-  Upload,
   X,
 } from "lucide-react";
 import {
@@ -54,14 +51,15 @@ import {
 } from "./catalog";
 import { categories, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
-import { completionPercent, formatNumber, formatSavedTime } from "./format";
+import { completionPercent, formatNumber } from "./format";
+import { createHandbookContext, type HandbookContext } from "./handbook";
 import { HandbookPage } from "./pages/HandbookPage";
 import { MainMenuPage } from "./pages/MainMenuPage";
 import { TopBar } from "./ui/TopBar";
-import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
+import { ActivityResultPanel, ConfirmDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
 import { useLongPress } from "./ui/useLongPress";
-import { exportPlayerState, importPlayerState, loadPlayerState, savePlayerState, type PlayerState } from "./save";
+import { loadPlayerState, savePlayerState, type PlayerState } from "./save";
 import {
   formatDuration,
   isSkillTraining,
@@ -78,18 +76,24 @@ import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
 type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "requirements-desc";
-type Page =
-  | { type: "main" }
-  | { type: "collectibles" }
-  | { type: "adventure" }
-  | { type: "handbook" }
-  | { type: "activities"; from?: "main" | "adventure" }
-  | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type DetailView =
   | { type: "collectible"; item: Collectible }
   | { type: "skill"; skillId: SkillId }
   | { type: "activity"; activityId: GameplayActivityId }
   | { type: "manual-activity"; activity: ActivityOption };
+type ContentPage =
+  | { type: "main" }
+  | { type: "collectibles" }
+  | { type: "adventure" }
+  | { type: "activities"; from?: "main" | "adventure" }
+  | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
+type Page = ContentPage | {
+  type: "handbook";
+  mode: "context" | "index";
+  context: HandbookContext;
+  origin: ContentPage;
+  originDetail: DetailView | null;
+};
 type CategoryProgress = {
   id: CategoryId;
   name: string;
@@ -103,6 +107,43 @@ function isTextControl(target: EventTarget | null) {
   return target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
 }
 
+function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
+  if (detailView?.type === "collectible") {
+    return createHandbookContext("collectible-detail", {
+      title: detailView.item.name,
+      intro: `This page explains ${detailView.item.name}, its ${detailView.item.type} classification, unlock state, source, cost, and requirements.`,
+    });
+  }
+
+  if (detailView?.type === "skill") {
+    const name = skillName(detailView.skillId);
+    return createHandbookContext("skill-detail", {
+      title: name,
+      intro: `This page shows ${name} progression, XP toward the next level, current training state, and the timed training sessions available.`,
+    });
+  }
+
+  if (detailView?.type === "activity") {
+    const activity = getActivity(detailView.activityId);
+    return createHandbookContext("activity-detail", {
+      title: activity?.name ?? "Activity Details",
+      intro: activity
+        ? `This page explains ${activity.name}, including its requirements, effective RAP cost, runtime, XP rewards, Skill Advantage, and Drop Table.`
+        : undefined,
+    });
+  }
+
+  if (detailView?.type === "manual-activity") {
+    return createHandbookContext("manual-activity-detail", {
+      title: detailView.activity.name,
+      intro: `This page confirms a one-hour ${detailView.activity.name} entry and the RAP it adds to the account.`,
+    });
+  }
+
+  if (page.type === "category") return createHandbookContext(`category:${page.id}`);
+  return createHandbookContext(page.type);
+}
+
 export function App() {
   const [player, setPlayer] = useState<PlayerState>(() => loadPlayerState());
   const [page, setPage] = useState<Page>({ type: "main" });
@@ -112,14 +153,10 @@ export function App() {
   const [sort, setSort] = useState<SortMode>("default");
   const [detailView, setDetailView] = useState<DetailView | null>(null);
   const [confirmItem, setConfirmItem] = useState<Collectible | null>(null);
-  const [saveMessage, setSaveMessage] = useState("");
-  const [importText, setImportText] = useState("");
-  const [importOpen, setImportOpen] = useState(false);
   const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
   const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
   const [handledActivityResultId, setHandledActivityResultId] = useState<string | null>(null);
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
 
   const title = page.type === "main"
     ? "Menu"
@@ -159,7 +196,6 @@ export function App() {
 
   useEffect(() => {
     savePlayerState(player);
-    setLastSavedAt(new Date());
   }, [player]);
 
   useEffect(() => {
@@ -274,40 +310,21 @@ export function App() {
     setDetailView({ type: "activity", activityId });
   }
 
-  async function exportSave() {
-    const current = processActiveTrainings(player);
-    setPlayer(current);
-
-    const rawSave = exportPlayerState(current);
-    const blob = new Blob([rawSave], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `rap-collectibles-save-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    try {
-      await navigator.clipboard?.writeText(rawSave);
-      setSaveMessage("Save exported and copied.");
-    } catch {
-      setSaveMessage("Save exported.");
-    }
-  }
-
-  function importSave() {
-    const imported = importPlayerState(importText);
-    if (!imported) {
-      setSaveMessage("Import failed. Paste a valid RAP save file.");
+  function openHandbook() {
+    if (page.type === "handbook") {
+      if (page.mode === "context") setPage({ ...page, mode: "index" });
       return;
     }
 
-    setPlayer(imported);
-    setPage({ type: "main" });
+    const context = handbookContextFor(page, detailView);
+    setPage({
+      type: "handbook",
+      mode: "context",
+      context,
+      origin: page,
+      originDetail: detailView,
+    });
     setDetailView(null);
-    setImportOpen(false);
-    setImportText("");
-    setSaveMessage("Save imported.");
   }
 
   const categoryProgress = useMemo(() => {
@@ -341,6 +358,11 @@ export function App() {
         rp={player.rp}
         canGoBack={page.type !== "main" || detailView !== null}
         onBack={() => {
+          if (page.type === "handbook") {
+            setPage(page.origin);
+            setDetailView(page.originDetail);
+            return;
+          }
           if (detailView) {
             setDetailView(null);
             return;
@@ -356,6 +378,8 @@ export function App() {
           setPage({ type: "main" });
         }}
         onGrantRp={grantRp}
+        onOpenHandbook={openHandbook}
+        handbookMode={page.type === "handbook" ? page.mode : undefined}
       />
 
       <main className="content">
@@ -392,23 +416,13 @@ export function App() {
         ) : page.type === "main" ? (
           <MainMenuPage
             activities={ACTIVITY_OPTIONS}
-            activityLog={player.activityLog}
             categoryProgress={categoryProgress}
             totalActivityRuns={totalActivityRuns}
             activeActivityCount={player.activeActivityRuns.length}
-            lifetimeRap={player.lifetimeRap}
-            lastSavedAt={lastSavedAt}
-            saveMessage={saveMessage}
             onLogActivity={logActivity}
             onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
-            onExportSave={exportSave}
-            onImportSave={() => {
-              setImportOpen(true);
-              setSaveMessage("");
-            }}
             onOpenActivities={() => setPage({ type: "activities", from: "main" })}
             onOpenCategory={(id) => setPage({ type: "category", id, from: "main" })}
-            onOpenHandbook={() => setPage({ type: "handbook" })}
           />
         ) : page.type === "collectibles" ? (
           <CollectiblesOverviewPage
@@ -422,7 +436,12 @@ export function App() {
             onOpenActivities={() => setPage({ type: "activities", from: "adventure" })}
           />
         ) : page.type === "handbook" ? (
-          <HandbookPage />
+          <HandbookPage
+            context={page.context}
+            mode={page.mode}
+            onOpenIndex={() => setPage({ ...page, mode: "index" })}
+            onOpenContext={() => setPage({ ...page, mode: "context" })}
+          />
         ) : page.type === "activities" ? (
           <ActivitiesPage
             player={player}
@@ -449,14 +468,6 @@ export function App() {
 
       {confirmItem && (
         <ConfirmDialog item={confirmItem} onCancel={() => setConfirmItem(null)} onConfirm={() => buyItem(confirmItem)} />
-      )}
-      {importOpen && (
-        <ImportDialog
-          value={importText}
-          onChange={setImportText}
-          onCancel={() => setImportOpen(false)}
-          onImport={importSave}
-        />
       )}
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
       {activityResultNotice && <ActivityResultPanel result={activityResultNotice} onClose={() => setActivityResultNotice(null)} />}

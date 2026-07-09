@@ -49,6 +49,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/data/collectibles/*.ts`: Collectible definitions split by category.
 - `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
+- `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
 - `src/save.ts`: versioned local save/load system, v1/v2/v3-to-v4 migration, validation, normalization, active training persistence, active Activity run persistence, offline processing, activity log persistence, and backup rotation for player progress.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
@@ -64,20 +65,20 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
 - Home page title: `Menu`.
-- The main menu is a compact dashboard. It shows Adventure entries, direct Collectibles category tiles, a Handbook link, manual Log Activity tiles, and save tools on one screen where possible.
+- The main menu is a compact dashboard based on the approved icon-first mockup. Adventure, direct Collectibles categories, and manual Log Activity use the same unframed section and tile language.
 - The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
-- The `Handbook` page is a player-facing rules guide for systems that should not clutter the main gameplay UI.
+- The `Handbook` is a player-facing contextual wiki for systems that should not clutter the main gameplay UI. Every topbar exposes it through a compact book icon.
 - No bottom navigation in the first prototype.
-- A sticky topbar always shows the current page name, current RAP, and a plus button that grants 10,000 RAP.
+- A sticky topbar always shows the current page name, a contextual Handbook button, current RAP, and a plus button that grants 10,000 RAP.
 - Subpages use a back button in the topbar.
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Classes and Races are implemented as standard collectible categories using the `type` field for broad grouping rather than nested subpages.
 - Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
 - Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
 - The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
-- The main menu includes manual Save Export and Import tools. Export produces the same normalized v4 save JSON used by localStorage; Import reuses the save parser/migration path and still accepts older supported save versions.
-- The main menu shows quick manual activity logging and local save status. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
+- Save Status, Export Save, Import Save, and recent Activity history are intentionally not shown on the main dashboard. The save engine still autosaves locally; backup controls can move to a future Settings/account area.
+- The main menu shows quick manual activity logging. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
 - The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
 - Gameplay Activities are separate from manual real-life activity logging. Activities live under `Adventure`, cost RAP, run for a short timestamped duration in the prototype, award reduced skill XP, and can drop exclusive collectibles.
@@ -106,7 +107,7 @@ Implemented early systems:
 - Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
-- Handbook content is static UI text in `src/App.tsx` and currently has no save data.
+- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 17 reusable entries across five categories, supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -356,6 +357,14 @@ Candidate combined skill roster to finalize:
   - Mobile Playwright check confirmed tapping Stable Pony opens the purchase confirmation while long-pressing the same Mount opens its detail view.
   - Mobile Playwright check confirmed long-pressing Fisher's Trawler opens its Activity detail view.
   - No console warnings/errors and no failed requests were observed in the dashboard/Long Press QA run.
+- Mockup dashboard and contextual Handbook verified locally on 2026-07-09:
+  - `npm run build` succeeds with the data-driven Handbook registry and redesigned main dashboard.
+  - The Codex in-app Browser is available again and was used at `390x844` for the required rendered verification.
+  - The redesigned Menu fits Adventure, Collectibles, and Log Activity within the first `390x844` viewport with no horizontal overflow. A `360x800` check also showed no clipped tile labels or topbar overflow.
+  - Save Status, Export Save, Import Save, and recent Activity history are absent from the main dashboard; local autosave still works.
+  - The topbar book icon opens the correct Main Menu, Activities, and Fisher's Trawler contextual guides.
+  - Opening the book again reaches the complete index; search for `Bad Luck` returns one article, article navigation works, and Back restores the exact Activity detail view.
+  - Tapping Walking still grants 20,000 RAP and no console warnings/errors were observed.
 
 ## Successful Solutions
 
@@ -456,6 +465,15 @@ Candidate combined skill roster to finalize:
 - Database decision: do not add a server database for the current GitHub Pages prototype. Static TypeScript catalog data plus selector/index modules is the right current layer. Revisit IndexedDB for large local logs/histories and a backend database for account/cloud-sync requirements.
 - Files involved: `src/App.tsx`, `src/catalog.ts`, `src/format.ts`, `src/data.ts`, `src/data/**`, `src/pages/**`, `src/ui/**`, `project_memory.md`, `game_design.md`.
 - Commands used: `npm run build`, `npm run icons:prepare`.
+
+2026-07-09: Contextual Handbook wiki and unified main dashboard.
+
+- Original problem: the main menu mixed three visual systems, detached the Handbook from page context, and spent a large part of the screen on save controls. The static Handbook page would also become unmanageable with hundreds of mechanics.
+- Successful solution: use the selected compact mockup as the dashboard target, remove save/history controls from the Menu, move the Handbook to a global topbar action, and add `src/handbook.ts` as a reusable article/context registry. `HandbookPage` now supports contextual introductions, relevant entries, full index browsing, search, category filters, related topics, and article detail views.
+- Why it works: pages only resolve a Handbook context while mechanics remain single-source articles. Opening the Handbook stores both the origin page and active detail view, so Back restores the exact prior state. The same registry can grow beyond 200 entries without adding page-specific Handbook components.
+- Important implementation detail: `.app-shell` uses `width: min(100%, 430px)` rather than `100vw`; the latter included desktop scrollbar width and produced a horizontal overflow during long Handbook pages.
+- Files involved: `src/handbook.ts`, `src/pages/HandbookPage.tsx`, `src/pages/MainMenuPage.tsx`, `src/ui/TopBar.tsx`, `src/App.tsx`, `src/styles.css`, `game_design.md`, `project_memory.md`.
+- Commands and tools used: `npm run build`, Vite dev server, Codex in-app Browser at `390x844` and `360x800`, side-by-side mockup comparison.
 
 ## Known Issues
 

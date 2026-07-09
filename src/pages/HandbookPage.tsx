@@ -1,69 +1,224 @@
-export function HandbookPage() {
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, BookOpen, ChevronRight, Search, X } from "lucide-react";
+import {
+  getContextEntries,
+  getHandbookEntry,
+  handbookCategories,
+  handbookEntries,
+  type HandbookCategoryId,
+  type HandbookContext,
+  type HandbookEntry,
+} from "../handbook";
+
+type HandbookMode = "context" | "index";
+type CategoryFilter = "all" | HandbookCategoryId;
+
+export function HandbookPage({
+  context,
+  mode,
+  onOpenIndex,
+  onOpenContext,
+}: {
+  context: HandbookContext;
+  mode: HandbookMode;
+  onOpenIndex: () => void;
+  onOpenContext: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedEntryId(null);
+    if (mode === "context") {
+      setQuery("");
+      setCategory("all");
+    }
+  }, [context.id, mode]);
+
+  const filteredEntries = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+
+    return handbookEntries.filter((entry) => {
+      if (category !== "all" && entry.category !== category) return false;
+      if (!normalizedQuery) return true;
+      return `${entry.title} ${entry.summary}`.toLocaleLowerCase().includes(normalizedQuery);
+    });
+  }, [category, query]);
+
+  const selectedEntry = selectedEntryId ? getHandbookEntry(selectedEntryId) : undefined;
+
+  if (selectedEntry) {
+    return (
+      <HandbookArticle
+        entry={selectedEntry}
+        backLabel={mode === "context" ? `Back to ${context.title}` : "Back to all topics"}
+        onBack={() => setSelectedEntryId(null)}
+        onOpenEntry={setSelectedEntryId}
+      />
+    );
+  }
+
+  if (mode === "index") {
+    return (
+      <section className="handbook-page handbook-index" aria-label="Full Handbook">
+        <header className="handbook-index-heading">
+          <span>Complete Wiki</span>
+          <h2>All Topics</h2>
+          <p>Browse every rule, progression system, reward source, and account mechanic.</p>
+          <button className="context-return" onClick={onOpenContext}>
+            <ArrowLeft size={15} />
+            <span>Return to {context.title}</span>
+          </button>
+        </header>
+
+        <label className="handbook-search">
+          <Search size={17} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search the Handbook"
+            aria-label="Search the Handbook"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label="Clear search">
+              <X size={15} />
+            </button>
+          )}
+        </label>
+
+        <div className="handbook-category-tabs" aria-label="Handbook categories">
+          <button className={category === "all" ? "active" : ""} onClick={() => setCategory("all")}>All</button>
+          {handbookCategories.map((item) => (
+            <button
+              key={item.id}
+              className={category === item.id ? "active" : ""}
+              onClick={() => setCategory(item.id)}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+
+        <div className="handbook-list-heading">
+          <h3>{category === "all" ? "Entries" : handbookCategories.find((item) => item.id === category)?.name}</h3>
+          <span>{filteredEntries.length}</span>
+        </div>
+
+        {filteredEntries.length > 0 ? (
+          <HandbookEntryList entries={filteredEntries} onOpenEntry={setSelectedEntryId} />
+        ) : (
+          <div className="handbook-empty">
+            <Search size={22} />
+            <strong>No matching entries</strong>
+            <span>Try another name or category.</span>
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  const contextEntries = getContextEntries(context);
+
   return (
-    <section className="handbook-page" aria-label="Handbook">
-      <article className="handbook-section">
-        <h2>Basics</h2>
-        <p>
-          Earn RAP, train Skills, unlock Collectibles, and run Activities to fill your Codex over time.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>RAP</h2>
-        <p>
-          RAP means Real Life Activity Points. RAP is spent on Skill training, direct Collectible unlocks, and repeatable Activities.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Skills</h2>
-        <p>
-          Skills use RuneScape-style XP and can reach Level 120. Skill levels unlock Collectibles and Activities.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Activities</h2>
-        <p>
-          Activities cost RAP, run for a set duration, then award XP and roll their Drop Table. Skill levels above the minimum can improve Activity XP, RAP cost, and runtime by up to 15%.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Tools</h2>
-        <p>
-          Tools are permanent Collectibles. Some are bought with RAP, while rare Tools can drop from Activities. Owned Tools can grant Account Bonuses such as extra Skill XP.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Account Bonuses</h2>
-        <p>
-          Account Bonuses are always-on rewards from owned Collectibles. The first bonuses are simple Skill XP bonuses and a rare Additional Roll chance.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Drops</h2>
-        <p>
-          Every unowned drop in an Activity table is rolled when the Activity finishes. A run can award at most one Collectible. If multiple rolls succeed, the rarest successful drop is awarded.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Additional Roll</h2>
-        <p>
-          Additional Roll chance can create one extra Activity drop roll after the normal roll. It is shown in the Activity result panel when a run finishes.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Bad Luck Protection</h2>
-        <p>
-          When completed runs reach twice a drop's base denominator, that drop's chance is tripled. Example: a 1 / 500 drop becomes 3 / 500 at 1,000 runs.
-        </p>
-      </article>
-      <article className="handbook-section">
-        <h2>Codex States</h2>
-        <ul>
-          <li>Green means owned.</li>
-          <li>Yellow means requirements are met, but RAP may still be needed.</li>
-          <li>Red means locked or not yet obtained.</li>
-          <li>Indigo marks Activity-drop Collectibles.</li>
-        </ul>
-      </article>
+    <section className="handbook-page handbook-context" aria-label={`${context.title} Handbook guide`}>
+      <header className="handbook-context-intro">
+        <span>Context Guide</span>
+        <h2>{context.title}</h2>
+        <p>{context.intro}</p>
+      </header>
+
+      <div className="handbook-list-heading">
+        <h3>Relevant Topics</h3>
+        <span>{contextEntries.length}</span>
+      </div>
+      <HandbookEntryList entries={contextEntries} onOpenEntry={setSelectedEntryId} />
+
+      <button className="handbook-index-action" onClick={onOpenIndex}>
+        <BookOpen size={18} />
+        <span>
+          <strong>Browse Full Handbook</strong>
+          <small>{handbookEntries.length} entries across {handbookCategories.length} categories</small>
+        </span>
+        <ChevronRight size={17} />
+      </button>
     </section>
+  );
+}
+
+function HandbookEntryList({
+  entries,
+  onOpenEntry,
+}: {
+  entries: HandbookEntry[];
+  onOpenEntry: (id: string) => void;
+}) {
+  return (
+    <div className="handbook-entry-list">
+      {entries.map((entry) => (
+        <button key={entry.id} className="handbook-entry-row" onClick={() => onOpenEntry(entry.id)}>
+          <span>
+            <strong>{entry.title}</strong>
+            <small>{entry.summary}</small>
+          </span>
+          <ChevronRight size={17} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HandbookArticle({
+  entry,
+  backLabel,
+  onBack,
+  onOpenEntry,
+}: {
+  entry: HandbookEntry;
+  backLabel: string;
+  onBack: () => void;
+  onOpenEntry: (id: string) => void;
+}) {
+  const categoryName = handbookCategories.find((category) => category.id === entry.category)?.name ?? "Handbook";
+  const relatedEntries = entry.relatedEntryIds?.flatMap((id) => {
+    const related = getHandbookEntry(id);
+    return related ? [related] : [];
+  }) ?? [];
+
+  return (
+    <article className="handbook-page handbook-article" aria-label={entry.title}>
+      <button className="handbook-article-back" onClick={onBack}>
+        <ArrowLeft size={15} />
+        <span>{backLabel}</span>
+      </button>
+
+      <header>
+        <span>{categoryName}</span>
+        <h2>{entry.title}</h2>
+        <p>{entry.summary}</p>
+      </header>
+
+      <div className="handbook-article-body">
+        {entry.sections.map((section, index) => (
+          <section key={`${entry.id}-${index}`}>
+            {section.heading && <h3>{section.heading}</h3>}
+            {section.paragraphs?.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            {section.bullets && (
+              <ul>
+                {section.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+              </ul>
+            )}
+          </section>
+        ))}
+      </div>
+
+      {relatedEntries.length > 0 && (
+        <section className="handbook-related">
+          <h3>Related Topics</h3>
+          <HandbookEntryList entries={relatedEntries} onOpenEntry={onOpenEntry} />
+        </section>
+      )}
+    </article>
   );
 }

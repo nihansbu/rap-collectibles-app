@@ -56,7 +56,7 @@ Early collectible cost bands:
 
 ## Handbook
 
-The Handbook is a player-facing rules and guidance section reachable from the main menu.
+The Handbook is a player-facing in-app wiki available from the book icon in every topbar.
 
 Design rules:
 
@@ -64,6 +64,11 @@ Design rules:
 - The Handbook is not a developer design document; it should use clear in-game language.
 - Whenever a new mechanic is added or an existing mechanic changes, the Handbook must be reviewed and updated if that mechanic affects player-facing rules.
 - Detailed system explanations should prefer the Handbook over repeated dense copy inside core gameplay panels.
+- Opening the Handbook from a page first shows a short explanation of that page and a curated set of relevant entries.
+- Opening the book icon again from a contextual guide opens the complete Handbook index.
+- Back returns to the exact origin, including an open Skill, Collectible, Activity, or manual Log Activity detail view.
+- Entries are reusable wiki articles. A mechanic such as Bad Luck Protection should be written once and linked from every relevant page context.
+- The full Handbook must remain practical at 200 or more entries through search, categories, related topics, and a data-driven article registry.
 
 Current Handbook topics:
 
@@ -77,6 +82,11 @@ Current Handbook topics:
 - Additional Roll
 - Bad Luck Protection
 - Codex States
+- Requirements
+- Skill Training
+- Skill Advantage
+- Activity Results
+- Saving Progress
 
 ## Collections And Codex
 
@@ -332,9 +342,9 @@ Progress persistence decision:
 - RAP, owned collectibles, and skill XP are considered core save data.
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
-- Manual save export/import is available as a safety fallback.
+- Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
 - Save v5 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Activity runs, Activity run counts, recent Activity results, and recent manual activity log entries.
-- The main menu exposes local autosave status and lifetime RAP earned.
+- Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
 ## First Screen Concept
@@ -346,11 +356,12 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Main menu dashboard with compact Adventure entries, direct Collectibles category tiles, a Handbook link, and manual Log Activity tiles.
+- Main menu dashboard with three consistent, unframed sections: Adventure entries, direct Collectibles category tiles, and manual Log Activity tiles.
 - The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
 - Collectibles category tiles show count, percentage, and progress bar.
-- The main menu includes a compact manual `Log Activity` panel for one-hour activity entries.
-- The main menu includes Save Status, Export Save, and Import Save controls.
+- The main menu includes a compact manual `Log Activity` grid for one-hour activity entries.
+- The Handbook is a global contextual topbar action, not a main-menu tile.
+- Save Status, Export Save, Import Save, and recent log history do not occupy the main dashboard.
 - No bottom navigation.
 - Subpages are reached by tapping compact dashboard/category tiles. If a subpage was opened directly from the main dashboard, Back returns to the dashboard.
 
@@ -440,14 +451,14 @@ Build only:
 - Manual one-hour activity logging that grants RAP.
 - Mount purchasing with RAP.
 - Main Menu with Collectibles and Adventure.
-- Handbook reachable from the Main Menu.
+- Contextual Handbook available from every topbar, plus a searchable complete wiki index.
 - Repeatable Activities under Adventure.
 - Activity-only collectible drops visible in their normal Codex categories.
 - Bad Luck Protection display for Activity drops.
 - Skill levels required by some mounts.
 - Time-based RAP skill training with up to three concurrent skills.
 - Codex overview with category progress.
-- Codex overview with completion percentage, progress bars, recent unlocks, and save status.
+- Codex overview with completion percentage, progress bars, and recent unlocks.
 - All RuneScape/Old School RuneScape skills, max level 120.
 - Shared collection page pattern for Characters, Pets, and Mounts.
 
