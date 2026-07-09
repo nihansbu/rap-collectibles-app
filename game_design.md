@@ -88,6 +88,14 @@ Current Handbook topics:
 - Activity Results
 - Saving Progress
 
+## Icon Art Direction
+
+Collectible and system icons are reusable transparent assets in a gritty, matte, old-school MMORPG inventory style. They must never contain a frame, tile, card, background, text, or number; the surrounding UI provides those layers.
+
+New icons should remain readable at small sizes while introducing measured variety across the collection: distinct silhouettes, poses or orientations, materials, palettes, and one memorable prop or construction detail. Characters and races should not all be helmeted armored busts. Pets, mounts, tools, classes, and UI symbols should each retain their category identity without becoming visually interchangeable. Existing approved icons can remain in use, but future additions should follow this broader variation rule.
+
+The RAP wallet uses a compact transparent activity sigil above the numeric RAP value in the TopBar. It is a UI symbol, not a second currency or a decorative tile.
+
 ## Collections And Codex
 
 The Codex is the central collection overview. It should make the player feel immediate progress.

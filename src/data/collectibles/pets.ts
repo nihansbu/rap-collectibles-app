@@ -65,6 +65,7 @@ export const petsCollectibles: Collectible[] = [
     name: "Trawler Gull",
     description: "A stubborn harbor companion that follows lucky fishing crews.",
     type: "Aquatic",
+    icon: "assets/icons/pets/pet-trawler-gull.webp",
     cost: 0,
     rarity: "Rare",
     requirements: [{ type: "skill", skillId: "fishing", level: 40 }],

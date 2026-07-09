@@ -152,7 +152,10 @@ Likely entities:
 - Current committed Mount icon batch covers all 8 mounts with transparent 256x256 WebP assets in the approved gritty old-school inventory style.
 - Current committed Pet icon batch covers all 6 pets with transparent 256x256 WebP assets. `Pocket Spriggan` is represented by a woodland leaf/root charm because direct Spriggan/Woodland familiar prompts were rejected by the image-generation safety system.
 - Current committed Class icon batch covers all 8 classes with transparent 256x256 WebP assets. Class visuals are equipment/emblem objects rather than character portraits, so they remain distinct from the Characters category.
-- Remaining collectible icon coverage gap after the first Activity implementation: 18 missing icons across Characters, Races, and the two new Activity-only drops.
+- The current collectible icon set covers all 43 collectible entries. New Character, Race, Pet, Mount, and Tool entries use explicit data paths and transparent 256x256 WebP files.
+- Icon variety rule: every new category should use its own visual language while varying silhouette, pose/orientation, material, palette, and one memorable prop or construction detail. Do not make a large collection of identical centered armored busts. Existing approved icons may be reused; new icons should follow the broader variation rule.
+- The reusable RAP UI icon is stored at `public/assets/icons/ui/ui-rap.webp`. It has no text, frame, tile, or baked background and is displayed above the RAP value in the TopBar.
+- `scripts/prepare-icon-prompts.mjs` now adds deterministic visual-variety guidance for all collectible categories, including category-specific rules for characters/races, pets, mounts, tools, and classes.
 
 ## Commit And Push Policy
 
@@ -475,12 +478,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `src/handbook.ts`, `src/pages/HandbookPage.tsx`, `src/pages/MainMenuPage.tsx`, `src/ui/TopBar.tsx`, `src/App.tsx`, `src/styles.css`, `game_design.md`, `project_memory.md`.
 - Commands and tools used: `npm run build`, Vite dev server, Codex in-app Browser at `390x844` and `360x800`, side-by-side mockup comparison.
 
+2026-07-09: Complete varied collectible icon pass and RAP wallet icon.
+
+- Original problem: the remaining Character, Race, Pet, Mount, and Tool entries had no reusable art, and the existing generation brief risked making a large collection look too uniform. The TopBar also needed a compact RAP symbol.
+- Successful solution: generate missing assets on flat chroma-key backgrounds, remove the key, normalize them to transparent 256x256 WebP, add explicit icon paths to the modular collectible data, and add a small transparent RAP sigil above the wallet value.
+- Why it works: data-driven paths keep the asset pipeline deterministic, while category guidance plus per-asset direction changes silhouettes, materials, colors, and signature props without abandoning the gritty old-school inventory style. The CSS still owns tile backgrounds and status colors.
+- Files involved: `scripts/prepare-icon-prompts.mjs`, `src/data/collectibles/characters.ts`, `src/data/collectibles/mounts.ts`, `src/data/collectibles/pets.ts`, `src/data/collectibles/races.ts`, `src/data/collectibles/tools.ts`, `src/ui/TopBar.tsx`, `src/styles.css`, `public/assets/icons/**`.
+- Commands and tools used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, `view_image` inspection.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
-- Non-Skill collectible icon coverage is not complete yet. The original Mounts, Pets, and Classes are complete; Characters, Races, and the first two Activity-only drops still need generated transparent icons.
+- Icon coverage is complete for the current 43 collectible entries. Future additions must go through `npm run icons:prepare` and the transparent normalization pipeline before they are considered ready.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.

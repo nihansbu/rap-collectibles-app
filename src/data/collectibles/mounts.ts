@@ -80,6 +80,7 @@ export const mountsCollectibles: Collectible[] = [
     name: "Brine Ray",
     description: "A broad-winged sea ray trained by crews who survive impossible storms.",
     type: "Aquatic",
+    icon: "assets/icons/mounts/mount-brine-ray.webp",
     cost: 0,
     rarity: "Epic",
     requirements: [{ type: "skill", skillId: "fishing", level: 40 }],

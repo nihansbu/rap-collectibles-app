@@ -80,6 +80,44 @@ const singularCategory = {
   tools: "tool",
 };
 
+const visualDirections = [
+  "Use an unexpected silhouette and a distinct palette. Avoid a standard helmeted armored bust; consider a hood, veil, bare head, mask, crown, ritual paint, or a strong carried prop.",
+  "Push the shape language away from generic fantasy portraits. Use a different pose, asymmetry, costume profile, and color pairing than neighboring icons.",
+  "Make the subject immediately recognizable from its outline alone. Vary headwear, shoulder shape, materials, and focal accessory; do not default to a centered iron helmet.",
+  "Use a bold but restrained color identity with one memorable visual hook. Prefer a distinct silhouette over extra surface detail and avoid repeating the same bust composition.",
+  "Give the icon a strong cultural or occupational identity through clothing, tools, ornament, or posture. It may be robed, masked, hooded, bare-headed, mechanical, spectral, or heavily asymmetric.",
+  "Design this as one member of a large collection: it must read differently at a glance from the previous icons. Change the pose, outline, palette, and dominant material rather than adding generic decoration.",
+];
+
+function directionFor(id) {
+  const hash = [...id].reduce((total, character) => total + character.charCodeAt(0), 0);
+  return visualDirections[hash % visualDirections.length];
+}
+
+function categoryGuidance(item) {
+  if (item.category === "mounts") {
+    return "Mount variety rule: vary anatomy, stance, head shape, movement, tack, and dominant material. Do not make every mount a side-profile horse or a generic animal head.";
+  }
+
+  if (item.category === "pets") {
+    return "Pet variety rule: vary species, scale, pose, eye shape, texture, and silhouette. Small charms, insects, birds, amphibians, constructs, and strange familiars are welcome when they fit the description.";
+  }
+
+  if (item.category === "tools") {
+    return "Tool variety rule: vary angle, construction, material, wear, handle shape, and functional silhouette. Make the object readable without relying on a generic sword or glowing fantasy prop.";
+  }
+
+  if (item.category === "classes") {
+    return "Class variety rule: communicate the role through a distinct emblem, weapon, garment, or equipment silhouette. Do not repeat the same centered shield or weapon composition.";
+  }
+
+  if (item.category === "characters" || item.category === "races") {
+    return "People variety rule: vary body shape, pose, headwear, costume, skin/material palette, and cultural signature. Helmets are optional, not a default.";
+  }
+
+  return "General variety rule: make the icon immediately distinguishable from neighboring entries through silhouette, palette, pose, material, or one memorable detail.";
+}
+
 const lines = missing.map((item) => {
   const keyColor = item.category === "races" && ["Orc", "Goblin", "Troll"].includes(item.type) ? "#ff00ff" : "#00ff00";
   const categoryLabel = singularCategory[item.category] ?? "collectible";
@@ -90,6 +128,9 @@ const lines = missing.map((item) => {
     "Style/medium: gritty old-school MMORPG inventory icon, low-detail matte painted asset, rough hand-painted edges, readable at 54px",
     "Composition/framing: single centered subject, three-quarter view where useful, generous padding, no crop",
     `Subject: ${item.description ?? item.name}`,
+    `Visual variety direction: ${directionFor(item.id)}`,
+    categoryGuidance(item),
+    "Collection rule: maximize variety across a large icon set. Do not make every item a similar centered armored bust; distinct colors, silhouettes, poses, costume shapes, and signature props are preferred over uniformity.",
     `Scene/backdrop: perfectly flat solid ${keyColor} chroma-key background for background removal`,
     "Constraints: no frame, no border, no tile, no card, no UI, no text, no watermark, no cast shadow, no contact shadow, no floor plane",
     `Avoid: high gloss, cute children's-book style, cinematic lighting, scene background, gradients, smoke, sparkles, use of ${keyColor} in the subject`,

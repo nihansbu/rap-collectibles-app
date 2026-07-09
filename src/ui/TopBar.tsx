@@ -45,7 +45,10 @@ export function TopBar({
           <BookOpen size={18} />
         </button>
         <div className="wallet">
-          <span>{formatNumber(rp)} RAP</span>
+          <span className="wallet-display">
+            <img className="wallet-symbol" src="./assets/icons/ui/ui-rap.webp" alt="" />
+            <span className="wallet-value">{formatNumber(rp)} RAP</span>
+          </span>
           <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RAP">
             <Plus size={18} />
           </button>

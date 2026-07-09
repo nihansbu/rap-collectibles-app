@@ -104,18 +104,33 @@ button {
   font-weight: 740;
 }
 
+.wallet-display {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  min-width: 44px;
+}
+
+.wallet-symbol {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.wallet-value {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 1.1;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 7px;
   flex: 0 0 auto;
-}
-
-.wallet span {
-  max-width: 118px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .icon-button {
@@ -2144,7 +2159,7 @@ button {
     padding-inline: 10px;
   }
 
-  .wallet span {
+  .wallet-value {
     max-width: 92px;
     overflow: hidden;
     text-overflow: ellipsis;

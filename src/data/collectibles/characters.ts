@@ -7,6 +7,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Alden the Warden",
     description: "A disciplined human guardian sworn to protect old roads and border keeps.",
     type: "Guardian",
+    icon: "assets/icons/characters/character-warden.webp",
     cost: 12_000,
     rarity: "Common",
     requirements: [],
@@ -17,6 +18,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Mycelle Greenhand",
     description: "A forest-born herbalist who understands roots, spores, and quiet magic.",
     type: "Herbalist",
+    icon: "assets/icons/characters/character-mycelle.webp",
     cost: 28_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "herblore", level: 25 }],
@@ -27,6 +29,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Kael Emberlane",
     description: "A fire-touched battlemage with a talent for dangerous shortcuts.",
     type: "Battlemage",
+    icon: "assets/icons/characters/character-kael.webp",
     cost: 55_000,
     rarity: "Rare",
     requirements: [
@@ -40,6 +43,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Seris Moonveil",
     description: "A silent ranger who follows tracks that most eyes cannot see.",
     type: "Ranger",
+    icon: "assets/icons/characters/character-seris.webp",
     cost: 85_000,
     rarity: "Epic",
     requirements: [
@@ -53,6 +57,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Brannoc Ironwake",
     description: "A dwarven smith whose oaths are carved into every blade he carries.",
     type: "Smith",
+    icon: "assets/icons/characters/character-brannoc.webp",
     cost: 72_000,
     rarity: "Rare",
     requirements: [
@@ -66,6 +71,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Elyra Starfall",
     description: "An elven astronomer who reads omens in falling light.",
     type: "Astronomer",
+    icon: "assets/icons/characters/character-elyra.webp",
     cost: 110_000,
     rarity: "Epic",
     requirements: [
@@ -79,6 +85,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Orren Tidecaller",
     description: "A coastal mystic who treats every voyage as a test of courage.",
     type: "Mystic",
+    icon: "assets/icons/characters/character-orren.webp",
     cost: 38_000,
     rarity: "Uncommon",
     requirements: [{ type: "skill", skillId: "sailing", level: 30 }],
@@ -89,6 +96,7 @@ export const charactersCollectibles: Collectible[] = [
     name: "Voss Gravebound",
     description: "A solemn necromancer followed by whispers from forgotten halls.",
     type: "Necromancer",
+    icon: "assets/icons/characters/character-voss.webp",
     cost: 160_000,
     rarity: "Legendary",
     requirements: [
