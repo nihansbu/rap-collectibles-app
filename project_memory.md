@@ -34,11 +34,14 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - Vite
 - lucide-react for UI icons
 - Playwright for local mobile smoke verification
+- Vitest, Testing Library, and V8 coverage for automated regression tests
+- ESLint with TypeScript and React Hooks rules
+- PWA manifest, generated application icons, and a small service worker for install/offline shell support
 - CSS modules are not used yet; styling is in `src/styles.css`.
 
 ## Folder Structure
 
-- `src/App.tsx`: app shell, navigation state, player-state actions, autosave loop, and page/detail routing.
+- `src/App.tsx`: app composition, navigation state, and player-state actions. New page UI belongs in `src/pages/`; persistence belongs in hooks/domain modules.
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
 - `src/catalog.ts`: catalog selectors and rules such as collectible lookup, category filtering, requirement state, unlock state, status grouping, and catalog ordering.
@@ -51,7 +54,11 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system, v1/v2/v3-to-v4 migration, validation, normalization, active training persistence, active Activity run persistence, offline processing, activity log persistence, and backup rotation for player progress.
+- `src/save.ts`: versioned local save/load system through v6, migrations, validation, revision conflict detection, active progress normalization, and throttled backup rotation.
+- `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
+- `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
+- `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
+- `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
 - `src/ui/`: reusable UI components such as `TopBar`, dialogs, icon renderers, and tile visuals.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
@@ -70,14 +77,14 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
 - The `Handbook` is a player-facing contextual wiki for systems that should not clutter the main gameplay UI. Every topbar exposes it through a compact book icon.
 - No bottom navigation in the first prototype.
-- A sticky topbar always shows the current page name, a contextual Handbook button, current RAP, and a plus button that grants 10,000 RAP.
+- A sticky topbar always shows the current page name, contextual Handbook and Settings buttons, and current RAP. The 10,000 RAP grant control is development-only (`?dev=1`).
 - Subpages use a back button in the topbar.
 - Collection pages share the same card, filter, sort, full-content detail view, and purchase dialog patterns.
 - Classes and Races are implemented as standard collectible categories using the `type` field for broad grouping rather than nested subpages.
 - Collectible pages use three visual status groups: `owned` green, `ready` yellow when requirements are met regardless of current RAP, and `locked` red when requirements are missing. The default sort groups tiles in that order.
 - Collectible pages expose horizontal type filters generated from the current category's `Collectible.type` values.
 - The Collectible detail view includes a status pill, RAP cost, rarity/type metadata, requirements, and a dedicated purchase panel.
-- Save Status, Export Save, Import Save, and recent Activity history are intentionally not shown on the main dashboard. The save engine still autosaves locally; backup controls can move to a future Settings/account area.
+- Save Status, Export Save, and Import Save live on a dedicated Settings page opened from the topbar, keeping the main dashboard focused.
 - The main menu shows quick manual activity logging. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
 - The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
@@ -101,7 +108,13 @@ Implemented early systems:
 - Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
 - Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
-- Active gameplay Activity runs: supports timestamped short runs, persisted in save v5 and processed from timestamps on reload.
+- Active gameplay Activity runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
+- Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
+- Save v6 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
+- Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
+- Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
+- Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
+- On viewports up to 400px, dense Collectible and Skill grids use four columns to keep names legible; wider mobile layouts retain five.
 - Activity run counts and recent Activity results are persisted in save v5.
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
 - Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
@@ -214,10 +227,23 @@ Candidate combined skill roster to finalize:
 - Start development server: `npm run dev`
 - Mobile LAN URL on current network: `http://192.168.0.203:5173`
 - Build production bundle: `npm run build`
+- Run lint: `npm run lint`
+- Run regression tests: `npm run test`
+- Run tests with enforced coverage floor: `npm run test:coverage`
+- Run the complete local quality gate: `npm run check`
+- Regenerate PWA icons from the RAP symbol: `npm run pwa:icons`
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 - Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.
 - Prepare missing collectible icon prompts: `npm run icons:prepare`
+
+## Known Issues And Boundaries
+
+- Progress is local to one browser profile. JSON export/import is the supported device-transfer path until accounts and cloud sync exist.
+- The service worker provides a small offline shell, not background activity tracking or push synchronization.
+- Static catalog data remains appropriate at the current scale. The UI reads through indexed selectors; introduce IndexedDB for large player histories and a backend only when accounts/cross-device sync require it.
+- `src/App.tsx` still contains several detail and overview components. New features should be added in `src/pages/` or `src/ui/`; move existing blocks opportunistically when they are next changed rather than adding more inline components.
+- Production hides prototype RAP grants and future feature placeholders. Use `?dev=1` for local or deployed testing.
 - Normalize one generated icon source: `python scripts\normalize-icon.py --input tmp\icon-pipeline\source\<id>-alpha.png --out public\assets\icons\<category>\<id>.webp --key "#00ff00"`
 
 ## Verified Workflows

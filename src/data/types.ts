@@ -47,7 +47,7 @@ export type Collectible = {
   name: string;
   description: string;
   type: string;
-  icon?: string;
+  icon: string;
   cost: number;
   rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
   requirements: Requirement[];
@@ -59,5 +59,5 @@ export type SkillDefinition = {
   id: SkillId;
   name: string;
   source: "RuneScape" | "Old School RuneScape" | "Both";
-  icon?: string;
+  icon: string;
 };

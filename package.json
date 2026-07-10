@@ -1,7 +1,17 @@
 {
+  "name": "idle-life",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "validate:content": "vitest run tests/content.test.ts",
+    "check": "npm run lint && npm run test && npm run build && npm run icons:prepare",
+    "pwa:icons": "node scripts/generate-pwa-icons.mjs",
     "icons:prepare": "node scripts/prepare-icon-prompts.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
@@ -14,8 +24,21 @@
     "vite": "^6.0.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.10.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "playwright": "^1.61.1"
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "jsdom": "^26.1.0",
+    "playwright": "^1.61.1",
+    "sharp": "^0.34.0",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^4.1.10"
   }
 }

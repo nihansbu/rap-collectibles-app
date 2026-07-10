@@ -25,7 +25,8 @@ export const TRAINING_DURATIONS = [
 ] as const;
 
 const HOUR_MS = 60 * 60 * 1000;
-const TRAINING_STEP_MS = 1_000;
+const RAP_PER_MS = TRAINING_RAP_PER_HOUR / HOUR_MS;
+const TIME_EPSILON_MS = 0.001;
 
 export function trainingXpPerHour(level: number) {
   if (level >= 110) return 18_000;
@@ -86,14 +87,16 @@ export function processActiveTrainings<T extends TrainablePlayerState>(player: T
   let rp = clampNonNegative(player.rp);
   const skillXp = { ...player.skillXp };
   let activeTrainings = player.activeTrainings
-    .filter((training) => isValidTrainingWindow(training, now))
+    .filter(isValidTrainingWindow)
     .map((training) => ({ ...training }));
 
   if (activeTrainings.length === 0) {
     return { ...player, rp, skillXp, activeTrainings };
   }
 
-  for (let guard = 0; guard < 100_000; guard += 1) {
+  // Advance between actual events (another job catching up, a level boundary,
+  // a job ending, or RAP running out) instead of simulating every second.
+  for (let guard = 0; guard < 2_000; guard += 1) {
     const eligible = activeTrainings.filter((training) => {
       const xp = skillXp[training.skillId] ?? 0;
       return training.lastUpdatedAt < Math.min(training.endsAt, now) && xp < xpTable[MAX_LEVEL];
@@ -105,45 +108,46 @@ export function processActiveTrainings<T extends TrainablePlayerState>(player: T
       break;
     }
 
-    const nextAt = Math.min(
-      now,
-      ...eligible.map((training) => Math.min(training.lastUpdatedAt + TRAINING_STEP_MS, training.endsAt)),
+    const cursor = Math.min(...eligible.map((training) => training.lastUpdatedAt));
+    const cohort = eligible.filter((training) => Math.abs(training.lastUpdatedAt - cursor) < TIME_EPSILON_MS);
+    const nextCursor = Math.min(
+      ...eligible
+        .filter((training) => training.lastUpdatedAt > cursor + TIME_EPSILON_MS)
+        .map((training) => training.lastUpdatedAt),
+      Number.POSITIVE_INFINITY,
     );
+    const nextEnd = Math.min(...cohort.map((training) => Math.min(training.endsAt, now)));
+    let elapsedMs = Math.min(nextEnd - cursor, nextCursor - cursor);
 
-    const demands = eligible.map((training) => ({
-      training,
-      elapsedMs: Math.max(0, nextAt - training.lastUpdatedAt),
-    }));
-    const totalRapDemand = demands.reduce((total, demand) => total + rapForElapsed(demand.elapsedMs), 0);
-    if (totalRapDemand <= 0) break;
+    for (const training of cohort) {
+      const currentXp = skillXp[training.skillId] ?? 0;
+      const level = levelFromXp(currentXp);
+      const nextLevelXp = xpTable[Math.min(MAX_LEVEL, level + 1)];
+      const xpPerRap = trainingXpPerRap(level);
+      const timeToLevelMs = (nextLevelXp - currentXp) / (xpPerRap * RAP_PER_MS);
+      elapsedMs = Math.min(elapsedMs, timeToLevelMs);
+    }
 
-    const factor = Math.min(1, rp / totalRapDemand);
-    let spentTotal = 0;
+    const timeUntilRapRunsOutMs = rp / (cohort.length * RAP_PER_MS);
+    elapsedMs = Math.min(elapsedMs, timeUntilRapRunsOutMs);
+    if (!Number.isFinite(elapsedMs) || elapsedMs <= TIME_EPSILON_MS) break;
 
-    for (const { training, elapsedMs } of demands) {
-      const spentRap = rapForElapsed(elapsedMs) * factor;
-      if (spentRap <= 0) continue;
-
+    const spentPerTraining = rapForElapsed(elapsedMs);
+    for (const training of cohort) {
       const currentXp = skillXp[training.skillId] ?? 0;
       const level = levelFromXp(currentXp);
       const remainingXp = xpTable[MAX_LEVEL] - currentXp;
-      const gainedXp = Math.min(remainingXp, spentRap * trainingXpPerRap(level));
+      const gainedXp = Math.min(remainingXp, spentPerTraining * trainingXpPerRap(level));
       skillXp[training.skillId] = currentXp + gainedXp;
-      spentTotal += spentRap;
-      training.lastUpdatedAt += elapsedMs * factor;
+      training.lastUpdatedAt += elapsedMs;
     }
 
-    rp = Math.max(0, rp - spentTotal);
+    rp = Math.max(0, rp - spentPerTraining * cohort.length);
 
     activeTrainings = activeTrainings.filter((training) => {
       const xp = skillXp[training.skillId] ?? 0;
-      return rp > 0 && training.lastUpdatedAt < training.endsAt && xp < xpTable[MAX_LEVEL];
+      return rp > TIME_EPSILON_MS && training.lastUpdatedAt < training.endsAt && xp < xpTable[MAX_LEVEL];
     });
-
-    if (factor < 1) {
-      activeTrainings = [];
-      break;
-    }
   }
 
   return { ...player, rp, skillXp, activeTrainings };
@@ -168,13 +172,13 @@ function rapForElapsed(ms: number) {
   return (TRAINING_RAP_PER_HOUR * ms) / HOUR_MS;
 }
 
-function isValidTrainingWindow(training: ActiveTraining, now: number) {
+function isValidTrainingWindow(training: ActiveTraining) {
   return (
     Number.isFinite(training.startedAt) &&
     Number.isFinite(training.lastUpdatedAt) &&
     Number.isFinite(training.endsAt) &&
-    training.endsAt > training.lastUpdatedAt &&
-    training.endsAt > now - HOUR_MS * 24
+    training.startedAt <= training.lastUpdatedAt &&
+    training.endsAt > training.lastUpdatedAt
   );
 }
 

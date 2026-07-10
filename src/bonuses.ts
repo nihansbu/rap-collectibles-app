@@ -5,11 +5,16 @@ export type OwnedAccountBonus = AccountBonus & {
   collectibleName: string;
 };
 
-export function collectAccountBonuses(ownedIds: string[]): OwnedAccountBonus[] {
-  const owned = new Set(ownedIds);
+const bonusIndex = new Map(
+  collectibles
+    .filter((item) => item.bonuses && item.bonuses.length > 0)
+    .map((item) => [item.id, item] as const),
+);
 
-  return collectibles.flatMap((item) => {
-    if (!owned.has(item.id) || !item.bonuses) return [];
+export function collectAccountBonuses(ownedIds: string[]): OwnedAccountBonus[] {
+  return ownedIds.flatMap((id) => {
+    const item = bonusIndex.get(id);
+    if (!item?.bonuses) return [];
     return item.bonuses.map((bonus) => ({
       ...bonus,
       collectibleId: item.id,

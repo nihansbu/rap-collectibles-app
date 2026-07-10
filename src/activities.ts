@@ -44,6 +44,7 @@ export type ActiveActivityRun = {
   runtimeMs: number;
   baseRuntimeMs: number;
   skillAdvantagePercent: number;
+  rollSeed: number;
 };
 
 export type ActivityRollResult = {
@@ -148,8 +149,10 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
   },
 ];
 
+const activityIndex = new Map(GAMEPLAY_ACTIVITIES.map((activity) => [activity.id, activity]));
+
 export function getActivity(activityId: string) {
-  return GAMEPLAY_ACTIVITIES.find((activity) => activity.id === activityId);
+  return activityIndex.get(activityId as GameplayActivityId);
 }
 
 export function activityRequirementsMet(activity: GameplayActivity, player: Pick<ActivityPlayerState, "owned" | "skillXp">) {
@@ -204,7 +207,12 @@ export function isActivityRunning(player: Pick<ActivityPlayerState, "activeActiv
   return player.activeActivityRuns.some((run) => run.activityId === activityId);
 }
 
-export function startActivityRun<T extends ActivityPlayerState>(player: T, activityId: GameplayActivityId, now = Date.now()): T {
+export function startActivityRun<T extends ActivityPlayerState>(
+  player: T,
+  activityId: GameplayActivityId,
+  now = Date.now(),
+  rollSeed = createRunSeed(),
+): T {
   const current = processActiveActivityRuns(player, now);
   const activity = getActivity(activityId);
   if (!activity) return current;
@@ -222,6 +230,7 @@ export function startActivityRun<T extends ActivityPlayerState>(player: T, activ
     runtimeMs: effective.runtimeMs,
     baseRuntimeMs: effective.baseRuntimeMs,
     skillAdvantagePercent: effective.advantage.percent,
+    rollSeed: normalizeSeed(rollSeed),
   };
 
   return {
@@ -234,7 +243,6 @@ export function startActivityRun<T extends ActivityPlayerState>(player: T, activ
 export function processActiveActivityRuns<T extends ActivityPlayerState>(
   player: T,
   now = Date.now(),
-  random = Math.random,
 ): T {
   if (player.activeActivityRuns.length === 0) return player;
 
@@ -256,7 +264,7 @@ export function processActiveActivityRuns<T extends ActivityPlayerState>(
       continue;
     }
 
-    nextPlayer = completeActivityRun(nextPlayer, activity, run, now, random);
+    nextPlayer = completeActivityRun(nextPlayer, activity, run);
   }
 
   return nextPlayer;
@@ -282,9 +290,8 @@ function completeActivityRun<T extends ActivityPlayerState>(
   player: T,
   activity: GameplayActivity,
   run: ActiveActivityRun,
-  now: number,
-  random: () => number,
 ): T {
+  const random = seededRandom(run.rollSeed);
   const completedRuns = (player.activityRunCounts[activity.id] ?? 0) + 1;
   const skillAdvantagePercent = sanitizePercent(run.skillAdvantagePercent);
   const additionalChance = additionalRollChancePercent(player.owned);
@@ -305,10 +312,10 @@ function completeActivityRun<T extends ActivityPlayerState>(
   ];
 
   const result: ActivityRunResult = {
-    id: `${run.id}-result-${now}`,
+    id: `${run.id}-result`,
     activityId: activity.id,
     activityName: activity.name,
-    completedAt: now,
+    completedAt: run.endsAt,
     runCount: completedRuns,
     rapSpent: run.cost,
     baseRapCost: run.baseCost,
@@ -389,6 +396,38 @@ function sanitizePercent(value: number) {
 
 function roundPercent(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+export function seedFromString(value: string) {
+  let seed = 2_166_136_261;
+  for (let index = 0; index < value.length; index += 1) {
+    seed ^= value.charCodeAt(index);
+    seed = Math.imul(seed, 16_777_619);
+  }
+  return normalizeSeed(seed);
+}
+
+function createRunSeed() {
+  if (typeof crypto !== "undefined" && "getRandomValues" in crypto) {
+    return crypto.getRandomValues(new Uint32Array(1))[0];
+  }
+  return seedFromString(`${Date.now()}-${Math.random()}`);
+}
+
+function normalizeSeed(seed: number) {
+  if (!Number.isFinite(seed)) return 1;
+  return (Math.trunc(seed) >>> 0) || 1;
+}
+
+function seededRandom(seed: number) {
+  let state = normalizeSeed(seed);
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+  };
 }
 
 export function activityDropItem(drop: ActivityDrop) {

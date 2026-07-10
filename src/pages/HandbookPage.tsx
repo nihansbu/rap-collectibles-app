@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, BookOpen, ChevronRight, Search, X } from "lucide-react";
 import {
   getContextEntries,
@@ -27,14 +27,6 @@ export function HandbookPage({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSelectedEntryId(null);
-    if (mode === "context") {
-      setQuery("");
-      setCategory("all");
-    }
-  }, [context.id, mode]);
 
   const filteredEntries = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();

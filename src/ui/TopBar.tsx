@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Plus } from "lucide-react";
+import { ArrowLeft, BookOpen, Plus, Settings } from "lucide-react";
 import { formatNumber } from "../format";
 
 export function TopBar({
@@ -8,7 +8,10 @@ export function TopBar({
   onBack,
   onGrantRp,
   onOpenHandbook,
+  onOpenSettings,
   handbookMode,
+  settingsActive = false,
+  showDevTools = false,
 }: {
   title: string;
   rp: number;
@@ -16,7 +19,10 @@ export function TopBar({
   onBack: () => void;
   onGrantRp: () => void;
   onOpenHandbook: () => void;
+  onOpenSettings: () => void;
   handbookMode?: "context" | "index";
+  settingsActive?: boolean;
+  showDevTools?: boolean;
 }) {
   const handbookLabel = handbookMode === "context"
     ? "Open full Handbook"
@@ -44,14 +50,25 @@ export function TopBar({
         >
           <BookOpen size={18} />
         </button>
+        <button
+          className={`icon-button settings-button ${settingsActive ? "active" : ""}`}
+          onClick={onOpenSettings}
+          aria-label="Open settings and save tools"
+          aria-pressed={settingsActive}
+          title="Settings and save tools"
+        >
+          <Settings size={18} />
+        </button>
         <div className="wallet">
           <span className="wallet-display">
             <img className="wallet-symbol" src="./assets/icons/ui/ui-rap.webp" alt="" />
             <span className="wallet-value">{formatNumber(rp)} RAP</span>
           </span>
-          <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RAP">
-            <Plus size={18} />
-          </button>
+          {showDevTools && (
+            <button className="icon-button add" onClick={onGrantRp} aria-label="Add 10,000 RAP (developer tool)">
+              <Plus size={18} />
+            </button>
+          )}
         </div>
       </div>
     </header>

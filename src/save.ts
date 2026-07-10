@@ -2,9 +2,9 @@ import {
   GAMEPLAY_ACTIVITIES,
   getActivity,
   processActiveActivityRuns,
+  seedFromString,
   type ActiveActivityRun,
   type ActivityRunResult,
-  type GameplayActivityId,
 } from "./activities";
 import { collectibles, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
@@ -21,6 +21,7 @@ export type PlayerState = {
   activeActivityRuns: ActiveActivityRun[];
   activityRunCounts: Record<string, number>;
   activityResults: ActivityRunResult[];
+  lastSeenActivityResultId: string | null;
 };
 
 type SavePlayerV1 = {
@@ -45,6 +46,10 @@ type SavePlayerV4 = SavePlayerV3 & {
 };
 
 type SavePlayerV5 = SavePlayerV4;
+
+type SavePlayerV6 = SavePlayerV5 & {
+  lastSeenActivityResultId?: string | null;
+};
 
 type SaveFileV1 = {
   version: 1;
@@ -76,13 +81,36 @@ type SaveFileV5 = {
   player: SavePlayerV5;
 };
 
-type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+type SaveFileV6 = {
+  version: 6;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV6;
+};
 
-const CURRENT_SAVE_VERSION = 5;
-const SAVE_KEY = "rap-collectibles.save.v5";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v5";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v5.1", "rap-collectibles.save.backup.v5.2"];
+export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export type SaveSnapshot = {
+  player: PlayerState;
+  revision: number;
+  savedAt: string | null;
+};
+
+export type SaveWriteResult =
+  | { ok: true; revision: number; savedAt: string }
+  | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
+
+export const CURRENT_SAVE_VERSION = 6;
+export const SAVE_KEY = "rap-collectibles.save.v6";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v6";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v6.1", "rap-collectibles.save.backup.v6.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v6.timestamp";
+const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v5",
+  "rap-collectibles.save.lastKnownGood.v5",
+  "rap-collectibles.save.backup.v5.1",
+  "rap-collectibles.save.backup.v5.2",
   "rap-collectibles.save.v4",
   "rap-collectibles.save.lastKnownGood.v4",
   "rap-collectibles.save.backup.v4.1",
@@ -117,49 +145,75 @@ export function createInitialPlayerState(): PlayerState {
     activeTrainings: [],
     activityLog: [],
     activeActivityRuns: [],
-    activityRunCounts: {},
+    activityRunCounts: Object.fromEntries(GAMEPLAY_ACTIVITIES.map((activity) => [activity.id, 0])),
     activityResults: [],
+    lastSeenActivityResultId: null,
   };
 }
 
 export function loadPlayerState(): PlayerState {
-  const storage = getStorage();
-  if (!storage) return createInitialPlayerState();
+  return loadPlayerSnapshot().player;
+}
+
+export function loadPlayerSnapshot(storage: StorageLike | null = getStorage()): SaveSnapshot {
+  if (!storage) return { player: createInitialPlayerState(), revision: 0, savedAt: null };
 
   for (const key of [SAVE_KEY, LAST_KNOWN_GOOD_KEY, ...BACKUP_KEYS, ...LEGACY_KEYS]) {
     const rawSave = storage.getItem(key);
     if (!rawSave) continue;
 
-    const player = parsePlayerState(rawSave);
-    if (player) return processActiveActivityRuns(processActiveTrainings(player));
+    const snapshot = parseSaveSnapshot(rawSave);
+    if (snapshot) {
+      return {
+        ...snapshot,
+        player: processActiveActivityRuns(processActiveTrainings(snapshot.player)),
+      };
+    }
   }
 
-  return createInitialPlayerState();
+  return { player: createInitialPlayerState(), revision: 0, savedAt: null };
 }
 
-export function savePlayerState(player: PlayerState): void {
-  const storage = getStorage();
-  if (!storage) return;
+export function savePlayerState(
+  player: PlayerState,
+  options: { expectedRevision?: number; storage?: StorageLike | null; force?: boolean } = {},
+): SaveWriteResult {
+  const storage = options.storage === undefined ? getStorage() : options.storage;
+  if (!storage) return { ok: false, reason: "unavailable" };
 
-  const nextSave = serializeSave(player);
-  if (!parsePlayerState(nextSave)) return;
+  const currentSnapshot = parseSaveSnapshot(storage.getItem(SAVE_KEY) ?? "");
+  if (
+    !options.force &&
+    options.expectedRevision !== undefined &&
+    currentSnapshot &&
+    currentSnapshot.revision > options.expectedRevision
+  ) {
+    return { ok: false, reason: "conflict", snapshot: currentSnapshot };
+  }
+
+  const revision = Math.max(currentSnapshot?.revision ?? 0, options.expectedRevision ?? 0) + 1;
+  const savedAt = new Date().toISOString();
+  const nextSave = serializeSave(player, revision, savedAt);
+  if (!parseSaveSnapshot(nextSave)) return { ok: false, reason: "write-failed" };
 
   try {
-    rotateBackups(storage);
+    rotateBackups(storage, Date.now());
     storage.setItem(SAVE_KEY, nextSave);
     storage.setItem(LAST_KNOWN_GOOD_KEY, nextSave);
+    return { ok: true, revision, savedAt };
   } catch (error) {
     console.warn("Progress could not be saved.", error);
+    return { ok: false, reason: "write-failed" };
   }
 }
 
 export function exportPlayerState(player: PlayerState): string {
-  return serializeSave(processActiveActivityRuns(processActiveTrainings(player)));
+  return serializeSave(processActiveActivityRuns(processActiveTrainings(player)), 0, new Date().toISOString());
 }
 
 export function importPlayerState(rawSave: string): PlayerState | null {
-  const player = parsePlayerState(rawSave);
-  return player ? processActiveActivityRuns(processActiveTrainings(player)) : null;
+  const snapshot = parseSaveSnapshot(rawSave);
+  return snapshot ? processActiveActivityRuns(processActiveTrainings(snapshot.player)) : null;
 }
 
 function getStorage(): StorageLike | null {
@@ -175,37 +229,42 @@ function getStorage(): StorageLike | null {
   }
 }
 
-function serializeSave(player: PlayerState): string {
-  const saveFile: SaveFileV5 = {
+function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
+  const saveFile: SaveFileV6 = {
     version: CURRENT_SAVE_VERSION,
-    savedAt: new Date().toISOString(),
+    revision,
+    savedAt,
     player: normalizePlayerState(player),
   };
 
   return JSON.stringify(saveFile);
 }
 
-function parsePlayerState(rawSave: string): PlayerState | null {
+export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   try {
     const parsed = JSON.parse(rawSave) as unknown;
     if (!isSaveFile(parsed)) return null;
-    return normalizePlayerState(parsed.player);
+    return {
+      player: normalizePlayerState(parsed.player),
+      revision: "revision" in parsed ? sanitizeInteger(parsed.revision, 0, Number.MAX_SAFE_INTEGER) : 0,
+      savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : null,
+    };
   } catch {
     return null;
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -218,6 +277,11 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
   const owned = Array.isArray(player.owned)
     ? [...new Set(player.owned)].filter((id): id is string => typeof id === "string" && collectibleIds.has(id))
     : [];
+  const activityResults = normalizeActivityResults("activityResults" in player ? player.activityResults : undefined);
+  const requestedSeenResultId = "lastSeenActivityResultId" in player ? player.lastSeenActivityResultId : null;
+  const lastSeenActivityResultId = typeof requestedSeenResultId === "string" && activityResults.some((result) => result.id === requestedSeenResultId)
+    ? requestedSeenResultId
+    : null;
 
   return {
     rp: sanitizeNumber(player.rp, 0, MAX_RAP),
@@ -228,7 +292,8 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     activityLog: normalizeActivityLog("activityLog" in player ? player.activityLog : undefined),
     activeActivityRuns: normalizeActiveActivityRuns("activeActivityRuns" in player ? player.activeActivityRuns : undefined),
     activityRunCounts: normalizeActivityRunCounts("activityRunCounts" in player ? player.activityRunCounts : undefined),
-    activityResults: normalizeActivityResults("activityResults" in player ? player.activityResults : undefined),
+    activityResults,
+    lastSeenActivityResultId,
   };
 }
 
@@ -326,6 +391,9 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
       runtimeMs: runtimeMs || Math.max(1_000, candidate.endsAt - candidate.startedAt),
       baseRuntimeMs: baseRuntimeMs || activity.runtimeMs,
       skillAdvantagePercent: sanitizeNumber(candidate.skillAdvantagePercent, 0, 15),
+      rollSeed: Number.isFinite(candidate.rollSeed)
+        ? sanitizeInteger(candidate.rollSeed, 1, 0xffff_ffff)
+        : seedFromString(candidate.id),
     });
   }
 
@@ -339,7 +407,7 @@ function normalizeActivityRunCounts(value: unknown): Record<string, number> {
   const source = value as Record<string, unknown>;
 
   for (const activity of GAMEPLAY_ACTIVITIES) {
-    normalized[activity.id] = sanitizeNumber(source[activity.id], 0, MAX_RAP);
+    normalized[activity.id] = sanitizeInteger(source[activity.id], 0, MAX_RAP);
   }
 
   return normalized;
@@ -393,7 +461,7 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
       activityId: candidate.activityId,
       activityName: candidate.activityName,
       completedAt: candidate.completedAt,
-      runCount: sanitizeNumber(candidate.runCount, 0, MAX_RAP),
+      runCount: sanitizeInteger(candidate.runCount, 0, MAX_RAP),
       rapSpent: sanitizeNumber(candidate.rapSpent, 0, MAX_RAP),
       baseRapCost: sanitizeNumber(candidate.baseRapCost, 0, MAX_RAP) || activity?.cost || 0,
       runtimeMs: sanitizeNumber(candidate.runtimeMs, 1_000, 86_400_000) || activity?.runtimeMs || 1_000,
@@ -421,11 +489,18 @@ function sanitizeNumber(value: unknown, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function rotateBackups(storage: StorageLike) {
+function sanitizeInteger(value: unknown, min: number, max: number) {
+  return Math.trunc(sanitizeNumber(value, min, max));
+}
+
+function rotateBackups(storage: StorageLike, now: number) {
   const currentSave = storage.getItem(SAVE_KEY);
   if (!currentSave) return;
+  const lastBackupAt = Number(storage.getItem(BACKUP_TIMESTAMP_KEY) ?? 0);
+  if (Number.isFinite(lastBackupAt) && now - lastBackupAt < BACKUP_INTERVAL_MS) return;
 
   const firstBackup = storage.getItem(BACKUP_KEYS[0]);
   if (firstBackup) storage.setItem(BACKUP_KEYS[1], firstBackup);
   storage.setItem(BACKUP_KEYS[0], currentSave);
+  storage.setItem(BACKUP_TIMESTAMP_KEY, String(now));
 }

@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   ChevronRight,
   Compass,
   Dice5,
   Gem,
   Lock,
-  Plus,
   Search,
   Swords,
   X,
@@ -55,11 +53,13 @@ import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
 import { HandbookPage } from "./pages/HandbookPage";
 import { MainMenuPage } from "./pages/MainMenuPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { TopBar } from "./ui/TopBar";
-import { ActivityResultPanel, ConfirmDialog, UnlockNotice } from "./ui/dialogs";
+import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
 import { useLongPress } from "./ui/useLongPress";
-import { loadPlayerState, savePlayerState, type PlayerState } from "./save";
+import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
+import { usePlayerPersistence } from "./hooks/usePlayerPersistence";
 import {
   formatDuration,
   isSkillTraining,
@@ -85,6 +85,7 @@ type ContentPage =
   | { type: "main" }
   | { type: "collectibles" }
   | { type: "adventure" }
+  | { type: "settings" }
   | { type: "activities"; from?: "main" | "adventure" }
   | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type Page = ContentPage | {
@@ -103,9 +104,7 @@ type CategoryProgress = {
   percent: number;
 };
 
-function isTextControl(target: EventTarget | null) {
-  return target instanceof HTMLTextAreaElement || target instanceof HTMLInputElement;
-}
+type NavigationSnapshot = { page: Page; detailView: DetailView | null };
 
 function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
   if (detailView?.type === "collectible") {
@@ -145,7 +144,7 @@ function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
 }
 
 export function App() {
-  const [player, setPlayer] = useState<PlayerState>(() => loadPlayerState());
+  const { player, setPlayer, saveStatus, lastSavedAt, flushSave } = usePlayerPersistence();
   const [page, setPage] = useState<Page>({ type: "main" });
   const [filter, setFilter] = useState<Filter>("all");
   const [skillFilter, setSkillFilter] = useState<SkillFilter>("all");
@@ -156,12 +155,18 @@ export function App() {
   const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
   const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
-  const [handledActivityResultId, setHandledActivityResultId] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importValue, setImportValue] = useState("");
+  const showDevTools = import.meta.env.DEV || new URLSearchParams(window.location.search).get("dev") === "1";
+  const navigationReadyRef = useRef(false);
+  const restoringHistoryRef = useRef(false);
 
   const title = page.type === "main"
     ? "Menu"
     : page.type === "collectibles"
       ? "Collectibles"
+      : page.type === "settings"
+        ? "Settings"
       : page.type === "adventure"
         ? "Adventure"
         : page.type === "handbook"
@@ -169,61 +174,55 @@ export function App() {
           : page.type === "activities"
             ? "Activities"
             : categories.find((category) => category.id === page.id)?.name ?? "";
-  const pageKey = page.type === "category" ? page.id : page.type;
 
   useEffect(() => {
-    const preventNativeSelection = (event: Event) => {
-      if (isTextControl(event.target)) return;
-      event.preventDefault();
+    const handlePopState = (event: PopStateEvent) => {
+      const snapshot = (event.state as { idleLife?: NavigationSnapshot } | null)?.idleLife;
+      if (!snapshot) return;
+      restoringHistoryRef.current = true;
+      setPage(snapshot.page);
+      setDetailView(snapshot.detailView);
     };
-    const clearSelection = () => {
-      if (isTextControl(document.activeElement)) return;
-      window.getSelection()?.removeAllRanges();
-    };
-
-    document.addEventListener("selectstart", preventNativeSelection);
-    document.addEventListener("contextmenu", preventNativeSelection);
-    document.addEventListener("dragstart", preventNativeSelection);
-    document.addEventListener("selectionchange", clearSelection);
-
-    return () => {
-      document.removeEventListener("selectstart", preventNativeSelection);
-      document.removeEventListener("contextmenu", preventNativeSelection);
-      document.removeEventListener("dragstart", preventNativeSelection);
-      document.removeEventListener("selectionchange", clearSelection);
-    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
-    savePlayerState(player);
-  }, [player]);
-
-  useEffect(() => {
-    setTypeFilter("all");
-  }, [pageKey]);
-
+    const snapshot: NavigationSnapshot = { page, detailView };
+    if (!navigationReadyRef.current) {
+      window.history.replaceState({ ...window.history.state, idleLife: snapshot }, "");
+      navigationReadyRef.current = true;
+      return;
+    }
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      return;
+    }
+    window.history.pushState({ ...window.history.state, idleLife: snapshot }, "");
+  }, [detailView, page]);
   useEffect(() => {
     if (player.activeTrainings.length === 0 && player.activeActivityRuns.length === 0) return;
 
     const intervalId = window.setInterval(() => {
       setPlayer((current) => processActiveActivityRuns(processActiveTrainings(current)));
-    }, 1_000);
+    }, 5_000);
 
     return () => window.clearInterval(intervalId);
-  }, [player.activeActivityRuns.length, player.activeTrainings.length]);
+  }, [player.activeActivityRuns.length, player.activeTrainings.length, setPlayer]);
 
   useEffect(() => {
     const latest = player.activityResults[0];
-    if (!latest || latest.id === handledActivityResultId) return;
+    if (!latest || latest.id === player.lastSeenActivityResultId || activityResultNotice?.id === latest.id) return;
 
-    setHandledActivityResultId(latest.id);
     const droppedItem = latest.droppedCollectibleId ? getCollectibleById(latest.droppedCollectibleId) : null;
 
+    // A completed background run is an external event that opens a one-time result dialog.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActivityResultNotice(latest);
     if (droppedItem) {
       setRecentUnlocks((current) => [droppedItem, ...current.filter((candidate) => candidate.id !== droppedItem.id)].slice(0, 3));
     }
-  }, [handledActivityResultId, player.activityResults]);
+  }, [activityResultNotice?.id, player.activityResults, player.lastSeenActivityResultId]);
 
   useEffect(() => {
     if (!unlockNotice) return;
@@ -327,6 +326,25 @@ export function App() {
     setDetailView(null);
   }
 
+  function exportSave() {
+    flushSave();
+    const blob = new Blob([exportPlayerState(player)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `idle-life-save-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function importSave() {
+    const imported = importPlayerState(importValue);
+    if (!imported) return;
+    setPlayer(imported);
+    setImportValue("");
+    setImportOpen(false);
+  }
+
   const categoryProgress = useMemo(() => {
     return categories.map((category) => {
       if (category.id === "skills") {
@@ -343,43 +361,23 @@ export function App() {
   const totalActivityRuns = useMemo(() => Object.values(player.activityRunCounts).reduce((total, runs) => total + runs, 0), [player.activityRunCounts]);
 
   return (
-    <div
-      className="app-shell"
-      onContextMenu={(event) => {
-        if (!isTextControl(event.target)) event.preventDefault();
-      }}
-      onSelect={(event) => {
-        if (!isTextControl(event.target)) event.preventDefault();
-      }}
-      onDragStart={(event) => event.preventDefault()}
-    >
+    <div className="app-shell">
       <TopBar
         title={title}
         rp={player.rp}
         canGoBack={page.type !== "main" || detailView !== null}
         onBack={() => {
-          if (page.type === "handbook") {
-            setPage(page.origin);
-            setDetailView(page.originDetail);
-            return;
-          }
-          if (detailView) {
-            setDetailView(null);
-            return;
-          }
-          if (page.type === "category") {
-            setPage(page.from === "main" ? { type: "main" } : { type: "collectibles" });
-            return;
-          }
-          if (page.type === "activities") {
-            setPage(page.from === "main" ? { type: "main" } : { type: "adventure" });
-            return;
-          }
-          setPage({ type: "main" });
+          window.history.back();
         }}
         onGrantRp={grantRp}
         onOpenHandbook={openHandbook}
+        onOpenSettings={() => {
+          setDetailView(null);
+          setPage({ type: "settings" });
+        }}
         handbookMode={page.type === "handbook" ? page.mode : undefined}
+        settingsActive={page.type === "settings"}
+        showDevTools={showDevTools}
       />
 
       <main className="content">
@@ -419,16 +417,31 @@ export function App() {
             categoryProgress={categoryProgress}
             totalActivityRuns={totalActivityRuns}
             activeActivityCount={player.activeActivityRuns.length}
+            showFutureFeatures={showDevTools}
             onLogActivity={logActivity}
             onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
             onOpenActivities={() => setPage({ type: "activities", from: "main" })}
-            onOpenCategory={(id) => setPage({ type: "category", id, from: "main" })}
+            onOpenCategory={(id) => {
+              setTypeFilter("all");
+              setPage({ type: "category", id, from: "main" });
+            }}
           />
         ) : page.type === "collectibles" ? (
           <CollectiblesOverviewPage
             progress={categoryProgress}
             recentUnlocks={recentUnlocks}
-            onOpen={(id) => setPage({ type: "category", id, from: "collectibles" })}
+            onOpen={(id) => {
+              setTypeFilter("all");
+              setPage({ type: "category", id, from: "collectibles" });
+            }}
+          />
+        ) : page.type === "settings" ? (
+          <SettingsPage
+            saveStatus={saveStatus}
+            lastSavedAt={lastSavedAt}
+            onSaveNow={flushSave}
+            onExport={exportSave}
+            onImport={() => setImportOpen(true)}
           />
         ) : page.type === "adventure" ? (
           <AdventurePage
@@ -437,6 +450,7 @@ export function App() {
           />
         ) : page.type === "handbook" ? (
           <HandbookPage
+            key={`${page.context.id}:${page.mode}`}
             context={page.context}
             mode={page.mode}
             onOpenIndex={() => setPage({ ...page, mode: "index" })}
@@ -470,7 +484,27 @@ export function App() {
         <ConfirmDialog item={confirmItem} onCancel={() => setConfirmItem(null)} onConfirm={() => buyItem(confirmItem)} />
       )}
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
-      {activityResultNotice && <ActivityResultPanel result={activityResultNotice} onClose={() => setActivityResultNotice(null)} />}
+      {activityResultNotice && (
+        <ActivityResultPanel
+          result={activityResultNotice}
+          onClose={() => {
+            const resultId = activityResultNotice.id;
+            setActivityResultNotice(null);
+            setPlayer((current) => ({ ...current, lastSeenActivityResultId: resultId }));
+          }}
+        />
+      )}
+      {importOpen && (
+        <ImportDialog
+          value={importValue}
+          onChange={setImportValue}
+          onCancel={() => {
+            setImportOpen(false);
+            setImportValue("");
+          }}
+          onImport={importSave}
+        />
+      )}
     </div>
   );
 }
@@ -642,8 +676,10 @@ function ActivityCard({
   });
 
   return (
-    <article
+    <button
+      type="button"
       className={`activity-card ${running ? "running" : ""} ${requirementsReady ? "ready" : "locked"}`}
+      aria-label={`${activity.name}. ${running ? "Running" : requirementsReady ? "Ready" : "Locked"}. Press to run; hold or open the context menu for details.`}
       {...longPress}
     >
       <span className="activity-card-icon">
@@ -662,7 +698,7 @@ function ActivityCard({
           Rare drop {formatDropChance(bestDrop, runCount)}
         </span>
       )}
-    </article>
+    </button>
   );
 }
 
@@ -814,15 +850,17 @@ function CollectibleCard({
   });
 
   return (
-    <article
+    <button
+      type="button"
       className={`icon-tile ${status} ${isActivityDrop(item) ? "activity-source" : ""}`}
+      aria-label={`${item.name}, ${item.type}, ${statusLabel[status]}. Press for the primary action; hold or open the context menu for details.`}
       {...longPress}
     >
       <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} sourceType={item.source?.type} />
       <h2>{item.name}</h2>
       <span>{item.type}</span>
       {item.source?.type === "activity" && <small className="source-strip">Activity Drop</small>}
-    </article>
+    </button>
   );
 }
 
@@ -863,11 +901,11 @@ function SkillsPage({
           const levelInfo = xpIntoLevel(xp);
           const training = isSkillTraining(player, skill.id);
           return (
-            <article className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
+            <button type="button" className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
               <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} />
               <h2 style={{ fontSize: skillNameFontSize(skill.name) }}>{skill.name}</h2>
               <span>Lv. {levelInfo.level}</span>
-            </article>
+            </button>
           );
         })}
       </section>
@@ -1041,6 +1079,13 @@ function ActivityDetailView({
   onClose: () => void;
   onRun: () => void;
 }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!player.activeActivityRuns.some((run) => run.activityId === activityId)) return;
+    const intervalId = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(intervalId);
+  }, [activityId, player.activeActivityRuns]);
+
   const activity = getActivity(activityId)!;
   const activeRun = player.activeActivityRuns.find((run) => run.activityId === activityId);
   const requirementsReady = activityRequirementsMet(activity, player);
@@ -1052,7 +1097,6 @@ function ActivityDetailView({
     return activity.xpRewards.some((reward) => reward.skillId === bonus.skillId);
   });
   const canRun = canStartActivity(activity, player);
-  const now = Date.now();
   const runProgress = activeRun
     ? Math.min(100, Math.max(3, ((now - activeRun.startedAt) / (activeRun.endsAt - activeRun.startedAt)) * 100))
     : 0;

@@ -18,6 +18,7 @@ export function MainMenuPage({
   categoryProgress,
   totalActivityRuns,
   activeActivityCount,
+  showFutureFeatures,
   onLogActivity,
   onInspectActivity,
   onOpenActivities,
@@ -27,6 +28,7 @@ export function MainMenuPage({
   categoryProgress: DashboardCategoryProgress[];
   totalActivityRuns: number;
   activeActivityCount: number;
+  showFutureFeatures: boolean;
   onLogActivity: (activity: ActivityOption) => void;
   onInspectActivity: (activity: ActivityOption) => void;
   onOpenActivities: () => void;
@@ -44,20 +46,18 @@ export function MainMenuPage({
             <strong>Activities</strong>
             <small>{activeActivityCount > 0 ? `${activeActivityCount} active` : "XP and rare drops"}</small>
           </button>
-          <button className="dashboard-nav-tile future-tile" disabled>
-            <span className="dashboard-nav-icon">
-              <Shield size={22} strokeWidth={1.8} />
-            </span>
-            <strong>Arena</strong>
-            <small>Future</small>
-          </button>
-          <button className="dashboard-nav-tile future-tile" disabled>
-            <span className="dashboard-nav-icon">
-              <Gem size={22} strokeWidth={1.8} />
-            </span>
-            <strong>Quests</strong>
-            <small>Future</small>
-          </button>
+          {showFutureFeatures && (
+            <>
+              <button className="dashboard-nav-tile future-tile" disabled>
+                <span className="dashboard-nav-icon"><Shield size={22} strokeWidth={1.8} /></span>
+                <strong>Arena</strong><small>Future</small>
+              </button>
+              <button className="dashboard-nav-tile future-tile" disabled>
+                <span className="dashboard-nav-icon"><Gem size={22} strokeWidth={1.8} /></span>
+                <strong>Quests</strong><small>Future</small>
+              </button>
+            </>
+          )}
         </div>
       </section>
 

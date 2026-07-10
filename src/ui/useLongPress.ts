@@ -31,13 +31,7 @@ export function useLongPress({
   }
 
   function finish() {
-    const wasLongPress = longPressTriggeredRef.current;
     clearTimer();
-    longPressTriggeredRef.current = false;
-
-    if (!wasLongPress) {
-      onPress();
-    }
   }
 
   function cancel() {
@@ -47,6 +41,15 @@ export function useLongPress({
 
   function preventContextMenu(event: MouseEvent) {
     event.preventDefault();
+    onLongPress();
+  }
+
+  function click() {
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
+    onPress();
   }
 
   return {
@@ -55,5 +58,6 @@ export function useLongPress({
     onPointerCancel: cancel,
     onPointerLeave: cancel,
     onContextMenu: preventContextMenu,
+    onClick: click,
   };
 }

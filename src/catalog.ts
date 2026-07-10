@@ -6,6 +6,14 @@ import { levelFromXp } from "./xp";
 export type CollectibleStatus = "owned" | "ready" | "locked";
 
 const collectibleIndex = new Map(collectibles.map((item, index) => [item.id, index]));
+const collectiblesById = new Map(collectibles.map((item) => [item.id, item]));
+const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+const collectiblesByCategory = new Map<Collectible["category"], Collectible[]>();
+for (const item of collectibles) {
+  const categoryItems = collectiblesByCategory.get(item.category) ?? [];
+  categoryItems.push(item);
+  collectiblesByCategory.set(item.category, categoryItems);
+}
 
 export const rarityClass: Record<Collectible["rarity"], string> = {
   Common: "rarity-common",
@@ -22,7 +30,7 @@ export const statusLabel: Record<CollectibleStatus, string> = {
 };
 
 export function skillName(skillId: SkillId) {
-  return skills.find((skill) => skill.id === skillId)?.name ?? skillId;
+  return skillsById.get(skillId)?.name ?? skillId;
 }
 
 export function highestRequirement(item: Collectible) {
@@ -33,11 +41,11 @@ export function highestRequirement(item: Collectible) {
 }
 
 export function getCollectibleById(id: string) {
-  return collectibles.find((item) => item.id === id);
+  return collectiblesById.get(id);
 }
 
 export function getCollectiblesByCategory(category: Collectible["category"]) {
-  return collectibles.filter((item) => item.category === category);
+  return collectiblesByCategory.get(category) ?? [];
 }
 
 export function collectibleSortIndex(item: Collectible) {
@@ -101,10 +109,9 @@ export function collectibleStatusRank(item: Collectible, player: PlayerState) {
 }
 
 export function skillNameFontSize(name: string) {
-  if (name.length >= 12) return "7.2px";
-  if (name.length >= 11) return "7.7px";
-  if (name.length >= 10) return "8.4px";
-  return "10px";
+  if (name.length >= 12) return "9px";
+  if (name.length >= 10) return "9.5px";
+  return "10.5px";
 }
 
 export function categoryForSkill(skillId: SkillId): CategoryId {

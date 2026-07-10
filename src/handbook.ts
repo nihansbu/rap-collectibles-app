@@ -282,7 +282,8 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Activity runs, results, and manual logs are restored on reload.",
-          "Clearing site data, changing browsers, or changing devices can still remove local progress. Cross-device cloud saves are planned for a later account system.",
+          "Settings shows the latest local save state and provides JSON export and import. Export a backup before clearing site data or changing devices.",
+          "A newer save from another open tab takes priority, preventing an older tab from silently overwriting progress. Cross-device cloud saves are planned for a later account system.",
         ],
       },
     ],
@@ -314,6 +315,12 @@ const contextDefinitions: Record<string, HandbookContext> = {
     title: "Activities",
     intro: "This page lists repeatable Activities, their effective RAP cost, run count, availability, and active state.",
     entryIds: ["activities", "requirements", "skill-advantage", "activity-results", "drop-tables", "bad-luck-protection"],
+  },
+  settings: {
+    id: "settings",
+    title: "Settings",
+    intro: "Settings shows whether progress is stored locally and provides manual save, export, and import tools for browser backups.",
+    entryIds: ["save-progress", "rap", "skill-training", "activities"],
   },
   "category:characters": {
     id: "category:characters",

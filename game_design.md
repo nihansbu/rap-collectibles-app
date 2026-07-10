@@ -33,7 +33,7 @@ Design rules:
 - RAP is the only currency at the start.
 - RAP can be used for all purchases and skill training.
 - RAP can be spent on repeatable gameplay Activities.
-- The first prototype uses a simple grant button instead of real tracking.
+- A simple RAP grant button remains available only as a development tool; it is not part of the production player flow.
 - The first player-facing earning placeholder is a manual `Log Activity` panel. Each tap logs 1 hour and grants RAP immediately.
 - Real activity tracking can be added later without changing the core economy.
 
@@ -88,6 +88,14 @@ Current Handbook topics:
 - Activity Results
 - Saving Progress
 
+## Save And Device Experience
+
+- Player progress autosaves locally and must survive long-running accounts without replaying elapsed time in one-second loops.
+- Completed Activity rewards are deterministic once a run starts; reloading cannot reroll a result.
+- Settings shows save state and provides portable JSON export/import.
+- Cloud synchronization and accounts are future systems. The current player-facing boundary must state that progress belongs to the current browser.
+- The app is installable as a portrait PWA and keeps its application shell available offline.
+
 ## Icon Art Direction
 
 Collectible and system icons are reusable transparent assets in a gritty, matte, old-school MMORPG inventory style. They must never contain a frame, tile, card, background, text, or number; the surrounding UI provides those layers.
@@ -111,6 +119,8 @@ The Codex starts as the main `Collectibles` page and should show category tiles 
 - Mounts
 
 Each tile should show progress as unlocked count out of total count, for example Mounts 3/20, plus a percentage and progress bar. Skills use total skill level out of maximum total level.
+
+Dense Skill and Collectible grids prioritize legibility over a fixed tile count: four columns on narrow phones and five on wider mobile screens.
 
 Purchasing a collectible should give immediate feedback:
 
