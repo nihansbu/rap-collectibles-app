@@ -1,6 +1,7 @@
 # Project Instructions
 
 Read `project_memory.md` before significant technical work and `game_design.md` before gameplay, economy, content, or player-facing UI changes.
+Read and update `roadmap.md` when implementing or completing planned systems.
 
 ## Completion Gate
 

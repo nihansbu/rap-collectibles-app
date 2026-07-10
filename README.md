@@ -30,3 +30,5 @@ The production build is deployed to GitHub Pages from `main` by `.github/workflo
 Production hides prototype controls and future menu entries. Append `?dev=1` to enable the RAP grant button and development placeholders.
 
 Read `project_memory.md` before architecture or workflow changes and `game_design.md` before gameplay or content changes.
+
+Implementation order and open dependencies are tracked in `roadmap.md`. Balance values are provisional and can be compared with `npm run balance:report`.

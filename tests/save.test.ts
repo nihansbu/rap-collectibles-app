@@ -36,6 +36,8 @@ describe("save system", () => {
     expect(imported).not.toBeNull();
     expect(imported?.rp).toBe(123);
     expect(imported?.lastSeenActivityResultId).toBeNull();
+    expect(imported?.contentMasteryPoints["mastery-fishers-trawler"]).toBe(0);
+    expect(imported?.unlockedCosmetics).toEqual([]);
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 
@@ -66,7 +68,10 @@ describe("save system", () => {
     const player = createInitialPlayerState();
     player.rp = 42_000;
     player.lastSeenActivityResultId = null;
+    player.contentMasteryPoints["mastery-fishers-trawler"] = 250_000;
 
-    expect(importPlayerState(exportPlayerState(player))).toEqual(player);
+    const exported = exportPlayerState(player);
+    expect(JSON.parse(exported).version).toBe(7);
+    expect(importPlayerState(exported)).toEqual(player);
   });
 });

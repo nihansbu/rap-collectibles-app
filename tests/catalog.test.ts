@@ -58,7 +58,7 @@ describe("catalog rules", () => {
     const player = { ...createInitialPlayerState(), rp: Number.MAX_SAFE_INTEGER };
     expect(sourceActivityFor(drop)).not.toBeNull();
     expect(canUnlock(drop, player)).toBe(false);
-    expect(collectibleActionLabel(drop, player)).toBe("Activity Drop");
+    expect(collectibleActionLabel(drop, player)).toBe("Adventure Drop");
     expect(collectibleStatus(drop, player)).toBe("locked");
   });
 

@@ -1,4 +1,4 @@
-import { Compass, Gem, Shield } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, Compass, Gem, Layers3, Shield, UserRound } from "lucide-react";
 import type { CategoryId } from "../data";
 import { activityRap, type ActivityOption } from "../economy";
 import { formatNumber } from "../format";
@@ -23,6 +23,10 @@ export function MainMenuPage({
   onInspectActivity,
   onOpenActivities,
   onOpenCategory,
+  onOpenBonuses,
+  onOpenSets,
+  onOpenProfile,
+  setProgress,
 }: {
   activities: ActivityOption[];
   categoryProgress: DashboardCategoryProgress[];
@@ -33,17 +37,21 @@ export function MainMenuPage({
   onInspectActivity: (activity: ActivityOption) => void;
   onOpenActivities: () => void;
   onOpenCategory: (id: CategoryId) => void;
+  onOpenBonuses: () => void;
+  onOpenSets: () => void;
+  onOpenProfile: () => void;
+  setProgress: { completed: number; total: number };
 }) {
   return (
     <div className="dashboard-page">
-      <section className="dashboard-section" aria-label="Adventure">
-        <DashboardHeading title="Adventure" meta={`${formatNumber(totalActivityRuns)} runs`} />
-        <div className="dashboard-nav-grid adventure-nav-grid">
+      <section className="dashboard-section" aria-label="World">
+        <DashboardHeading title="World" meta={`${formatNumber(totalActivityRuns)} runs`} />
+        <div className={`dashboard-nav-grid adventure-nav-grid ${showFutureFeatures ? "with-future" : ""}`}>
           <button className="dashboard-nav-tile adventure-entry" onClick={onOpenActivities}>
             <span className="dashboard-nav-icon">
               <Compass size={22} strokeWidth={1.8} />
             </span>
-            <strong>Activities</strong>
+            <strong>Adventures</strong>
             <small>{activeActivityCount > 0 ? `${activeActivityCount} active` : "XP and rare drops"}</small>
           </button>
           {showFutureFeatures && (
@@ -58,6 +66,14 @@ export function MainMenuPage({
               </button>
             </>
           )}
+        </div>
+      </section>
+
+      <section className="dashboard-section" aria-label="Account">
+        <DashboardHeading title="Account" />
+        <div className="dashboard-nav-grid account-nav-grid">
+          <button className="dashboard-nav-tile" onClick={onOpenBonuses}><span className="dashboard-nav-icon"><ChartNoAxesColumnIncreasing size={22} /></span><strong>Bonuses</strong><small>Permanent power</small></button>
+          <button className="dashboard-nav-tile" onClick={onOpenProfile}><span className="dashboard-nav-icon"><UserRound size={22} /></span><strong>Profile</strong><small>Themes and badges</small></button>
         </div>
       </section>
 
@@ -76,6 +92,12 @@ export function MainMenuPage({
               </span>
             </button>
           ))}
+          <button className="dashboard-collection-tile" onClick={onOpenSets}>
+            <span className="dashboard-nav-icon"><Layers3 size={22} /></span>
+            <strong>Sets</strong>
+            <small>{setProgress.completed}/{setProgress.total}</small>
+            <span className="mini-progress-track" aria-hidden="true"><span style={{ width: `${setProgress.total ? (setProgress.completed / setProgress.total) * 100 : 0}%` }} /></span>
+          </button>
         </div>
       </section>
 

@@ -2,9 +2,9 @@
 
 ## Vision
 
-A mobile-only high-fantasy collector app where real-life effort is represented by RAP, short for Real Life Activity Points. The player earns RAP, spends RAP, trains RuneScape-inspired skills, and unlocks collectibles such as mounts, pets, characters, races/peoples, classes, and items.
+A mobile-only high-fantasy collector app where real-life effort is represented by RAP, short for Real Life Activity Points. The player earns RAP, spends RAP, trains fantasy skills, and unlocks collectibles such as mounts, pets, heroes, races, classes, tools, and cosmetics.
 
-The product should feel like a collection and progression companion, not a traditional game. Characters and collectibles matter because they are owned, unlocked, and shown in the Codex, not because the player directly controls them in gameplay.
+The product should feel like a collection and progression companion, not a traditional game. Heroes and Collectibles matter because they are owned, unlocked, and shown in the Codex, not because the player directly controls separate characters.
 
 ## Core Loop
 
@@ -19,9 +19,9 @@ Long-term loop:
 
 1. Player earns RAP from real-life activities.
 2. Player trains skills with RAP.
-3. Player meets skill requirements for collectibles and repeatable Activities.
-4. Player spends RAP to unlock direct-purchase collectibles or run Activities.
-5. Activities award reduced skill XP and can drop exclusive collectibles.
+3. Player meets skill requirements for collectibles and repeatable Adventures.
+4. Player spends RAP to unlock direct-purchase collectibles or run Adventures.
+5. Adventures award skill XP, Mastery, and can drop exclusive collectibles.
 6. Player watches Codex completion increase.
 
 ## RAP
@@ -32,10 +32,11 @@ Design rules:
 
 - RAP is the only currency at the start.
 - RAP can be used for all purchases and skill training.
-- RAP can be spent on repeatable gameplay Activities.
+- RAP can be spent on repeatable gameplay Adventures.
 - A simple RAP grant button remains available only as a development tool; it is not part of the production player flow.
 - The first player-facing earning placeholder is a manual `Log Activity` panel. Each tap logs 1 hour and grants RAP immediately.
 - Real activity tracking can be added later without changing the core economy.
+- Real-life earning entries are called `Activities`; repeatable in-game content is called `Adventures` and lives under `World`.
 
 Current manual activity rates:
 
@@ -66,7 +67,7 @@ Design rules:
 - Detailed system explanations should prefer the Handbook over repeated dense copy inside core gameplay panels.
 - Opening the Handbook from a page first shows a short explanation of that page and a curated set of relevant entries.
 - Opening the book icon again from a contextual guide opens the complete Handbook index.
-- Back returns to the exact origin, including an open Skill, Collectible, Activity, or manual Log Activity detail view.
+- Back returns to the exact origin, including an open Skill, Collectible, Adventure, or manual Activity detail view.
 - Entries are reusable wiki articles. A mechanic such as Bad Luck Protection should be written once and linked from every relevant page context.
 - The full Handbook must remain practical at 200 or more entries through search, categories, related topics, and a data-driven article registry.
 
@@ -75,7 +76,7 @@ Current Handbook topics:
 - Basics
 - RAP
 - Skills
-- Activities
+- Adventures
 - Tools
 - Account Bonuses
 - Drops
@@ -85,13 +86,13 @@ Current Handbook topics:
 - Requirements
 - Skill Training
 - Skill Advantage
-- Activity Results
+- Adventure Results
 - Saving Progress
 
 ## Save And Device Experience
 
 - Player progress autosaves locally and must survive long-running accounts without replaying elapsed time in one-second loops.
-- Completed Activity rewards are deterministic once a run starts; reloading cannot reroll a result.
+- Completed Adventure rewards are deterministic once a run starts; reloading cannot reroll a result.
 - Settings shows save state and provides portable JSON export/import.
 - Cloud synchronization and accounts are future systems. The current player-facing boundary must state that progress belongs to the current browser.
 - The app is installable as a portrait PWA and keeps its application shell available offline.
@@ -110,7 +111,7 @@ The Codex is the central collection overview. It should make the player feel imm
 
 The Codex starts as the main `Collectibles` page and should show category tiles in this order:
 
-- Characters
+- Heroes
 - Classes
 - Races
 - Skills
@@ -144,10 +145,10 @@ Collectible tile status colors:
 - Locked collectibles are red when at least one non-currency requirement is missing.
 - The lock icon should only appear on red locked tiles.
 - Default collection ordering is Owned first, then Ready, then Locked.
-- Activity-only drops stay visible in their normal category, such as Pets or Mounts.
-- Unowned Activity-only drops are red locked tiles with an indigo source strip.
-- Owned Activity-only drops use an indigo owned/source tile state.
-- Activity-only drops cannot be bought directly; their detail panel points to the source Activity.
+- Adventure-only drops stay visible in their normal category, such as Pets or Mounts.
+- Unowned Adventure-only drops are red locked tiles with an indigo source strip.
+- Owned Adventure-only drops use an indigo owned/source tile state.
+- Adventure-only drops cannot be bought directly; their detail panel points to the source Adventure.
 
 ## Collectibles
 
@@ -157,7 +158,7 @@ Planned collectible types:
 
 - Mounts
 - Pets
-- Characters
+- Heroes
 - Classes
 - Races
 - Skills
@@ -168,13 +169,13 @@ Planned collectible types:
 Collectibles can have a source:
 
 - Direct purchase with RAP.
-- Activity Drop from a named Activity such as `Fisher's Trawler`.
+- Adventure Drop from a named Adventure such as `Fisher's Trawler`.
 
 Collectibles can grant Account Bonuses:
 
 - Skill-specific XP bonuses, for example +2% Fishing XP.
 - All-Skill XP bonuses later.
-- Additional Roll chance for Activities.
+- Additional Roll chance for Adventures.
 
 ## Tools
 
@@ -184,7 +185,7 @@ Design decisions:
 
 - Tools are not inventory items and do not use equipment slots in the current prototype.
 - Owned Tools are account-wide unlocks.
-- Tools can be bought directly or dropped from Activities.
+- Tools can be bought directly or dropped from Adventures.
 - Tools can grant simple Account Bonuses.
 - Tool icons can be generated later; no new icon pass is required for the first Tools implementation.
 
@@ -206,16 +207,17 @@ Example:
 - Cost: 25,000 RAP
 - Requirement: Herblore level 73
 
-## Characters
+## Heroes And Account Profile
 
-Characters are collectible entities, not playable avatars in the first version.
+Heroes are predefined collectible figures, not playable avatars with separate progression.
 
 Design direction:
 
-- Player can own multiple characters.
-- Characters may have race and class.
+- The player can collect multiple Heroes.
+- Heroes may unlock Profile portraits, Badges, Titles, or Cosmetic variants.
 - Races and classes are unlockable collectible categories.
-- Characters are part of the fantasy identity and collection fantasy.
+- The account has one customizable Profile assembled from unlocked presentation options.
+- Heroes never receive separate levels, inventories, currencies, or save files.
 
 ## Classes And Races
 
@@ -253,49 +255,48 @@ Current Race type direction:
 
 Race names can be specific variants while the type remains the broader fantasy family. Example: `Ironhold Dwarf` has type `Dwarf`.
 
-## Adventure And Activities
+## World And Adventures
 
-`Adventure` is the home for repeatable gameplay systems. It is separate from `Collectibles`, because `Collectibles` is the Codex and answers "What do I own?", while `Adventure` answers "What can I do?"
+`World` is the home for repeatable gameplay systems. It is separate from `Collectibles`, because `Collectibles` answers "What do I own?", while `World` answers "What can I do?"
 
-The first Adventure subpage is `Activities`.
+The first World subpage is `Adventures`. Future siblings include `Minigames` and `Bossing`.
 
-Activity design rules:
+Adventure design rules:
 
-- Activities are repeatable RAP sinks.
-- Activities are not Collectibles.
-- Activities can have skill requirements.
-- Activities cost RAP and have a runtime.
+- Adventures are repeatable RAP sinks.
+- Adventures are not Collectibles.
+- Adventures can have Skill and Collectible requirements.
+- Adventures cost RAP and have a runtime.
 - The prototype runtime is intentionally short, currently around 3 seconds, so the future non-instant design can be tested quickly.
-- RAP is paid when the Activity starts.
-- XP and drops are awarded when the Activity finishes.
-- Active Activity runs and completed run counts are save data.
-- Activity runs are timestamped and should process correctly after reload.
-- Completed runs show an Activity Result panel with RAP spent, XP gained, Roll 1, Additional Roll state, and any dropped Collectible.
+- RAP is paid when the Adventure starts.
+- XP, Mastery, and drops are awarded when the Adventure finishes.
+- Active Adventure runs and completed run counts are save data.
+- Adventure runs are timestamped and process correctly after reload.
+- Completed runs show an Adventure Result panel with RAP spent, XP gained, Mastery, rolls, and any dropped Collectible.
 
-Activity XP:
+Adventure XP:
 
-- Activities are less XP-efficient than direct Skill training because they also provide drop chances.
-- Total Activity XP efficiency should be 75% of direct Skill training for the same RAP spend.
-- XP can be split across multiple skills, for example `Fishing 50%` and `Cooking 25%`.
-- Reward shares should normally sum to 75%.
+- Adventures award 100% base XP efficiency for their base RAP spend.
+- XP can be split across multiple Skills, for example `Fishing 75%` and `Cooking 25%`.
+- Reward shares must sum to exactly 100% before Account and Mastery bonuses.
 - Account Bonuses can increase the XP for specific Skills or all Skills.
-- Skill Advantage can add up to +15% Activity XP when the player exceeds the Activity's required skill level.
+- Skill Advantage can add up to +15% Adventure XP when the player exceeds the Adventure's required Skill level.
 
 Skill Advantage:
 
-- Skill Advantage is based on skill levels above the Activity's minimum requirements.
+- Skill Advantage is based on Skill levels above the Adventure's minimum requirements.
 - It scales proportionally from the required level to Level 120.
 - Maximum bonus is +15% XP, -15% RAP cost, and -15% runtime.
-- The bonus should remain modest so required levels still matter without making Activities feel mandatory to overlevel first.
+- The bonus should remain modest so required levels still matter without making Adventures feel mandatory to overlevel first.
 
-Activity Drop Tables:
+Adventure Drop Tables:
 
-- Activities can contain multiple possible collectible drops.
+- Adventures can contain multiple possible Collectible drops and reference reusable Shared Chaser Pools.
 - Every unowned drop in the table is rolled on completion.
 - A run can award at most one collectible.
 - If multiple rolls or drops succeed in one run, the player receives the item with the lower drop chance, meaning the rarer item.
 - Owned drops are not awarded again in the current prototype.
-- Activity drops remain visible in their normal Codex category.
+- Adventure drops remain visible in their normal Codex category.
 - Additional Roll chance can create one extra drop roll after the normal roll.
 - Additional Roll starts as a rare Account Bonus, currently +0.5% from Storm Harpoon.
 - Chaser items are allowed as very rare drops, for example 1 / 25,000.
@@ -305,17 +306,57 @@ Bad Luck Protection:
 - Bad Luck Protection should be implemented and explained in the Handbook.
 - Once completed runs reach twice the base drop denominator, the chance is tripled.
 - Example: a `1 / 500` drop becomes `3 / 500` at 1,000 completed runs.
-- Activity Drop Tables should keep this compact: show base chance, current effective chance, and a `Protected` state only when protection is active.
+- Adventure Drop Tables should keep this compact: show base chance, current effective chance, Shared Pool source, Roll Units, and a `Protected` state only when protection is active.
 
-Current Activities:
+## Content Mastery
+
+Content Mastery is a reusable Level 0-10 progression layer for Adventures and future Minigames and Bosses.
+
+- Every completed run grants Mastery Points equal to its undiscounted base RAP cost.
+- Cost reductions never reduce Mastery earned.
+- Each track defines a configurable target RAP; universal ratio thresholds derive Levels 1-10.
+- Passive economic bonuses remain modest so new content does not feel punitive.
+- Milestones can unlock Cosmetics, content routes, Collectibles, or simple Account Bonuses.
+- Multiple routes in one content family may share one Mastery track.
+- Mastery Level is derived from raw saved points so balance values remain data-driven.
+
+Current provisional threshold ratios are 2%, 5%, 10%, 16%, 24%, 34%, 46%, 60%, 80%, and 100% of the configured track target.
+
+## Shared Chaser Pools
+
+- A Shared Chaser Pool can be referenced by multiple Adventures, Minigames, or Bosses.
+- Progress uses Roll Units normalized by base RAP: currently 10,000 base RAP equals one Roll Unit.
+- More expensive eligible content contributes proportionally without forcing one specific Adventure.
+- Bad Luck Protection for shared drops uses accumulated Roll Units rather than one content's run count.
+- Specific route drops remain in their normal Drop Table; only explicit Chaser items use Shared Pools.
+
+## Collection Sets And Cosmetics
+
+- Sets group Collectibles across categories and derive progress directly from the Codex.
+- Set rewards can include Profile Badges, curated Themes, or simple Account Bonuses.
+- Event-styled Sets remain permanently available and never create FOMO.
+- Cosmetics are account-wide presentation unlocks, not separate inventory power.
+- Curated Themes control validated color tokens rather than exposing unrestricted color editing.
+- Heroes can unlock Profile rewards but never have separate levels, inventories, currencies, or progression saves.
+
+Modifier order:
+
+1. Calculate base XP from undiscounted RAP and the Adventure's 100% Skill share split.
+2. Add Collectible Account Bonuses within their own category.
+3. Apply the Account subtotal, Content Mastery, and Skill Advantage as separate multipliers.
+4. Add RAP cost and runtime reductions within their respective category, subject to central caps.
+
+Current Adventures:
 
 - `Fisher's Trawler`
   - Type: Fishing
   - Cost: 10,000 RAP
   - Runtime: 3 seconds in the prototype
   - Requirement: Fishing 40
-  - XP split: Fishing 50%, Cooking 25%
-  - Drops: `Trawler Gull` at 1 / 500, `Dragon Harpoon` at 1 / 750, `Brine Ray` at 1 / 2,500, and `Storm Harpoon` at 1 / 25,000
+  - XP split: Fishing 75%, Cooking 25%
+  - Direct drops: `Trawler Gull` at 1 / 500, `Dragon Harpoon` at 1 / 750, and `Brine Ray` at 1 / 2,500
+  - Shared Fishing Chaser Pool: `Storm Harpoon` at 1 / 25,000 Roll Units
+  - Content Mastery target: provisional 5,000,000 base RAP
 - `Haunted Burial`
 - `Ember Kiln`
 - `Deep Mine Survey`
@@ -335,6 +376,7 @@ Design rules:
 - Each active skill consumes up to 10,000 RAP/hour. Training can start with less than 10,000 RAP and stops automatically if RAP reaches zero.
 - Active training should be visible through an animated gold state on the Skill tile and status copy in the Skill detail panel.
 - Training jobs continue through reloads/closed-app time by processing saved timestamps.
+- Direct Skill Training is transitional. It remains available until every Skill has at least one Level 1 gameplay acquisition source.
 - XP/hour should be conservative because later real-world activity can generate roughly 20,000 to 50,000 RAP/hour. Current XP rates per active skill are:
   - Level 1-9: 4,000 XP/hour
   - Level 10-29: 6,000 XP/hour
@@ -361,7 +403,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
-- Save v5 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Activity runs, Activity run counts, recent Activity results, and recent manual activity log entries.
+- Save v7 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, and Cosmetic selections. Future progression changes migrate through later save versions.
 - Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -374,8 +416,8 @@ Current first screen elements:
 - RAP balance at the top.
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
-- Main menu dashboard with three consistent, unframed sections: Adventure entries, direct Collectibles category tiles, and manual Log Activity tiles.
-- The Collectibles page contains category tiles: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
+- Main menu dashboard uses consistent sections for World, Account, Collectibles, and manual Activity Log tiles.
+- The Collectibles page contains category tiles for Heroes, Classes, Races, Skills, Tools, Pets, Mounts, and Sets.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` grid for one-hour activity entries.
 - The Handbook is a global contextual topbar action, not a main-menu tile.
@@ -403,8 +445,8 @@ Interaction decision:
 - Long press opens the detail/info panel.
 - The detail panel fills the content area under the topbar.
 - Direct-purchase Collectible tiles use tap as the buy action, but still show a confirmation dialog before RAP is spent.
-- Collectible tiles with no valid direct action, such as owned entries, unavailable entries, or Activity-only drops, open the detail panel on tap.
-- Activity tiles use tap to start a run when the Activity is available and long press for details.
+- Collectible tiles with no valid direct action, such as owned entries, unavailable entries, or Adventure-only drops, open the detail panel on tap.
+- Adventure tiles use tap to start a run when the Adventure is available and long press for details.
 - Manual Log Activity tiles use tap to log one hour and long press for details.
 - Skill tiles still open the Skill detail panel on tap because training requires choosing a duration.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
@@ -420,7 +462,7 @@ Grid tile direction:
 - Races show icon, race name, and race type.
 - Pets show icon, pet name, and pet type.
 - Mounts show icon, mount name, and mount type.
-- Characters can show icon/portrait, character name, and class/archetype.
+- Heroes can show icon/portrait, name, and class/archetype.
 - Costs, descriptions, requirements, source game, rarity, and actions belong in the full-content detail panel.
 - Scroll behavior must remain available on every subpage when content exceeds the viewport.
 
@@ -438,7 +480,7 @@ Icon art direction:
 - The first full Mount icon pass covers all 8 mounts as transparent 256x256 WebP assets.
 - The first full Pet icon pass covers all 6 pets as transparent 256x256 WebP assets. Pocket Spriggan currently uses a woodland leaf/root charm visual.
 - The first full Class icon pass covers all 8 classes as transparent 256x256 WebP assets. Classes use role equipment/emblems instead of portraits.
-- Characters, Races, and the first Activity-only drops still need their generated transparent icon passes.
+- Current content has icon coverage; future Heroes, Races, and Adventure drops must use the documented transparent icon pipeline.
 - Use five-column compact grids as the first implementation target for Skills and Collectible subpages, then adjust per-category only if readability suffers.
 
 ## Tone And Setting
@@ -458,7 +500,12 @@ The first version should prioritize clarity and fast collection feedback over de
 - Items.
 - Skill-based unlock trees.
 - Better Codex presentation with category completion.
-- More Activities, Activity milestones, and deeper Bad Luck Protection tuning.
+- More Adventures, Content Mastery tracks, Shared Chaser Pools, and deeper Bad Luck Protection tuning.
+- Generic Content Mastery Level 0-10 for Adventures, Minigames, and Bosses.
+- Shared Chaser Drop Pools across eligible content.
+- Cross-category Collection Sets without time-limited availability.
+- Account Bonus overview, Heroes, Profile Badges, curated Themes, and earned Cosmetics.
+- Skill Mastery Level 1-100 after normal Skill Level 120; no Level 999 progression.
 
 ## Current MVP Scope
 
@@ -470,15 +517,15 @@ Build only:
 - Mount purchasing with RAP.
 - Main Menu with Collectibles and Adventure.
 - Contextual Handbook available from every topbar, plus a searchable complete wiki index.
-- Repeatable Activities under Adventure.
-- Activity-only collectible drops visible in their normal Codex categories.
-- Bad Luck Protection display for Activity drops.
+- Repeatable Adventures under World.
+- Adventure-only Collectible drops visible in their normal Codex categories.
+- Bad Luck Protection display for Adventure drops.
 - Skill levels required by some mounts.
 - Time-based RAP skill training with up to three concurrent skills.
 - Codex overview with category progress.
 - Codex overview with completion percentage, progress bars, and recent unlocks.
 - All RuneScape/Old School RuneScape skills, max level 120.
-- Shared collection page pattern for Characters, Pets, and Mounts.
+- Shared collection page pattern for Heroes, Pets, and Mounts.
 
 Avoid for MVP:
 

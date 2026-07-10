@@ -51,7 +51,7 @@ button {
   margin: 0 auto;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 180px),
-    #111614;
+    var(--color-canvas);
   border-inline: 1px solid rgba(224, 202, 142, 0.12);
   position: relative;
 }
@@ -78,7 +78,7 @@ button,
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: rgba(17, 22, 20, 0.92);
+  background: color-mix(in srgb, var(--color-canvas) 92%, transparent);
   border-bottom: 1px solid rgba(224, 202, 142, 0.16);
   backdrop-filter: blur(18px);
 }
@@ -1111,6 +1111,7 @@ button,
 }
 
 .icon-tile {
+  position: relative;
   min-width: 0;
   min-height: 104px;
   border: 1px solid rgba(224, 202, 142, 0.14);
@@ -1625,7 +1626,7 @@ button,
 }
 
 .activity-card {
-  min-height: 92px;
+  min-height: 112px;
   position: relative;
   border: 1px solid rgba(224, 202, 142, 0.14);
   border-radius: 8px;
@@ -1841,6 +1842,161 @@ button,
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+
+.set-strip {
+  height: 4px;
+  position: absolute;
+  top: 0;
+  left: 5px;
+  right: 5px;
+  border-radius: 0 0 4px 4px;
+  background: var(--set-color);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--set-color) 60%, transparent);
+}
+
+.activity-card > .mastery-compact {
+  grid-column: 1 / -1;
+}
+
+.mastery-compact {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+  color: #c8d0ff;
+}
+
+.mastery-compact-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.mastery-compact-copy strong { font-size: 11px; }
+.mastery-compact-copy small { color: var(--color-muted); font-size: 9px; }
+
+.mastery-track,
+.bonus-rank-track,
+.set-progress {
+  height: 6px;
+  display: block;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.mastery-track > span,
+.bonus-rank-track > span,
+.set-progress > span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #6679dc, var(--color-gold));
+}
+
+.mastery-panel {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid rgba(125, 143, 236, 0.28);
+  border-radius: var(--radius-control);
+  background: rgba(86, 104, 190, 0.09);
+}
+
+.mastery-heading,
+.mastery-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mastery-heading { align-items: end; margin-bottom: 9px; }
+.mastery-heading > span:first-child { display: grid; gap: 2px; }
+.mastery-heading small { color: #aeb9e9; font-size: 10px; text-transform: uppercase; }
+.mastery-heading strong { color: #f4f0ff; font-size: 14px; }
+.mastery-heading > span:last-child { color: #c7cce9; font-size: 10px; }
+.mastery-summary { margin-top: 8px; color: var(--color-muted); font-size: 10px; }
+.mastery-milestones { display: grid; gap: 5px; margin-top: 10px; }
+.mastery-milestones span { display: grid; grid-template-columns: 30px 1fr; gap: 6px; color: #7f8981; font-size: 10px; }
+.mastery-milestones span.earned { color: #a8e6b6; }
+
+.account-bonuses-page,
+.sets-page,
+.profile-page { display: grid; gap: 18px; }
+
+.account-nav-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adventure-nav-grid:not(.with-future) { grid-template-columns: minmax(0, 1fr); }
+
+.bonus-hero,
+.profile-preview {
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0 18px;
+  border-bottom: 1px solid rgba(224, 202, 142, 0.14);
+  color: var(--color-gold);
+}
+
+.bonus-hero span,
+.profile-preview > span:last-child { display: grid; gap: 3px; }
+.bonus-hero small,
+.profile-preview small { color: var(--color-muted); font-size: 10px; text-transform: uppercase; }
+.bonus-hero strong,
+.profile-preview h2 { margin: 0; color: var(--color-text); font-size: 17px; }
+.profile-preview p { margin: 2px 0 0; color: var(--color-muted); font-size: 11px; line-height: 1.4; }
+.profile-avatar { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid color-mix(in srgb, var(--color-gold) 30%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--color-gold) 10%, transparent); }
+
+.bonus-section,
+.cosmetic-section { display: grid; gap: 8px; }
+.bonus-section > header,
+.cosmetic-section > header { display: flex; align-items: center; gap: 8px; color: var(--color-gold); }
+.bonus-section h2,
+.cosmetic-section h2 { margin: 0; color: var(--color-text); font-size: 14px; }
+
+.skill-bonus-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.skill-bonus-tile { min-width: 0; min-height: 76px; padding: 9px 7px; display: grid; grid-template-rows: auto auto auto 6px; gap: 2px; border: 1px solid rgba(224, 202, 142, 0.14); border-radius: 8px; background: var(--color-panel); }
+.skill-bonus-tile strong { overflow: hidden; color: var(--color-text); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.skill-bonus-tile > span:not(.bonus-rank-track) { color: var(--color-gold); font-size: 14px; font-weight: 800; }
+.skill-bonus-tile small { color: var(--color-muted); font-size: 9px; }
+.skill-bonus-tile.rank-0 { opacity: 0.58; }
+.skill-bonus-tile.rank-3,
+.skill-bonus-tile.rank-4,
+.skill-bonus-tile.rank-5 { border-color: color-mix(in srgb, var(--color-gold) 55%, transparent); }
+
+.bonus-source-row { min-height: 48px; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.07); }
+.bonus-source-row > span { display: grid; gap: 2px; }
+.bonus-source-row strong { color: var(--color-text); font-size: 11px; }
+.bonus-source-row small,
+.bonus-empty { color: var(--color-muted); font-size: 10px; }
+.bonus-source-row > strong { max-width: 52%; color: var(--color-gold); text-align: right; }
+
+.set-panel { padding: 14px; border: 1px solid color-mix(in srgb, var(--set-color) 55%, transparent); border-radius: 8px; background: linear-gradient(140deg, color-mix(in srgb, var(--set-color) 18%, transparent), var(--color-panel)); }
+.set-panel header { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; }
+.set-panel header > span:nth-child(2) { display: grid; gap: 2px; }
+.set-panel h2,
+.set-panel p { margin: 0; }
+.set-panel h2 { color: var(--color-text); font-size: 16px; }
+.set-panel header small { color: color-mix(in srgb, var(--set-color) 60%, white); font-size: 9px; text-transform: uppercase; }
+.set-panel header > strong { color: var(--color-gold); }
+.set-panel p { margin: 10px 0; color: var(--color-muted); font-size: 11px; line-height: 1.4; }
+.set-emblem { width: 40px; height: 40px; display: grid; place-items: center; color: #dce2ff; border: 1px solid color-mix(in srgb, var(--set-color) 60%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--set-color) 24%, transparent); }
+.set-items { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-top: 11px; }
+.set-items > span { min-width: 0; display: grid; grid-template-columns: 14px 1fr; gap: 5px; align-items: center; color: #7e8780; }
+.set-items > span.owned { color: var(--color-success); }
+.set-items small { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.set-rewards { margin-top: 12px; display: grid; gap: 5px; }
+.set-rewards > div { display: grid; grid-template-columns: 40px 1fr; color: #7e8780; font-size: 10px; }
+.set-rewards > div.earned { color: var(--color-success); }
+
+.cosmetic-section > button { width: 100%; display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 10px; padding: 9px; border: 1px solid rgba(224,202,142,.14); border-radius: 8px; color: var(--color-text); background: var(--color-panel); text-align: left; }
+.cosmetic-section > button.selected { border-color: color-mix(in srgb, var(--color-gold) 65%, transparent); }
+.cosmetic-section > button:disabled { opacity: .52; }
+.cosmetic-section > button > span:nth-child(2) { display: grid; gap: 2px; }
+.cosmetic-section strong { font-size: 11px; }
+.cosmetic-section small { color: var(--color-muted); font-size: 9px; }
+.cosmetic-swatch { width: 36px; height: 36px; display: block; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; }
+.cosmetic-swatch.default { background: linear-gradient(135deg, #f4d57b, #315143); }
 
 .detail-view > .training-actions {
   position: sticky;

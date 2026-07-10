@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Check,
   ChevronRight,
@@ -6,6 +6,7 @@ import {
   Dice5,
   Gem,
   Lock,
+  Layers3,
   Search,
   Swords,
   X,
@@ -47,18 +48,26 @@ import {
   sourceActivityFor,
   statusLabel,
 } from "./catalog";
-import { categories, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import { categories, COLLECTION_SETS, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
 import { HandbookPage } from "./pages/HandbookPage";
 import { MainMenuPage } from "./pages/MainMenuPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { AccountBonusesPage } from "./pages/AccountBonusesPage";
+import { SetsPage } from "./pages/SetsPage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
 import { useLongPress } from "./ui/useLongPress";
+import { MasteryProgress } from "./ui/MasteryProgress";
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
+import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
+import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
+import { masteryEconomicModifiers } from "./mastery";
+import { getSetsForCollectible } from "./sets";
 import { usePlayerPersistence } from "./hooks/usePlayerPersistence";
 import {
   formatDuration,
@@ -84,9 +93,12 @@ type DetailView =
 type ContentPage =
   | { type: "main" }
   | { type: "collectibles" }
-  | { type: "adventure" }
+  | { type: "world" }
   | { type: "settings" }
-  | { type: "activities"; from?: "main" | "adventure" }
+  | { type: "bonuses" }
+  | { type: "sets" }
+  | { type: "profile" }
+  | { type: "adventures"; from?: "main" | "world" }
   | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type Page = ContentPage | {
   type: "handbook";
@@ -125,7 +137,7 @@ function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
   if (detailView?.type === "activity") {
     const activity = getActivity(detailView.activityId);
     return createHandbookContext("activity-detail", {
-      title: activity?.name ?? "Activity Details",
+      title: activity?.name ?? "Adventure Details",
       intro: activity
         ? `This page explains ${activity.name}, including its requirements, effective RAP cost, runtime, XP rewards, Skill Advantage, and Drop Table.`
         : undefined,
@@ -167,12 +179,18 @@ export function App() {
       ? "Collectibles"
       : page.type === "settings"
         ? "Settings"
-      : page.type === "adventure"
-        ? "Adventure"
+      : page.type === "world"
+        ? "World"
+        : page.type === "bonuses"
+          ? "Account Bonuses"
+          : page.type === "sets"
+            ? "Sets"
+            : page.type === "profile"
+              ? "Profile"
         : page.type === "handbook"
           ? "Handbook"
-          : page.type === "activities"
-            ? "Activities"
+          : page.type === "adventures"
+            ? "Adventures"
             : categories.find((category) => category.id === page.id)?.name ?? "";
 
   useEffect(() => {
@@ -278,10 +296,12 @@ export function App() {
 
     setPlayer((current) => {
       if (current.owned.includes(item.id) || !canUnlock(item, current)) return current;
+      const owned = [...current.owned, item.id];
       return {
         ...current,
         rp: current.rp - item.cost,
-        owned: [...current.owned, item.id],
+        owned,
+        unlockedCosmetics: reconcileUnlockedCosmetics(current.unlockedCosmetics, owned, current.contentMasteryPoints),
       };
     });
     setUnlockNotice(item);
@@ -359,9 +379,21 @@ export function App() {
     });
   }, [player]);
   const totalActivityRuns = useMemo(() => Object.values(player.activityRunCounts).reduce((total, runs) => total + runs, 0), [player.activityRunCounts]);
+  const setProgress = useMemo(() => ({
+    completed: COLLECTION_SETS.filter((set) => set.collectibleIds.every((id) => player.owned.includes(id))).length,
+    total: COLLECTION_SETS.length,
+  }), [player.owned]);
+  const selectedTheme = player.selectedCosmetics.themeId ? getCosmetic(player.selectedCosmetics.themeId)?.theme : undefined;
+  const appThemeStyle = selectedTheme ? {
+    "--color-canvas": selectedTheme.canvas,
+    "--color-panel": selectedTheme.panel,
+    "--color-gold": selectedTheme.accent,
+    "--color-success": selectedTheme.success,
+    "--color-danger": selectedTheme.danger,
+  } as CSSProperties : undefined;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={appThemeStyle}>
       <TopBar
         title={title}
         rp={player.rp}
@@ -420,7 +452,11 @@ export function App() {
             showFutureFeatures={showDevTools}
             onLogActivity={logActivity}
             onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
-            onOpenActivities={() => setPage({ type: "activities", from: "main" })}
+            onOpenActivities={() => setPage({ type: "adventures", from: "main" })}
+            onOpenBonuses={() => setPage({ type: "bonuses" })}
+            onOpenSets={() => setPage({ type: "sets" })}
+            onOpenProfile={() => setPage({ type: "profile" })}
+            setProgress={setProgress}
             onOpenCategory={(id) => {
               setTypeFilter("all");
               setPage({ type: "category", id, from: "main" });
@@ -430,6 +466,8 @@ export function App() {
           <CollectiblesOverviewPage
             progress={categoryProgress}
             recentUnlocks={recentUnlocks}
+            setProgress={setProgress}
+            onOpenSets={() => setPage({ type: "sets" })}
             onOpen={(id) => {
               setTypeFilter("all");
               setPage({ type: "category", id, from: "collectibles" });
@@ -443,10 +481,20 @@ export function App() {
             onExport={exportSave}
             onImport={() => setImportOpen(true)}
           />
-        ) : page.type === "adventure" ? (
-          <AdventurePage
+        ) : page.type === "bonuses" ? (
+          <AccountBonusesPage player={player} />
+        ) : page.type === "sets" ? (
+          <SetsPage player={player} />
+        ) : page.type === "profile" ? (
+          <ProfilePage
             player={player}
-            onOpenActivities={() => setPage({ type: "activities", from: "adventure" })}
+            onSelectTheme={(themeId) => setPlayer((current) => ({ ...current, selectedCosmetics: { ...current.selectedCosmetics, themeId } }))}
+            onSelectBadge={(profileBadgeId) => setPlayer((current) => ({ ...current, selectedCosmetics: { ...current.selectedCosmetics, profileBadgeId } }))}
+          />
+        ) : page.type === "world" ? (
+          <WorldPage
+            player={player}
+            onOpenActivities={() => setPage({ type: "adventures", from: "world" })}
           />
         ) : page.type === "handbook" ? (
           <HandbookPage
@@ -456,8 +504,8 @@ export function App() {
             onOpenIndex={() => setPage({ ...page, mode: "index" })}
             onOpenContext={() => setPage({ ...page, mode: "context" })}
           />
-        ) : page.type === "activities" ? (
-          <ActivitiesPage
+        ) : page.type === "adventures" ? (
+          <AdventuresPage
             player={player}
             onOpenActivity={(activityId) => setDetailView({ type: "activity", activityId })}
             onRunActivity={handleGameplayActivityPrimaryAction}
@@ -513,10 +561,14 @@ function CollectiblesOverviewPage({
   progress,
   recentUnlocks,
   onOpen,
+  onOpenSets,
+  setProgress,
 }: {
   progress: CategoryProgress[];
   recentUnlocks: Collectible[];
   onOpen: (id: CategoryId) => void;
+  onOpenSets: () => void;
+  setProgress: { completed: number; total: number };
 }) {
   return (
     <>
@@ -540,6 +592,12 @@ function CollectiblesOverviewPage({
             </span>
           </button>
         ))}
+        <button className="category-tile" onClick={onOpenSets}>
+          <span className="tile-icon"><Layers3 size={22} /></span>
+          <span className="tile-text"><strong>Sets</strong><small>Cross-category collections</small></span>
+          <span className="tile-progress"><strong>{setProgress.completed}/{setProgress.total}</strong><small>{setProgress.total ? Math.round((setProgress.completed / setProgress.total) * 100) : 0}%</small></span>
+          <ChevronRight className="tile-chevron" size={18} />
+        </button>
       </section>
       {recentUnlocks.length > 0 && (
         <section className="recent-unlocks" aria-label="Recent unlocks">
@@ -561,7 +619,7 @@ function CollectiblesOverviewPage({
   );
 }
 
-function AdventurePage({
+function WorldPage({
   player,
   onOpenActivities,
 }: {
@@ -578,8 +636,8 @@ function AdventurePage({
           <Compass size={23} strokeWidth={1.8} />
         </span>
         <span className="tile-text">
-          <strong>Activities</strong>
-          <small>Repeatable adventures with XP and rare drops</small>
+          <strong>Adventures</strong>
+          <small>Repeatable journeys with XP, Mastery, and rare drops</small>
         </span>
         <span className="tile-progress">
           <strong>{formatNumber(totalRuns)}</strong>
@@ -628,7 +686,7 @@ function ManualActivityDetailView({
   );
 }
 
-function ActivitiesPage({
+function AdventuresPage({
   player,
   onOpenActivity,
   onRunActivity,
@@ -667,6 +725,7 @@ function ActivityCard({
   const requirementsReady = activityRequirementsMet(activity, player);
   const runCount = player.activityRunCounts[activity.id] ?? 0;
   const effective = effectiveActivityRun(activity, player);
+  const masteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
   const bestDrop = activity.drops.length > 0
     ? activity.drops.reduce((best, drop) => (drop.chance > best.chance ? drop : best), activity.drops[0])
     : null;
@@ -693,6 +752,7 @@ function ActivityCard({
         <strong>{formatNumber(effective.cost)} RAP</strong>
         <small>{runCount} Runs</small>
       </span>
+      <MasteryProgress trackId={activity.masteryTrackId} points={masteryPoints} compact />
       {bestDrop && (
         <span className="source-strip activity-source-strip">
           Rare drop {formatDropChance(bestDrop, runCount)}
@@ -844,6 +904,7 @@ function CollectibleCard({
 }) {
   const owned = player.owned.includes(item.id);
   const status = collectibleStatus(item, player);
+  const collectionSet = getSetsForCollectible(item.id)[0];
   const longPress = useLongPress({
     onPress: () => onPrimaryAction(item),
     onLongPress: () => onOpenDetails(item),
@@ -856,10 +917,11 @@ function CollectibleCard({
       aria-label={`${item.name}, ${item.type}, ${statusLabel[status]}. Press for the primary action; hold or open the context menu for details.`}
       {...longPress}
     >
+      {collectionSet && <small className="set-strip" style={{ "--set-color": collectionSet.color } as CSSProperties} aria-label={`${collectionSet.name} Set`} />}
       <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} sourceType={item.source?.type} />
       <h2>{item.name}</h2>
       <span>{item.type}</span>
-      {item.source?.type === "activity" && <small className="source-strip">Activity Drop</small>}
+      {item.source?.type === "activity" && <small className="source-strip">Adventure Drop</small>}
     </button>
   );
 }
@@ -947,7 +1009,7 @@ function CollectibleDetailView({
         {item.icon ? <img src={item.icon} alt="" draggable="false" /> : owned ? <Check size={32} /> : status === "ready" ? <Gem size={32} /> : <Lock size={32} />}
       </div>
       <div className="detail-status-row">
-        <span className={`status-pill ${sourceActivity && owned ? "activity" : status}`}>{sourceActivity && owned ? "Activity Drop" : statusLabel[status]}</span>
+        <span className={`status-pill ${sourceActivity && owned ? "activity" : status}`}>{sourceActivity && owned ? "Adventure Drop" : statusLabel[status]}</span>
         <span>{sourceActivity ? sourceActivity.name : `${formatNumber(item.cost)} RAP`}</span>
       </div>
       <h2>{item.name}</h2>
@@ -1091,17 +1153,18 @@ function ActivityDetailView({
   const requirementsReady = activityRequirementsMet(activity, player);
   const runCount = player.activityRunCounts[activityId] ?? 0;
   const effective = effectiveActivityRun(activity, player);
+  const masteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
   const advantage = activitySkillAdvantage(activity, player);
   const activeBonuses = collectAccountBonuses(player.owned).filter((bonus) => {
-    if (bonus.type === "all-skill-xp" || bonus.type === "additional-roll-chance") return true;
-    return activity.xpRewards.some((reward) => reward.skillId === bonus.skillId);
+    if (bonus.type === "skill-xp") return activity.xpRewards.some((reward) => reward.skillId === bonus.skillId);
+    return bonus.type !== "resistance";
   });
   const canRun = canStartActivity(activity, player);
   const runProgress = activeRun
     ? Math.min(100, Math.max(3, ((now - activeRun.startedAt) / (activeRun.endsAt - activeRun.startedAt)) * 100))
     : 0;
   const disabledReason = activeRun
-    ? "Activity already running"
+    ? "Adventure already running"
     : !requirementsReady
       ? "Requirements not met"
       : player.rp < effective.cost
@@ -1126,8 +1189,9 @@ function ActivityDetailView({
       <div className="sheet-meta">
         <span>{activity.type}</span>
         <span>{formatNumber(runCount)} Runs</span>
-        <span>75% XP efficiency</span>
+        <span>100% XP efficiency</span>
       </div>
+      <MasteryProgress trackId={activity.masteryTrackId} points={masteryPoints} />
       <div className="activity-bonus-panel">
         <h3>Bonuses</h3>
         <div className="bonus-row">
@@ -1135,6 +1199,10 @@ function ActivityDetailView({
           <strong>
             +{advantage.xpBonusPercent.toFixed(1)}% XP, -{advantage.costReductionPercent.toFixed(1)}% RAP, -{advantage.runtimeReductionPercent.toFixed(1)}% runtime
           </strong>
+        </div>
+        <div className="bonus-row">
+          <span>Content Mastery</span>
+          <strong>{formatMasteryModifiers(effective.mastery)}</strong>
         </div>
         {activeBonuses.length === 0 ? (
           <div className="bonus-row muted">
@@ -1152,7 +1220,7 @@ function ActivityDetailView({
       </div>
       {activeRun && (
         <div className="active-training-panel" aria-label={`${activity.name} run status`}>
-          <strong>Activity running</strong>
+          <strong>Adventure running</strong>
           <span>{formatDuration(Math.max(0, activeRun.endsAt - now))} remaining</span>
         </div>
       )}
@@ -1176,16 +1244,26 @@ function ActivityDetailView({
       <ActivityDropTable activity={activity} player={player} runCount={runCount} />
       <div className="purchase-panel">
         <div>
-          <strong>Run Activity</strong>
+          <strong>Run Adventure</strong>
           <span>Spend RAP now. XP and drops are awarded when the run finishes.</span>
         </div>
         <button className="primary-action detail-action" disabled={!canRun} onClick={onRun}>
-          Start Run
+          Start Adventure
         </button>
       </div>
       {disabledReason && <p className="action-note">{disabledReason}</p>}
     </section>
   );
+}
+
+function formatMasteryModifiers(modifiers: ReturnType<typeof masteryEconomicModifiers>) {
+  const values = [
+    modifiers.xpBonusPercent > 0 ? `+${modifiers.xpBonusPercent}% XP` : null,
+    modifiers.costReductionPercent > 0 ? `-${modifiers.costReductionPercent}% RAP` : null,
+    modifiers.runtimeReductionPercent > 0 ? `-${modifiers.runtimeReductionPercent}% runtime` : null,
+    modifiers.additionalRollChancePercent > 0 ? `+${modifiers.additionalRollChancePercent}% roll` : null,
+  ].filter(Boolean);
+  return values.join(", ") || "No passive bonus yet";
 }
 
 function ActivityRequirementList({ requirements, player }: { requirements: Requirement[]; player: PlayerState }) {
@@ -1242,13 +1320,19 @@ function ActivityDropTable({
   player: PlayerState;
   runCount: number;
 }) {
+  const sharedPools = activity.sharedDropPoolIds.flatMap((poolId) => {
+    const pool = getSharedDropPool(poolId);
+    return pool ? [pool] : [];
+  });
+  const hasDrops = activity.drops.length > 0 || sharedPools.some((pool) => pool.entries.length > 0);
   return (
     <div className="drop-table">
       <h3>Drop Table</h3>
-      {activity.drops.length === 0 ? (
+      {!hasDrops ? (
         <p>No collectible drops yet.</p>
       ) : (
-        activity.drops.map((drop) => {
+        <>
+        {activity.drops.map((drop) => {
           const item = activityDropItem(drop);
           const chance = activityDropChance(drop, runCount);
           const owned = item ? player.owned.includes(item.id) : false;
@@ -1267,7 +1351,26 @@ function ActivityDropTable({
               <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Unowned"}</span>
             </div>
           );
-        })
+        })}
+        {sharedPools.flatMap((pool) => pool.entries.map((entry) => {
+          const item = getCollectibleById(entry.collectibleId);
+          const owned = item ? player.owned.includes(item.id) : false;
+          const accumulatedUnits = player.sharedDropPoolRollUnits[pool.id] ?? 0;
+          const chance = sharedDropEntryChance(entry.denominator, accumulatedUnits, rollUnitsForBaseRap(activity.cost));
+          const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
+          return (
+            <div key={`${pool.id}-${entry.collectibleId}`} className={`drop-row shared ${owned ? "owned" : ""}`}>
+              <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
+              <span className="drop-copy">
+                <strong>{item?.name ?? entry.collectibleId}</strong>
+                <small>{pool.name} · {item ? `${item.rarity} ${categoryName}` : "Shared Chaser"}</small>
+                <small>Base 1 / {formatNumber(entry.denominator)} · Current {chance.multiplier} / {formatNumber(entry.denominator)} · {formatNumber(accumulatedUnits)} Roll Units</small>
+              </span>
+              <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Shared"}</span>
+            </div>
+          );
+        }))}
+        </>
       )}
     </div>
   );

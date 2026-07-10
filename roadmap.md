@@ -1,0 +1,66 @@
+# Product Roadmap
+
+This file tracks implementation order, dependencies, and acceptance criteria. Detailed game rules live in `game_design.md`; technical knowledge lives in `project_memory.md`.
+
+## Now: Progression Foundation
+
+- [x] Rename the gameplay hub to `World` and repeatable gameplay runs to `Adventures`; keep real-life earning under `Activity Log`.
+- [x] Centralize placeholder economy, XP, Mastery, modifier, and drop values in typed balance data.
+- [x] Add generic Content Mastery tracks from Level 0 to 10, progressed by base RAP cost rather than discounted cost.
+- [x] Make Adventure XP shares total 100% and validate that invariant at build time.
+- [x] Add reusable shared Chaser Drop Pools measured in normalized RAP Roll Units.
+- [x] Add a balance report for RAP-per-hour, Mastery time, expected drops, and bonus stacking.
+- [x] Add save migration for Mastery, shared Roll Units, and Cosmetic entitlements.
+
+Acceptance criteria:
+
+- Changing a Mastery target, curve ratio, reward value, XP share, or drop denominator requires a data edit rather than component changes.
+- Existing saves migrate without losing RAP, Skills, owned Collectibles, training, or active Adventures.
+- Tests reject invalid XP totals, missing references, duplicate IDs, and malformed Mastery rewards.
+
+## Next: Player-Facing Progression
+
+- [x] Show Mastery Level, progress, passive effect, and milestone rewards on Adventure cards/details.
+- [x] Add an Account Bonuses page grouped into Skill XP, Rolls & Luck, Adventure modifiers, and future resistance groups.
+- [x] Add cross-category Collection Sets and a dedicated Codex Sets view.
+- [x] Rename the player-facing `Characters` category to `Heroes`.
+- [x] Add Profile foundations for Badges and curated Themes without character-specific progression.
+- [x] Add a machine-readable Skill Acquisition Matrix.
+
+Acceptance criteria:
+
+- New Adventures, Sets, bonuses, and Cosmetics can be added through typed data.
+- Account Bonus sources are inspectable and totals use one documented modifier order.
+- Set completion is derived from owned Collectibles; Sets are not a second inventory.
+- Direct Skill Training remains available until every Skill has a Level 1 gameplay source.
+
+## Later: Content Expansion
+
+- Fishing Trawler Family Routes: Standard, Deep-Sea, Storm, and Abyssal.
+- Minigames and Bossing using the same Requirements, Rewards, Mastery, and Drop Pool systems.
+- Skill Mastery 1-100 after normal Level 120.
+- More Heroes, Sets, Profile rewards, Themes, Tile Styles, and unlock animations.
+- User-defined real-life Activities and timestamp-based Activity timers.
+- Native HealthKit and Health Connect adapters while preserving manual logging.
+- Cloud accounts and cross-device synchronization before broad public release.
+
+## Locked Rules
+
+- RAP is the shared currency and Content Mastery uses undiscounted base RAP as progress.
+- Content Mastery has Levels 0-10; Skill Mastery is a separate future system after Level 120.
+- Adventure XP shares total 100% before bonuses.
+- Progression is account-based; Heroes do not have separate levels, inventories, or saves.
+- Released content remains available. Themes and event-styled Sets do not create FOMO.
+- Cosmetics are earned through play or expansion content, not designed around microtransactions.
+
+## Provisional Balance Values
+
+The following remain placeholders until balance reports and play data justify locking them:
+
+- RAP earning rates
+- Adventure costs and runtimes
+- Mastery targets and threshold ratios
+- XP rates and Skill Advantage caps
+- Drop denominators and Bad Luck Protection thresholds
+- Account and Mastery bonus percentages
+- Requirements and route unlock levels

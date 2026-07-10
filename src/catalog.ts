@@ -88,7 +88,7 @@ export function canUnlock(item: Collectible, player: PlayerState) {
 
 export function collectibleActionLabel(item: Collectible, player: PlayerState) {
   if (player.owned.includes(item.id)) return "Unlocked";
-  if (isActivityDrop(item)) return "Activity Drop";
+  if (isActivityDrop(item)) return "Adventure Drop";
   if (!requirementsMet(item, player)) return "Requirements not met";
   if (player.rp < item.cost) return "Not enough RAP";
   return "Buy";

@@ -25,7 +25,7 @@ export type HandbookContext = {
 export const handbookCategories: Array<{ id: HandbookCategoryId; name: string }> = [
   { id: "basics", name: "Basics" },
   { id: "progression", name: "Progression" },
-  { id: "adventure", name: "Adventure" },
+  { id: "adventure", name: "World" },
   { id: "rewards", name: "Rewards" },
   { id: "account", name: "Account" },
 ];
@@ -40,7 +40,7 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Earn Real Life Activity Points, spend them on progression, and grow a permanent collection over time.",
-          "Adventure contains repeatable gameplay, Collectibles contains your Codex and Skills, and Log Activity turns real-life activities into RAP.",
+          "World contains repeatable Adventures, Collectibles contains your Codex and Skills, Account shows permanent bonuses and presentation rewards, and Log Activity turns real-life activities into RAP.",
         ],
       },
     ],
@@ -54,7 +54,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "RAP means Real Life Activity Points. It is the shared currency for Skill training, direct Collectible unlocks, and repeatable Activities.",
+          "RAP means Real Life Activity Points. It is the shared currency for Skill training, direct Collectible unlocks, and repeatable Adventures.",
           "The prototype also includes a temporary plus button that grants 10,000 RAP for testing.",
         ],
       },
@@ -84,8 +84,8 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "Characters, Classes, Races, Tools, Pets, and Mounts are permanent account unlocks. Skills also live in the Codex as long-term progression.",
-          "Some Collectibles can be bought with RAP. Others are exclusive drops from Activities and still appear in their normal Codex category.",
+          "Heroes, Classes, Races, Tools, Pets, and Mounts are permanent account unlocks. Skills also live in the Codex as long-term progression.",
+          "Some Collectibles can be bought with RAP. Others are exclusive drops from Adventures and still appear in their normal Codex category.",
         ],
       },
     ],
@@ -102,7 +102,7 @@ export const handbookEntries: HandbookEntry[] = [
           "Green means owned.",
           "Yellow means progression requirements are met, even if more RAP is needed.",
           "Red means a requirement is missing or a source drop has not been obtained.",
-          "Indigo identifies Collectibles obtained from Activities.",
+          "Indigo identifies Collectibles obtained from Adventures.",
         ],
       },
     ],
@@ -116,7 +116,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "A requirement must be met before a locked Collectible can be bought or an Activity can be started. Requirements can reference Skill levels or other permanent Collectibles.",
+          "A requirement must be met before a locked Collectible can be bought or an Adventure can be started. Requirements can reference Skill levels or other permanent Collectibles.",
           "RAP is a cost, not a progression requirement. A qualified Collectible remains yellow when the account only lacks RAP.",
         ],
       },
@@ -131,7 +131,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "Skills use the RuneScape XP curve and begin at Level 1. Their current levels unlock Collectibles and Activities throughout the account.",
+          "Skills begin at Level 1 and currently use the established prototype XP curve. Their levels unlock Collectibles and Adventures throughout the account.",
           "The combined Skill roster contains the Skills from RuneScape and Old School RuneScape, using Hitpoints and Runecrafting as the canonical names.",
         ],
       },
@@ -155,14 +155,14 @@ export const handbookEntries: HandbookEntry[] = [
   },
   {
     id: "activities",
-    title: "Activities",
-    summary: "Repeatable Adventures that spend RAP for XP and rare drops.",
+    title: "Adventures",
+    summary: "Repeatable World content that spends RAP for XP, Mastery, and rare drops.",
     category: "adventure",
     sections: [
       {
         paragraphs: [
-          "An Activity has a RAP cost, runtime, requirements, XP rewards, and an optional Drop Table. A started run is saved by timestamp and can finish after a reload.",
-          "Activities are intended to become longer journeys. The current short runtime makes the complete loop practical to test.",
+          "An Adventure has a RAP cost, runtime, requirements, XP rewards, Content Mastery, and an optional Drop Table. A started run is saved by timestamp and can finish after a reload.",
+          "Adventure XP shares total 100% before bonuses. Current short runtimes make the complete loop practical to test.",
         ],
       },
     ],
@@ -171,13 +171,13 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "skill-advantage",
     title: "Skill Advantage",
-    summary: "Levels above an Activity requirement improve its efficiency.",
+    summary: "Levels above an Adventure requirement improve its efficiency.",
     category: "adventure",
     sections: [
       {
         paragraphs: [
-          "Levels above an Activity's minimum Skill requirement scale toward a maximum advantage at Level 120.",
-          "At maximum advantage, the Activity gains up to 15% more XP, costs up to 15% less RAP, and runs up to 15% faster.",
+          "Levels above an Adventure's minimum Skill requirement scale toward a maximum advantage at Level 120.",
+          "At maximum advantage, the Adventure gains up to 15% more XP, costs up to 15% less RAP, and runs up to 15% faster.",
         ],
       },
     ],
@@ -185,13 +185,13 @@ export const handbookEntries: HandbookEntry[] = [
   },
   {
     id: "activity-results",
-    title: "Activity Results",
+    title: "Adventure Results",
     summary: "The completion panel for costs, XP, rolls, and drops.",
     category: "adventure",
     sections: [
       {
         paragraphs: [
-          "When an Activity finishes, its result records RAP spent, effective runtime, XP by Skill, the normal roll, any Additional Roll, and the awarded Collectible.",
+          "When an Adventure finishes, its result records RAP spent, effective runtime, XP by Skill, Mastery earned, the normal roll, any Additional Roll, and the awarded Collectible.",
           "Only one Collectible can be awarded by a completed run, even when several drop rolls succeed.",
         ],
       },
@@ -201,12 +201,13 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "drop-tables",
     title: "Drop Tables",
-    summary: "How Activity-exclusive Collectibles are rolled and awarded.",
+    summary: "How Adventure-exclusive and shared Chaser Collectibles are rolled and awarded.",
     category: "rewards",
     sections: [
       {
         paragraphs: [
-          "Every unowned Collectible in an Activity's Drop Table is rolled when the Activity finishes. If several rolls succeed, the rarest successful item is awarded.",
+          "Every unowned Collectible in an Adventure's Drop Table is rolled when the Adventure finishes. If several rolls succeed, the rarest successful item is awarded.",
+          "Shared Chaser Pools can appear in multiple Adventures, Minigames, or Bosses. Their progress uses normalized Roll Units based on undiscounted base RAP.",
           "Owned drops are skipped, so a completed source collection no longer competes with unfinished drops.",
         ],
       },
@@ -231,12 +232,12 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "additional-rolls",
     title: "Additional Rolls",
-    summary: "Account bonuses can create an extra Activity drop roll.",
+    summary: "Account bonuses can create an extra Adventure drop roll.",
     category: "rewards",
     sections: [
       {
         paragraphs: [
-          "Additional Roll chance begins at zero and is increased by rare permanent Collectibles. A successful check creates one extra pass over the Activity Drop Table.",
+          "Additional Roll chance begins at zero and is increased by rare permanent Collectibles. A successful check creates one extra pass over the Adventure Drop Table.",
           "The result panel shows whether the Additional Roll triggered and what it rolled.",
         ],
       },
@@ -251,12 +252,57 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "Tools are permanent Collectibles rather than inventory items. Some can be bought directly, while rare Tools come from Activities.",
+          "Tools are permanent Collectibles rather than inventory items. Some can be bought directly, while rare Tools come from Adventures.",
           "A Tool can grant a small account-wide bonus without needing to be equipped.",
         ],
       },
     ],
     relatedEntryIds: ["collectibles", "account-bonuses", "drop-tables"],
+  },
+  {
+    id: "content-mastery",
+    title: "Content Mastery",
+    summary: "Permanent Level 0-10 progress for Adventures and future World content.",
+    category: "progression",
+    sections: [
+      {
+        paragraphs: [
+          "Every completed Adventure adds its undiscounted base RAP cost to the linked Mastery track. Cost reductions never reduce Mastery earned.",
+          "Each track has ten levels, modest passive bonuses, and selected milestone rewards. Mastery targets and rewards are configured per content family.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["activities", "account-bonuses", "drop-tables"],
+  },
+  {
+    id: "collection-sets",
+    title: "Collection Sets",
+    summary: "Cross-category groups with permanent progress and rewards.",
+    category: "rewards",
+    sections: [
+      {
+        paragraphs: [
+          "Sets can contain Heroes, Tools, Pets, Mounts, or other Collectibles at the same time. Set progress is derived from the Codex and is never a second inventory.",
+          "Event-styled Sets remain available permanently. Completing thresholds can unlock Profile Badges, Themes, or simple Account Bonuses.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["collectibles", "profile-cosmetics", "account-bonuses"],
+  },
+  {
+    id: "profile-cosmetics",
+    title: "Profile And Cosmetics",
+    summary: "Account-wide Badges, Themes, portraits, and presentation rewards.",
+    category: "account",
+    sections: [
+      {
+        paragraphs: [
+          "Profile rewards customize the account without creating separate Hero progression. Curated Themes preserve contrast and readability while changing the Codex presentation.",
+          "Cosmetics are earned through Mastery, Sets, Collectibles, and future expansion content. Locked Cosmetics remain visible with their source.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["collection-sets", "content-mastery", "collectibles"],
   },
   {
     id: "account-bonuses",
@@ -267,7 +313,7 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Account Bonuses are always active once their Collectible is owned. Current bonus types include Skill-specific XP, all-Skill XP, and Additional Roll chance.",
-          "Bonuses are additive within their base category. Activity Skill Advantage is then applied as a separate multiplier.",
+          "Collectible Account Bonuses are additive within their base category. The Account subtotal, Content Mastery, and Skill Advantage then apply as separate multipliers so every source remains inspectable.",
         ],
       },
     ],
@@ -281,7 +327,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Activity runs, results, and manual logs are restored on reload.",
+          "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Adventure runs, Mastery, results, Cosmetics, and manual logs are restored on reload.",
           "Settings shows the latest local save state and provides JSON export and import. Export a backup before clearing site data or changing devices.",
           "A newer save from another open tab takes priority, preventing an older tab from silently overwriting progress. Cross-device cloud saves are planned for a later account system.",
         ],
@@ -295,8 +341,8 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "main-menu": {
     id: "main-menu",
     title: "Main Menu",
-    intro: "The Menu is your account hub. Open Adventure, browse every Collectible category, or log real-life activity for RAP from one place.",
-    entryIds: ["getting-started", "rap", "activities", "collectibles", "manual-activity-log"],
+    intro: "The Menu is your account hub. Open World Adventures, browse the Codex, inspect Account progression, or log real-life activity for RAP.",
+    entryIds: ["getting-started", "rap", "activities", "collectibles", "account-bonuses", "manual-activity-log"],
   },
   collectibles: {
     id: "collectibles",
@@ -304,17 +350,35 @@ const contextDefinitions: Record<string, HandbookContext> = {
     intro: "The Collectibles overview is your Codex. It shows permanent unlock progress across every category and your combined Skill total.",
     entryIds: ["collectibles", "codex-states", "requirements", "account-bonuses"],
   },
-  adventure: {
-    id: "adventure",
-    title: "Adventure",
-    intro: "Adventure contains repeatable gameplay systems that spend RAP and turn account progression into XP, rewards, and rare drops.",
-    entryIds: ["activities", "requirements", "skill-advantage", "activity-results"],
+  world: {
+    id: "world",
+    title: "World",
+    intro: "World contains Adventures and will later contain Minigames and Bossing built on shared Requirements, Mastery, rewards, and Drop Pools.",
+    entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results"],
   },
-  activities: {
-    id: "activities",
-    title: "Activities",
-    intro: "This page lists repeatable Activities, their effective RAP cost, run count, availability, and active state.",
-    entryIds: ["activities", "requirements", "skill-advantage", "activity-results", "drop-tables", "bad-luck-protection"],
+  adventures: {
+    id: "adventures",
+    title: "Adventures",
+    intro: "This page lists repeatable Adventures, their effective RAP cost, Mastery, run count, availability, and active state.",
+    entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results", "drop-tables", "bad-luck-protection"],
+  },
+  bonuses: {
+    id: "bonuses",
+    title: "Account Bonuses",
+    intro: "This page groups permanent Skill XP, Roll, Adventure, and future Resistance bonuses while preserving every source.",
+    entryIds: ["account-bonuses", "content-mastery", "tools", "additional-rolls"],
+  },
+  sets: {
+    id: "sets",
+    title: "Collection Sets",
+    intro: "This Codex view groups Collectibles across categories and shows permanent threshold rewards without time-limited availability.",
+    entryIds: ["collection-sets", "collectibles", "profile-cosmetics", "account-bonuses"],
+  },
+  profile: {
+    id: "profile",
+    title: "Profile",
+    intro: "Profile applies account-wide Badges and curated Themes earned through permanent progression.",
+    entryIds: ["profile-cosmetics", "collection-sets", "content-mastery"],
   },
   settings: {
     id: "settings",
@@ -324,8 +388,8 @@ const contextDefinitions: Record<string, HandbookContext> = {
   },
   "category:characters": {
     id: "category:characters",
-    title: "Characters",
-    intro: "Characters are permanent fantasy identities in the Codex. They are collected rather than directly played in the current version.",
+    title: "Heroes",
+    intro: "Heroes are permanent named figures in the Codex. They may unlock Profile rewards but never create separate character progression.",
     entryIds: ["collectibles", "codex-states", "requirements"],
   },
   "category:classes": {
@@ -349,13 +413,13 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "category:tools": {
     id: "category:tools",
     title: "Tools",
-    intro: "Tools are permanent utility Collectibles. They can be direct purchases or rare Activity drops and may grant passive Account Bonuses.",
+    intro: "Tools are permanent utility Collectibles. They can be direct purchases or rare Adventure drops and may grant passive Account Bonuses.",
     entryIds: ["tools", "account-bonuses", "collectibles", "drop-tables"],
   },
   "category:pets": {
     id: "category:pets",
     title: "Pets",
-    intro: "Pets are permanent companion Collectibles obtained through direct unlocks and special sources such as Activities.",
+    intro: "Pets are permanent companion Collectibles obtained through direct unlocks and special sources such as Adventures.",
     entryIds: ["collectibles", "codex-states", "requirements", "drop-tables"],
   },
   "category:mounts": {
@@ -378,9 +442,9 @@ const contextDefinitions: Record<string, HandbookContext> = {
   },
   "activity-detail": {
     id: "activity-detail",
-    title: "Activity Details",
-    intro: "This detail page shows the Activity's requirements, Skill Advantage, effective cost, runtime, XP split, and complete Drop Table.",
-    entryIds: ["activities", "requirements", "skill-advantage", "drop-tables", "bad-luck-protection", "additional-rolls", "activity-results"],
+    title: "Adventure Details",
+    intro: "This detail page shows the Adventure's requirements, Mastery, Skill Advantage, effective cost, runtime, XP split, and complete Drop Table.",
+    entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "drop-tables", "bad-luck-protection", "additional-rolls", "activity-results"],
   },
   "manual-activity-detail": {
     id: "manual-activity-detail",

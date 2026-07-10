@@ -31,6 +31,10 @@ export function skillXpBonusPercent(ownedIds: string[], skillId: SkillId) {
   }, 0);
 }
 
+export function accountBonusPercent(ownedIds: string[], type: Extract<AccountBonus, { percent: number }>["type"]) {
+  return collectAccountBonuses(ownedIds).reduce((total, bonus) => bonus.type === type ? total + bonus.percent : total, 0);
+}
+
 export function additionalRollChancePercent(ownedIds: string[]) {
   return collectAccountBonuses(ownedIds).reduce((total, bonus) => {
     if (bonus.type !== "additional-roll-chance") return total;
@@ -41,6 +45,10 @@ export function additionalRollChancePercent(ownedIds: string[]) {
 export function formatBonusLabel(bonus: AccountBonus) {
   if (bonus.type === "all-skill-xp") return `+${formatPercent(bonus.percent)} XP in all Skills`;
   if (bonus.type === "additional-roll-chance") return `+${formatPercent(bonus.percent)} Additional Roll chance`;
+  if (bonus.type === "adventure-xp") return `+${formatPercent(bonus.percent)} Adventure XP`;
+  if (bonus.type === "adventure-runtime-reduction") return `-${formatPercent(bonus.percent)} Adventure runtime`;
+  if (bonus.type === "adventure-cost-reduction") return `-${formatPercent(bonus.percent)} Adventure RAP cost`;
+  if (bonus.type === "resistance") return `+${formatPercent(bonus.percent)} ${bonus.label}`;
 
   const skill = skills.find((candidate) => candidate.id === bonus.skillId);
   return `+${formatPercent(bonus.percent)} ${skill?.name ?? bonus.skillId} XP`;

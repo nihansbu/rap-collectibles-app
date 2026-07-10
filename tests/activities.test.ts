@@ -27,4 +27,17 @@ describe("gameplay Activities", () => {
     expect(activityDropChance(drop, 999).numerator).toBe(1);
     expect(activityDropChance(drop, 1_000)).toMatchObject({ numerator: 3, denominator: 500, isProtected: true });
   });
+
+  it("awards Mastery and shared Roll Units from base RAP rather than discounted cost", () => {
+    const player = createInitialPlayerState();
+    player.rp = 20_000;
+    player.skillXp.fishing = xpForLevel(120);
+    const running = startActivityRun(player, "fishers-trawler", 1_000, 999);
+    expect(running.activeActivityRuns[0].cost).toBeLessThan(10_000);
+
+    const completed = processActiveActivityRuns(running, 10_000);
+    expect(completed.contentMasteryPoints["mastery-fishers-trawler"]).toBe(10_000);
+    expect(completed.sharedDropPoolRollUnits["fishing-chaser-pool"]).toBe(1);
+    expect(completed.activityResults[0]).toMatchObject({ masteryPointsGained: 10_000, masteryTrackId: "mastery-fishers-trawler" });
+  });
 });

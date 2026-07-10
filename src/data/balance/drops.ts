@@ -1,0 +1,4 @@
+export const CHASER_ROLL_UNIT_RAP = 10_000;
+export const BAD_LUCK_THRESHOLD_MULTIPLIER = 2;
+export const BAD_LUCK_CHANCE_MULTIPLIER = 3;
+

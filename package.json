@@ -12,6 +12,7 @@
     "validate:content": "vitest run tests/content.test.ts",
     "check": "npm run lint && npm run test && npm run build && npm run icons:prepare",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs",
+    "balance:report": "tsx scripts/balance-report.ts",
     "icons:prepare": "node scripts/prepare-icon-prompts.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
@@ -38,6 +39,7 @@
     "jsdom": "^26.1.0",
     "playwright": "^1.61.1",
     "sharp": "^0.34.0",
+    "tsx": "^4.20.0",
     "typescript-eslint": "^8.46.2",
     "vitest": "^4.1.10"
   }

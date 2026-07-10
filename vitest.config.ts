@@ -7,7 +7,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["src/{activities,catalog,save,training,xp}.ts"],
+      include: ["src/{activities,catalog,cosmetics,dropPools,mastery,save,sets,skillAcquisition,training,xp}.ts"],
       thresholds: {
         lines: 65,
         functions: 65,

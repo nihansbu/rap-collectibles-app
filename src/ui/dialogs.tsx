@@ -72,7 +72,7 @@ export function ActivityResultPanel({ result, onClose }: { result: ActivityRunRe
         <button className="detail-close" onClick={onClose} aria-label="Close result">
           <X size={18} />
         </button>
-        <span className="unlock-kicker">Activity Complete</span>
+        <span className="unlock-kicker">Adventure Complete</span>
         <h2>{result.activityName}</h2>
         <div className="result-summary">
           <span>
@@ -87,6 +87,17 @@ export function ActivityResultPanel({ result, onClose }: { result: ActivityRunRe
             <small>Runtime</small>
             <strong>{formatDuration(result.runtimeMs)}</strong>
           </span>
+        </div>
+        <div className="result-section">
+          <h3>Mastery</h3>
+          <div className="result-row">
+            <span>Base RAP invested</span>
+            <strong>+{formatNumber(result.masteryPointsGained)} Mastery</strong>
+          </div>
+          <div className="result-row">
+            <span>Current Mastery</span>
+            <strong>Level {result.masteryLevel} / 10</strong>
+          </div>
         </div>
         <div className="result-section">
           <h3>XP</h3>

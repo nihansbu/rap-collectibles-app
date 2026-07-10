@@ -19,11 +19,11 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - No separated currencies for different activity types at this stage.
 - Collectibles are the main progression system.
 - The Codex is the collection overview and should make progress visible quickly.
-- Collection categories should be tile-based, for example Characters, Classes, Races, Skills, Tools, Mounts, Pets, Items, and future categories.
+- Collection categories should be tile-based, for example Heroes, Classes, Races, Skills, Tools, Mounts, Pets, Sets, and future categories.
 - The setting is high fantasy.
-- Characters are collectibles too. A player may own multiple characters, but they are not actively played in the first version.
-- Characters may later have fantasy races and classes.
-- Skill levels are trained with RAP.
+- Heroes are predefined account Collectibles rather than separately played characters. They may provide profile cosmetics or other account-wide rewards.
+- Fantasy Races and Classes remain separate Collectible categories.
+- Skill levels currently support direct RAP training as a development bridge. The long-term source of Skill XP is gameplay content once every Skill has a Level-1 acquisition path.
 - Skill levels can be prerequisites for collectible purchases.
 - Example unlock requirement: Mount requires Herblore level 73 plus RAP cost.
 
@@ -44,6 +44,13 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/App.tsx`: app composition, navigation state, and player-state actions. New page UI belongs in `src/pages/`; persistence belongs in hooks/domain modules.
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
+- `src/mastery.ts`: generic Content Mastery Level 0-10 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
+- `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
+- `src/cosmetics.ts`: derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
+- `src/sets.ts`: Set lookup and progress selectors derived from owned Collectibles.
+- `src/skillAcquisition.ts`: machine-readable Skill Acquisition Matrix and the Direct Training retirement gate.
+- `src/data/balance/`: centralized placeholder economy, XP-share, Mastery, modifier, and drop constants.
+- `src/data/{mastery,dropPools,sets,cosmetics,contentFamilies}.ts`: typed progression and content registries.
 - `src/catalog.ts`: catalog selectors and rules such as collectible lookup, category filtering, requirement state, unlock state, status grouping, and catalog ordering.
 - `src/data.ts`: stable public facade that re-exports modular catalog data.
 - `src/data/types.ts`: shared catalog types.
@@ -54,9 +61,12 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system through v6, migrations, validation, revision conflict detection, active progress normalization, and throttled backup rotation.
+- `src/save.ts`: versioned local save/load system through v7, migrations, validation, revision conflict detection, active progress normalization, and throttled backup rotation.
 - `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
 - `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
+- `src/pages/AccountBonusesPage.tsx`: grouped Skill XP, Rolls, Adventure, and Resistance bonus overview.
+- `src/pages/SetsPage.tsx`: cross-category Codex Set progress and reward thresholds.
+- `src/pages/ProfilePage.tsx`: account-wide curated Themes and Profile Badges.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
 - `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
@@ -73,8 +83,8 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 
 - Home page title: `Menu`.
 - The main menu is a compact dashboard based on the approved icon-first mockup. Adventure, direct Collectibles categories, and manual Log Activity use the same unframed section and tile language.
-- The `Collectibles` page is the Codex overview. Main category tiles appear in order: Characters, Classes, Races, Skills, Tools, Pets, Mounts.
-- The `Adventure` page is the gameplay entry point. Its first subpage is `Activities`.
+- The `Collectibles` page is the Codex overview. Main category tiles appear in order: Heroes, Classes, Races, Skills, Tools, Pets, Mounts, Sets.
+- `World` is the gameplay hub. Its first content type is `Adventures`; Minigames and Bossing are future siblings.
 - The `Handbook` is a player-facing contextual wiki for systems that should not clutter the main gameplay UI. Every topbar exposes it through a compact book icon.
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, contextual Handbook and Settings buttons, and current RAP. The 10,000 RAP grant control is development-only (`?dev=1`).
@@ -88,16 +98,16 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - The main menu shows quick manual activity logging. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
 - The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
-- Gameplay Activities are separate from manual real-life activity logging. Activities live under `Adventure`, cost RAP, run for a short timestamped duration in the prototype, award reduced skill XP, and can drop exclusive collectibles.
-- Activity-only collectible drops still appear in their normal Codex categories. Unowned Activity drops render as red locked tiles with an indigo source strip. Owned Activity drops render as indigo source-owned tiles. They cannot be bought directly.
-- Tools are standard Collectibles. Some are direct purchases and some are Activity drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
+- Adventures are separate from the real-life Activity Log. Adventures live under `World`, cost RAP, run for a short timestamped duration in the prototype, award a 100% Skill share split, Content Mastery, and exclusive or shared drops.
+- Adventure-only collectible drops still appear in their normal Codex categories. Unowned Adventure drops render as red locked tiles with an indigo source strip. Owned Adventure drops render as indigo source-owned tiles. They cannot be bought directly.
+- Tools are standard Collectibles. Some are direct purchases and some are Adventure drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
 - Direct main-menu entries remember their origin: backing out of a category or Activities page opened from the main dashboard returns to the main dashboard, not to the older intermediate overview page.
 - Tapping a direct-purchase Collectible card is the primary buy action and opens the purchase confirmation when the item is affordable and requirements are met. Long-pressing opens the full-content detail view under the topbar.
 - Tapping an unavailable, owned, or Activity-drop Collectible falls back to the detail view because there is no valid buy action.
-- Tapping an Activity card starts the run when requirements and RAP are sufficient. Long-pressing opens the full-content Activity detail view with requirements, runtime, XP split, Drop Table, Bad Luck Protection state, and a Start Run action.
+- Tapping an Adventure card starts the run when requirements and RAP are sufficient. Long-pressing opens the full-content Adventure detail view with requirements, runtime, XP split, Mastery, Drop Table, Bad Luck Protection state, and a Start Run action.
 - Skill cards still open the Skill detail view because training requires choosing a duration.
-- The Activity Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
+- The Adventure Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
 - Katalogdaten are modularized by domain/category. `src/data.ts` remains the stable import facade so existing systems can keep importing from `./data`.
 - Catalog lookup and unlock rules live in `src/catalog.ts` rather than page components. Future database/indexing work should attach at this selector layer before touching UI components.
 - The app still uses a static client-side catalog and local save data. A real backend database is not needed for GitHub Pages yet; consider IndexedDB first for very large local player histories, and a server/cloud database when accounts or cross-device sync become active requirements.
@@ -108,9 +118,9 @@ Implemented early systems:
 - Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
 - Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
-- Active gameplay Activity runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
+- Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
-- Save v6 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
+- Save v7 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
@@ -119,6 +129,11 @@ Implemented early systems:
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
 - Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
+- Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-10 and centrally capped passive modifiers.
+- Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
+- Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
+- The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
+- Save v7 persists Mastery points, Shared Roll Units, Cosmetic entitlements, and selected Theme/Badge while migrating v1-v6 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
 - Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 17 reusable entries across five categories, supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
@@ -136,17 +151,17 @@ Likely entities:
 
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
 - Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
-- Gameplay Activity: ID, name, type, RAP cost, runtime, requirements, XP reward split, Drop Table, and Bad Luck Protection state derived from run count.
-- Active Activity run: activity ID, startedAt, endsAt, prepaid effective RAP cost, base RAP cost, effective runtime, base runtime, and Skill Advantage percent.
-- Activity result: completed activity, run count, RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped collectible ID.
+- Adventure content: ID, family, Mastery track, RAP cost, runtime, requirements, 100% XP reward split, direct Drop Table, optional Shared Chaser Pools, and Bad Luck Protection state.
+- Active Adventure run: content ID, startedAt, endsAt, prepaid effective RAP cost, undiscounted base RAP, effective runtime, base runtime, Skill Advantage, Mastery track, and deterministic seed.
+- Adventure result: completed content, run count, RAP spent, runtime, Skill Advantage, Mastery gain/level, Additional Roll state, roll rows, XP awarded, XP bonus percentages, Shared Pool rolls, and optional dropped Collectible ID.
 - Skill: ID, display name, source game(s), XP, derived level, max level 120.
-- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, optional source such as an Activity drop, and optional Account Bonuses.
-- Collectible Account Bonuses: optional `bonuses` array in `src/data.ts`; current bonus types are `skill-xp`, `all-skill-xp`, and `additional-roll-chance`.
+- Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, optional source such as an Adventure drop, and optional Account Bonuses.
+- Account Bonuses: data-defined Collectible, Mastery, and Set rewards. Supported types include Skill XP, all-Skill XP, Additional Roll, Adventure XP/runtime/cost, and future Resistances.
 - Requirement: skill ID plus required level.
 - Category: ID, display name, total count, unlocked count.
 - Class/Race grouping: use `Collectible.type` for broad labels such as `Melee Tank`, `Magic Support`, `Dwarf`, or `Machine`. Avoid deeper subpage routing until content volume proves it is needed.
 - Collectible status logic: do not treat missing RAP as a red lock. Red means progression requirements are missing; yellow means the entry is qualified by requirements and may only need RAP.
-- Activity-only collectible drops are not directly purchasable. If unowned, they stay locked/red with an indigo source strip; if owned, the tile uses an indigo owned source state.
+- Adventure-only collectible drops are not directly purchasable. If unowned, they stay locked/red with an indigo source strip; if owned, the tile uses an indigo owned source state.
 - Future asset fields should include stable icon paths, for example `icon`, `iconPrompt`, and possibly `type` for the one-line tile subtitle.
 
 ## Icon Pipeline Notes
@@ -232,6 +247,7 @@ Candidate combined skill roster to finalize:
 - Run tests with enforced coverage floor: `npm run test:coverage`
 - Run the complete local quality gate: `npm run check`
 - Regenerate PWA icons from the RAP symbol: `npm run pwa:icons`
+- Generate the current balance comparison report: `npm run balance:report` (writes `tmp/balance-report.md`).
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` uses Node 24, installs with `npm ci`, runs the complete `npm run check` quality gate, and deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 - Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.
@@ -244,6 +260,8 @@ Candidate combined skill roster to finalize:
 - Static catalog data remains appropriate at the current scale. The UI reads through indexed selectors; introduce IndexedDB for large player histories and a backend only when accounts/cross-device sync require it.
 - `src/App.tsx` still contains several detail and overview components. New features should be added in `src/pages/` or `src/ui/`; move existing blocks opportunistically when they are next changed rather than adding more inline components.
 - Production hides prototype RAP grants and future feature placeholders. Use `?dev=1` for local or deployed testing.
+- Direct Skill Training is transitional and must remain available until `canRetireDirectTraining()` confirms every Skill has a Level 1 gameplay source.
+- Balance values are provisional. Edit typed files under `src/data/balance/` and content registries, then run `npm run balance:report` and `npm run check`.
 - Normalize one generated icon source: `python scripts\normalize-icon.py --input tmp\icon-pipeline\source\<id>-alpha.png --out public\assets\icons\<category>\<id>.webp --key "#00ff00"`
 
 ## Verified Workflows

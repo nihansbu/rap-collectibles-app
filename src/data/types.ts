@@ -39,7 +39,11 @@ export type Requirement =
 export type AccountBonus =
   | { type: "skill-xp"; skillId: SkillId; percent: number }
   | { type: "all-skill-xp"; percent: number }
-  | { type: "additional-roll-chance"; percent: number };
+  | { type: "additional-roll-chance"; percent: number }
+  | { type: "adventure-xp"; percent: number }
+  | { type: "adventure-runtime-reduction"; percent: number }
+  | { type: "adventure-cost-reduction"; percent: number }
+  | { type: "resistance"; resistanceId: string; label: string; percent: number };
 
 export type Collectible = {
   id: string;

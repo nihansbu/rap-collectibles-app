@@ -61,3 +61,16 @@ No actionable P0, P1, or P2 differences remain. The serif-to-sans choice and omi
 - [x] Runtime console check
 
 final result: passed
+
+## Progression Foundation Pass (2026-07-11)
+
+- Viewports: `390x844` and `320x800`.
+- Verified the production dashboard, Account Bonuses, Collection Sets, Profile, Adventures, and Fisher's Trawler detail view.
+- Production hides future World placeholders and lets the Adventures tile use the full available row.
+- Adventure cards expose compact Mastery Level 0-10 progress without changing card dimensions.
+- Fisher's Trawler detail exposes Mastery progress, current modifiers, 100% XP distribution, direct drops, and the shared Fishing Chaser Pool without horizontal overflow.
+- Account Bonuses renders all 30 Skill XP rows, grouped Adventure/Roll/Resistance sources, rank color, and stable progress tracks.
+- Sets and Profile distinguish locked, unlocked, and selected rewards without nested cards or clipped labels.
+- No broken images or horizontal overflow were found at either mobile viewport. Intentional ellipsis remains limited to compact secondary labels.
+
+final result: passed

@@ -6,8 +6,9 @@ import {
   type ActiveActivityRun,
   type ActivityRunResult,
 } from "./activities";
-import { collectibles, skills, type SkillId } from "./data";
+import { collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
+import { reconcileUnlockedCosmetics } from "./cosmetics";
 import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
 
@@ -22,6 +23,10 @@ export type PlayerState = {
   activityRunCounts: Record<string, number>;
   activityResults: ActivityRunResult[];
   lastSeenActivityResultId: string | null;
+  contentMasteryPoints: Record<string, number>;
+  sharedDropPoolRollUnits: Record<string, number>;
+  unlockedCosmetics: string[];
+  selectedCosmetics: { themeId: string | null; profileBadgeId: string | null };
 };
 
 type SavePlayerV1 = {
@@ -49,6 +54,13 @@ type SavePlayerV5 = SavePlayerV4;
 
 type SavePlayerV6 = SavePlayerV5 & {
   lastSeenActivityResultId?: string | null;
+};
+
+type SavePlayerV7 = SavePlayerV6 & {
+  contentMasteryPoints?: Record<string, number>;
+  sharedDropPoolRollUnits?: Record<string, number>;
+  unlockedCosmetics?: string[];
+  selectedCosmetics?: { themeId?: string | null; profileBadgeId?: string | null };
 };
 
 type SaveFileV1 = {
@@ -88,6 +100,13 @@ type SaveFileV6 = {
   player: SavePlayerV6;
 };
 
+type SaveFileV7 = {
+  version: 7;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV7;
+};
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type SaveSnapshot = {
@@ -100,13 +119,17 @@ export type SaveWriteResult =
   | { ok: true; revision: number; savedAt: string }
   | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
 
-export const CURRENT_SAVE_VERSION = 6;
-export const SAVE_KEY = "rap-collectibles.save.v6";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v6";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v6.1", "rap-collectibles.save.backup.v6.2"];
-const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v6.timestamp";
+export const CURRENT_SAVE_VERSION = 7;
+export const SAVE_KEY = "rap-collectibles.save.v7";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v7";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v7.1", "rap-collectibles.save.backup.v7.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v7.timestamp";
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v6",
+  "rap-collectibles.save.lastKnownGood.v6",
+  "rap-collectibles.save.backup.v6.1",
+  "rap-collectibles.save.backup.v6.2",
   "rap-collectibles.save.v5",
   "rap-collectibles.save.lastKnownGood.v5",
   "rap-collectibles.save.backup.v5.1",
@@ -135,6 +158,9 @@ const collectibleIds = new Set(collectibles.map((item) => item.id));
 const skillIds = new Set(skills.map((skill) => skill.id));
 const activityIds = new Set(ACTIVITY_OPTIONS.map((activity) => activity.id));
 const gameplayActivityIds = new Set(GAMEPLAY_ACTIVITIES.map((activity) => activity.id));
+const masteryTrackIds = new Set(CONTENT_MASTERY_TRACKS.map((track) => track.id));
+const sharedDropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
+const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
 
 export function createInitialPlayerState(): PlayerState {
   return {
@@ -148,6 +174,10 @@ export function createInitialPlayerState(): PlayerState {
     activityRunCounts: Object.fromEntries(GAMEPLAY_ACTIVITIES.map((activity) => [activity.id, 0])),
     activityResults: [],
     lastSeenActivityResultId: null,
+    contentMasteryPoints: Object.fromEntries(CONTENT_MASTERY_TRACKS.map((track) => [track.id, 0])),
+    sharedDropPoolRollUnits: Object.fromEntries(SHARED_DROP_POOLS.map((pool) => [pool.id, 0])),
+    unlockedCosmetics: [],
+    selectedCosmetics: { themeId: null, profileBadgeId: null },
   };
 }
 
@@ -230,7 +260,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
-  const saveFile: SaveFileV6 = {
+  const saveFile: SaveFileV7 = {
     version: CURRENT_SAVE_VERSION,
     revision,
     savedAt,
@@ -254,17 +284,17 @@ export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, 5, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, 6, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -282,6 +312,12 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
   const lastSeenActivityResultId = typeof requestedSeenResultId === "string" && activityResults.some((result) => result.id === requestedSeenResultId)
     ? requestedSeenResultId
     : null;
+  const contentMasteryPoints = normalizeIdNumberRecord("contentMasteryPoints" in player ? player.contentMasteryPoints : undefined, masteryTrackIds);
+  const unlockedCosmetics = reconcileUnlockedCosmetics(
+    normalizeCosmeticIds("unlockedCosmetics" in player ? player.unlockedCosmetics : undefined),
+    owned,
+    contentMasteryPoints,
+  );
 
   return {
     rp: sanitizeNumber(player.rp, 0, MAX_RAP),
@@ -294,7 +330,33 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     activityRunCounts: normalizeActivityRunCounts("activityRunCounts" in player ? player.activityRunCounts : undefined),
     activityResults,
     lastSeenActivityResultId,
+    contentMasteryPoints,
+    sharedDropPoolRollUnits: normalizeIdNumberRecord("sharedDropPoolRollUnits" in player ? player.sharedDropPoolRollUnits : undefined, sharedDropPoolIds),
+    unlockedCosmetics,
+    selectedCosmetics: normalizeSelectedCosmetics(
+      "selectedCosmetics" in player ? player.selectedCosmetics : undefined,
+      unlockedCosmetics,
+    ),
   };
+}
+
+function normalizeIdNumberRecord(value: unknown, allowedIds: Set<string>) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries([...allowedIds].map((id) => [id, sanitizeNumber(source[id], 0, MAX_RAP)]));
+}
+
+function normalizeCosmeticIds(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value)].filter((id): id is string => typeof id === "string" && cosmeticIds.has(id))
+    : [];
+}
+
+function normalizeSelectedCosmetics(value: unknown, unlockedValue: unknown) {
+  const selected = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const unlocked = new Set(normalizeCosmeticIds(unlockedValue));
+  const themeId = typeof selected.themeId === "string" && unlocked.has(selected.themeId) ? selected.themeId : null;
+  const profileBadgeId = typeof selected.profileBadgeId === "string" && unlocked.has(selected.profileBadgeId) ? selected.profileBadgeId : null;
+  return { themeId, profileBadgeId };
 }
 
 function normalizeActiveTrainings(value: unknown): ActiveTraining[] {
@@ -391,6 +453,10 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
       runtimeMs: runtimeMs || Math.max(1_000, candidate.endsAt - candidate.startedAt),
       baseRuntimeMs: baseRuntimeMs || activity.runtimeMs,
       skillAdvantagePercent: sanitizeNumber(candidate.skillAdvantagePercent, 0, 15),
+      masteryTrackId: typeof candidate.masteryTrackId === "string" && masteryTrackIds.has(candidate.masteryTrackId)
+        ? candidate.masteryTrackId
+        : activity.masteryTrackId,
+      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 10),
       rollSeed: Number.isFinite(candidate.rollSeed)
         ? sanitizeInteger(candidate.rollSeed, 1, 0xffff_ffff)
         : seedFromString(candidate.id),
@@ -401,10 +467,8 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
 }
 
 function normalizeActivityRunCounts(value: unknown): Record<string, number> {
-  if (!value || typeof value !== "object") return {};
-
   const normalized: Record<string, number> = {};
-  const source = value as Record<string, unknown>;
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
 
   for (const activity of GAMEPLAY_ACTIVITIES) {
     normalized[activity.id] = sanitizeInteger(source[activity.id], 0, MAX_RAP);
@@ -472,6 +536,11 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
       xp,
       rolls,
       droppedCollectibleId: candidate.droppedCollectibleId,
+      masteryTrackId: typeof candidate.masteryTrackId === "string" && masteryTrackIds.has(candidate.masteryTrackId)
+        ? candidate.masteryTrackId
+        : activity?.masteryTrackId ?? "",
+      masteryPointsGained: sanitizeNumber(candidate.masteryPointsGained, 0, MAX_RAP),
+      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 10),
     });
 
     if (normalized.length >= 6) break;

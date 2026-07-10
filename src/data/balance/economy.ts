@@ -1,0 +1,3 @@
+export const PROTOTYPE_ADVENTURE_RUNTIME_MS = 3_000;
+export const BALANCE_RAP_PER_HOUR_SCENARIOS = [10_000, 20_000, 35_000, 50_000] as const;
+

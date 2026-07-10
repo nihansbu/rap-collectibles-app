@@ -1,0 +1,5 @@
+export const MAX_SKILL_ADVANTAGE_PERCENT = 15;
+export const MAX_CONTENT_MASTERY_ECONOMIC_PERCENT = 10;
+
+export const BONUS_DISPLAY_RANK_THRESHOLDS = [0, 1, 5, 10, 20, 40] as const;
+

@@ -1,5 +1,11 @@
-import { additionalRollChancePercent, skillXpBonusPercent } from "./bonuses";
+import { accountBonusPercent, additionalRollChancePercent, skillXpBonusPercent } from "./bonuses";
 import { collectibles, type Requirement, type SkillId } from "./data";
+import { PROTOTYPE_ADVENTURE_RUNTIME_MS } from "./data/balance/economy";
+import { MAX_SKILL_ADVANTAGE_PERCENT } from "./data/balance/modifiers";
+import { getSharedDropPool, rollSharedDropPool, rollUnitsForBaseRap } from "./dropPools";
+import { masteryAccountBonusPercent, masteryEconomicModifiers, masteryProgress, masteryRewardsBetween } from "./mastery";
+import { reconcileUnlockedCosmetics } from "./cosmetics";
+import { setAccountBonusPercent } from "./sets";
 import { trainingXpPerRap } from "./training";
 import { levelFromXp, xpTable, MAX_LEVEL } from "./xp";
 
@@ -17,6 +23,8 @@ export type ActivityDrop = {
 
 export type GameplayActivity = {
   id: GameplayActivityId;
+  familyId: string;
+  masteryTrackId: string;
   name: string;
   description: string;
   type: string;
@@ -25,6 +33,7 @@ export type GameplayActivity = {
   requirements: Requirement[];
   xpRewards: ActivityXpReward[];
   drops: ActivityDrop[];
+  sharedDropPoolIds: string[];
 };
 
 export type ActivitySkillAdvantage = {
@@ -44,6 +53,8 @@ export type ActiveActivityRun = {
   runtimeMs: number;
   baseRuntimeMs: number;
   skillAdvantagePercent: number;
+  masteryTrackId: string;
+  masteryLevel: number;
   rollSeed: number;
 };
 
@@ -69,6 +80,9 @@ export type ActivityRunResult = {
   xp: Array<{ skillId: SkillId; amount: number; bonusPercent: number }>;
   rolls: ActivityRollResult[];
   droppedCollectibleId?: string;
+  masteryTrackId: string;
+  masteryPointsGained: number;
+  masteryLevel: number;
 };
 
 export type ActivityPlayerState = {
@@ -78,15 +92,19 @@ export type ActivityPlayerState = {
   activeActivityRuns: ActiveActivityRun[];
   activityRunCounts: Record<string, number>;
   activityResults: ActivityRunResult[];
+  contentMasteryPoints: Record<string, number>;
+  sharedDropPoolRollUnits: Record<string, number>;
+  unlockedCosmetics: string[];
 };
 
 const MAX_ACTIVITY_RESULTS = 6;
-const RUN_TIME_MS = 3_000;
-const MAX_SKILL_ADVANTAGE_PERCENT = 15;
+const RUN_TIME_MS = PROTOTYPE_ADVENTURE_RUNTIME_MS;
 
 export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
   {
     id: "fishers-trawler",
+    familyId: "family-fishing-trawler",
+    masteryTrackId: "mastery-fishers-trawler",
     name: "Fisher's Trawler",
     description: "Crew a battered trawler through rough water for Fishing XP and rare sea-bound companions.",
     type: "Fishing",
@@ -94,18 +112,20 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
     runtimeMs: RUN_TIME_MS,
     requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
     xpRewards: [
-      { skillId: "fishing", share: 0.5 },
+      { skillId: "fishing", share: 0.75 },
       { skillId: "cooking", share: 0.25 },
     ],
     drops: [
       { collectibleId: "pet-trawler-gull", chance: 500 },
       { collectibleId: "tool-dragon-harpoon", chance: 750 },
       { collectibleId: "mount-brine-ray", chance: 2_500 },
-      { collectibleId: "tool-storm-harpoon", chance: 25_000 },
     ],
+    sharedDropPoolIds: ["fishing-chaser-pool"],
   },
   {
     id: "haunted-burial",
+    familyId: "family-haunted-burial",
+    masteryTrackId: "mastery-haunted-burial",
     name: "Haunted Burial",
     description: "Settle old graves and recover solemn keepsakes from the dusk fields.",
     type: "Ritual",
@@ -113,13 +133,16 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
     runtimeMs: RUN_TIME_MS,
     requirements: [{ type: "skill", skillId: "prayer", level: 25 }],
     xpRewards: [
-      { skillId: "prayer", share: 0.5 },
+      { skillId: "prayer", share: 0.75 },
       { skillId: "necromancy", share: 0.25 },
     ],
     drops: [],
+    sharedDropPoolIds: [],
   },
   {
     id: "ember-kiln",
+    familyId: "family-ember-kiln",
+    masteryTrackId: "mastery-ember-kiln",
     name: "Ember Kiln",
     description: "Work a volatile kiln where careful heat turns ore and ash into useful craft.",
     type: "Crafting",
@@ -127,14 +150,17 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
     runtimeMs: RUN_TIME_MS,
     requirements: [{ type: "skill", skillId: "firemaking", level: 20 }],
     xpRewards: [
-      { skillId: "firemaking", share: 0.35 },
-      { skillId: "smithing", share: 0.25 },
-      { skillId: "crafting", share: 0.15 },
+      { skillId: "firemaking", share: 0.45 },
+      { skillId: "smithing", share: 0.35 },
+      { skillId: "crafting", share: 0.2 },
     ],
     drops: [],
+    sharedDropPoolIds: [],
   },
   {
     id: "deep-mine-survey",
+    familyId: "family-deep-mine-survey",
+    masteryTrackId: "mastery-deep-mine-survey",
     name: "Deep Mine Survey",
     description: "Chart unstable tunnels for mining crews and mark the safest routes back out.",
     type: "Gathering",
@@ -142,10 +168,11 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
     runtimeMs: RUN_TIME_MS,
     requirements: [{ type: "skill", skillId: "mining", level: 30 }],
     xpRewards: [
-      { skillId: "mining", share: 0.5 },
+      { skillId: "mining", share: 0.75 },
       { skillId: "dungeoneering", share: 0.25 },
     ],
     drops: [],
+    sharedDropPoolIds: [],
   },
 ];
 
@@ -184,10 +211,22 @@ export function activitySkillAdvantage(activity: GameplayActivity, player: Pick<
   };
 }
 
-export function effectiveActivityRun(activity: GameplayActivity, player: Pick<ActivityPlayerState, "skillXp">) {
+export function effectiveActivityRun(
+  activity: GameplayActivity,
+  player: Pick<ActivityPlayerState, "skillXp" | "contentMasteryPoints" | "owned">,
+) {
   const advantage = activitySkillAdvantage(activity, player);
-  const cost = Math.max(0, Math.round(activity.cost * (1 - advantage.costReductionPercent / 100)));
-  const runtimeMs = Math.max(1_000, Math.round(activity.runtimeMs * (1 - advantage.runtimeReductionPercent / 100)));
+  const mastery = masteryEconomicModifiers(activity.masteryTrackId, player.contentMasteryPoints[activity.masteryTrackId] ?? 0);
+  const accountCostReduction = accountBonusPercent(player.owned, "adventure-cost-reduction")
+    + setAccountBonusPercent(player.owned, "adventure-cost-reduction")
+    + masteryAccountBonusPercent(player.contentMasteryPoints, "adventure-cost-reduction");
+  const accountRuntimeReduction = accountBonusPercent(player.owned, "adventure-runtime-reduction")
+    + setAccountBonusPercent(player.owned, "adventure-runtime-reduction")
+    + masteryAccountBonusPercent(player.contentMasteryPoints, "adventure-runtime-reduction");
+  const costReductionPercent = advantage.costReductionPercent + mastery.costReductionPercent + accountCostReduction;
+  const runtimeReductionPercent = advantage.runtimeReductionPercent + mastery.runtimeReductionPercent + accountRuntimeReduction;
+  const cost = Math.max(0, Math.round(activity.cost * (1 - Math.min(90, costReductionPercent) / 100)));
+  const runtimeMs = Math.max(1_000, Math.round(activity.runtimeMs * (1 - Math.min(90, runtimeReductionPercent) / 100)));
 
   return {
     cost,
@@ -195,6 +234,7 @@ export function effectiveActivityRun(activity: GameplayActivity, player: Pick<Ac
     runtimeMs,
     baseRuntimeMs: activity.runtimeMs,
     advantage,
+    mastery,
   };
 }
 
@@ -230,6 +270,8 @@ export function startActivityRun<T extends ActivityPlayerState>(
     runtimeMs: effective.runtimeMs,
     baseRuntimeMs: effective.baseRuntimeMs,
     skillAdvantagePercent: effective.advantage.percent,
+    masteryTrackId: activity.masteryTrackId,
+    masteryLevel: masteryProgress(activity.masteryTrackId, current.contentMasteryPoints[activity.masteryTrackId] ?? 0).level,
     rollSeed: normalizeSeed(rollSeed),
   };
 
@@ -252,6 +294,9 @@ export function processActiveActivityRuns<T extends ActivityPlayerState>(
     skillXp: { ...player.skillXp },
     activityRunCounts: { ...player.activityRunCounts },
     activityResults: [...player.activityResults],
+    contentMasteryPoints: { ...player.contentMasteryPoints },
+    sharedDropPoolRollUnits: { ...player.sharedDropPoolRollUnits },
+    unlockedCosmetics: [...player.unlockedCosmetics],
     activeActivityRuns: [] as ActiveActivityRun[],
   };
 
@@ -294,13 +339,30 @@ function completeActivityRun<T extends ActivityPlayerState>(
   const random = seededRandom(run.rollSeed);
   const completedRuns = (player.activityRunCounts[activity.id] ?? 0) + 1;
   const skillAdvantagePercent = sanitizePercent(run.skillAdvantagePercent);
-  const additionalChance = additionalRollChancePercent(player.owned);
+  const masteryRollChance = masteryEconomicModifiers(
+    activity.masteryTrackId,
+    player.contentMasteryPoints[activity.masteryTrackId] ?? 0,
+  ).additionalRollChancePercent;
+  const additionalChance = additionalRollChancePercent(player.owned)
+    + setAccountBonusPercent(player.owned, "additional-roll-chance")
+    + masteryAccountBonusPercent(player.contentMasteryPoints, "additional-roll-chance")
+    + masteryRollChance;
   const primaryRoll = rollActivityDrop(activity, player.owned, completedRuns, random);
   const additionalRollTriggered = activity.drops.length > 0 && additionalChance > 0 && random() < additionalChance / 100;
   const additionalRoll = additionalRollTriggered
     ? rollActivityDrop(activity, player.owned, completedRuns, random)
     : undefined;
-  const droppedCollectibleId = selectRarestDrop(activity, [primaryRoll, additionalRoll].filter((id): id is string => !!id));
+  const rollUnits = rollUnitsForBaseRap(run.baseCost);
+  const sharedRolls = activity.sharedDropPoolIds.map((poolId) => {
+    const pool = getSharedDropPool(poolId);
+    const accumulatedUnits = player.sharedDropPoolRollUnits[poolId] ?? 0;
+    const drop = pool ? rollSharedDropPool(pool, player.owned, accumulatedUnits, rollUnits, random) : undefined;
+    return { poolId, poolName: pool?.name ?? poolId, drop, accumulatedUnits };
+  });
+  const droppedCollectibleId = selectRarestDrop(
+    activity,
+    [primaryRoll, additionalRoll, ...sharedRolls.map((roll) => roll.drop)].filter((id): id is string => !!id),
+  );
   const xp = awardActivityXp(player, activity, run, skillAdvantagePercent);
   const owned = droppedCollectibleId && !player.owned.includes(droppedCollectibleId)
     ? [...player.owned, droppedCollectibleId]
@@ -310,6 +372,26 @@ function completeActivityRun<T extends ActivityPlayerState>(
     { label: "Roll 1", triggered: true, droppedCollectibleId: primaryRoll },
     { label: "Additional Roll", triggered: additionalRollTriggered, droppedCollectibleId: additionalRoll },
   ];
+  for (const sharedRoll of sharedRolls) {
+    rolls.push({ label: sharedRoll.poolName, triggered: true, droppedCollectibleId: sharedRoll.drop });
+  }
+
+  const previousMasteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
+  const nextMasteryPoints = previousMasteryPoints + run.baseCost;
+  const masteryRewards = masteryRewardsBetween(activity.masteryTrackId, previousMasteryPoints, nextMasteryPoints);
+  const masteryCollectibleIds = masteryRewards.flatMap((milestone) => milestone.reward.type === "collectible" ? [milestone.reward.collectibleId] : []);
+  const ownedWithMasteryRewards = [...new Set([...owned, ...masteryCollectibleIds])];
+  const masteryUnlockedCosmetics = [...new Set([
+    ...player.unlockedCosmetics,
+    ...masteryRewards.flatMap((milestone) => milestone.reward.type === "cosmetic" ? [milestone.reward.cosmeticId] : []),
+  ])];
+  const sharedDropPoolRollUnits = { ...player.sharedDropPoolRollUnits };
+  for (const sharedRoll of sharedRolls) {
+    sharedDropPoolRollUnits[sharedRoll.poolId] = sharedRoll.accumulatedUnits + rollUnits;
+  }
+  const newMasteryLevel = masteryProgress(activity.masteryTrackId, nextMasteryPoints).level;
+  const nextContentMasteryPoints = { ...player.contentMasteryPoints, [activity.masteryTrackId]: nextMasteryPoints };
+  const unlockedCosmetics = reconcileUnlockedCosmetics(masteryUnlockedCosmetics, ownedWithMasteryRewards, nextContentMasteryPoints);
 
   const result: ActivityRunResult = {
     id: `${run.id}-result`,
@@ -327,14 +409,20 @@ function completeActivityRun<T extends ActivityPlayerState>(
     xp,
     rolls,
     droppedCollectibleId,
+    masteryTrackId: activity.masteryTrackId,
+    masteryPointsGained: run.baseCost,
+    masteryLevel: newMasteryLevel,
   };
 
   return {
     ...player,
-    owned,
+    owned: ownedWithMasteryRewards,
     skillXp: { ...player.skillXp },
     activityRunCounts: { ...player.activityRunCounts, [activity.id]: completedRuns },
     activityResults: [result, ...player.activityResults].slice(0, MAX_ACTIVITY_RESULTS),
+    contentMasteryPoints: nextContentMasteryPoints,
+    sharedDropPoolRollUnits,
+    unlockedCosmetics,
   };
 }
 
@@ -345,15 +433,25 @@ function awardActivityXp(
   skillAdvantagePercent: number,
 ) {
   const gained: Array<{ skillId: SkillId; amount: number; bonusPercent: number }> = [];
+  const masteryBonus = masteryEconomicModifiers(activity.masteryTrackId, player.contentMasteryPoints[activity.masteryTrackId] ?? 0).xpBonusPercent;
+  const adventureBonus = accountBonusPercent(player.owned, "adventure-xp")
+    + setAccountBonusPercent(player.owned, "adventure-xp")
+    + masteryAccountBonusPercent(player.contentMasteryPoints, "adventure-xp");
 
   for (const reward of activity.xpRewards) {
     const currentXp = player.skillXp[reward.skillId] ?? 0;
     const level = levelFromXp(currentXp);
-    const accountBonus = skillXpBonusPercent(player.owned, reward.skillId);
-    const bonusPercent = accountBonus + skillAdvantagePercent;
+    const accountBonus = skillXpBonusPercent(player.owned, reward.skillId)
+      + setAccountBonusPercent(player.owned, "skill-xp", reward.skillId)
+      + setAccountBonusPercent(player.owned, "all-skill-xp")
+      + masteryAccountBonusPercent(player.contentMasteryPoints, "skill-xp", reward.skillId)
+      + masteryAccountBonusPercent(player.contentMasteryPoints, "all-skill-xp")
+      + adventureBonus;
+    const bonusMultiplier = (1 + accountBonus / 100) * (1 + masteryBonus / 100) * (1 + skillAdvantagePercent / 100);
+    const bonusPercent = (bonusMultiplier - 1) * 100;
     const amount = Math.min(
       xpTable[MAX_LEVEL] - currentXp,
-      run.baseCost * trainingXpPerRap(level) * reward.share * (1 + bonusPercent / 100),
+      run.baseCost * trainingXpPerRap(level) * reward.share * bonusMultiplier,
     );
     if (amount <= 0) continue;
     player.skillXp[reward.skillId] = currentXp + amount;
@@ -383,8 +481,8 @@ function selectRarestDrop(activity: GameplayActivity, collectibleIds: string[]) 
   if (collectibleIds.length === 0) return undefined;
 
   return collectibleIds.sort((a, b) => {
-    const aChance = activity.drops.find((drop) => drop.collectibleId === a)?.chance ?? 0;
-    const bChance = activity.drops.find((drop) => drop.collectibleId === b)?.chance ?? 0;
+    const aChance = dropDenominator(activity, a);
+    const bChance = dropDenominator(activity, b);
     return bChance - aChance;
   })[0];
 }
@@ -396,6 +494,16 @@ function sanitizePercent(value: number) {
 
 function roundPercent(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function dropDenominator(activity: GameplayActivity, collectibleId: string) {
+  const directChance = activity.drops.find((drop) => drop.collectibleId === collectibleId)?.chance;
+  if (directChance) return directChance;
+  for (const poolId of activity.sharedDropPoolIds) {
+    const chance = getSharedDropPool(poolId)?.entries.find((entry) => entry.collectibleId === collectibleId)?.denominator;
+    if (chance) return chance;
+  }
+  return 0;
 }
 
 export function seedFromString(value: string) {
