@@ -232,7 +232,7 @@ Candidate combined skill roster to finalize:
 - Run tests with enforced coverage floor: `npm run test:coverage`
 - Run the complete local quality gate: `npm run check`
 - Regenerate PWA icons from the RAP symbol: `npm run pwa:icons`
-- Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` builds with `npm ci` and `npm run build`, then deploys `dist` to GitHub Pages.
+- Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` uses Node 24, installs with `npm ci`, runs the complete `npm run check` quality gate, and deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 - Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.
 - Prepare missing collectible icon prompts: `npm run icons:prepare`
