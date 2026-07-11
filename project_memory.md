@@ -552,10 +552,10 @@ Candidate combined skill roster to finalize:
 2026-07-11: Invalidate stale Skill Cape asset cache.
 
 - Original problem: the first deployed Vault build briefly contained an empty Sailing Level 99 WebP. Browsers using the existing service-worker cache continued to show a broken image even after the repository asset was corrected.
-- Successful solution: replace the valid local/deployed Sailing asset and bump `public/sw.js` from `idle-life-shell-v1` to `idle-life-shell-v2`, causing clients to delete the old cache and fetch the corrected asset.
-- Why it works: the service worker's activation handler removes cache versions other than the current name, so a stale zero-byte response cannot continue to win via `caches.match`.
-- Files involved: `public/assets/icons/skill-capes/skill-cape-sailing-99.webp`, `public/sw.js`.
-- Validation: direct deployed fetch returned HTTP 200, `image/webp`, 14,464 bytes; live Playwright navigation found `naturalWidth: 256` and no broken images.
+- Successful solution: replace the valid local/deployed Sailing asset, bump `public/sw.js` from `idle-life-shell-v1` to `idle-life-shell-v3`, and use network-first fetches with an offline cache fallback. Responses are cloned immediately before being returned. Add an explicit favicon so the browser does not request a missing `/favicon.ico`.
+- Why it works: the service worker's activation handler removes cache versions other than the current name, online requests refresh cached assets, and cloning no longer races the browser's body consumption. A stale zero-byte response therefore cannot continue to win while online.
+- Files involved: `public/assets/icons/skill-capes/skill-cape-sailing-99.webp`, `public/sw.js`, `index.html`.
+- Validation: direct deployed fetch returned HTTP 200, `image/webp`, 14,464 bytes; live Playwright navigation found `naturalWidth: 256` and no broken images before the v3 cache strategy update.
 
 ## Known Issues
 

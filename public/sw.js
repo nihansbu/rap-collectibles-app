@@ -1,6 +1,6 @@
 /* global self, caches, fetch, URL */
 // Bump this when a deployed asset was previously cached with an invalid or stale response.
-const CACHE_NAME = "idle-life-shell-v2";
+const CACHE_NAME = "idle-life-shell-v3";
 const scopeUrl = new URL("./", self.location.href).href;
 
 self.addEventListener("install", (event) => {
@@ -32,9 +32,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached ?? fetch(event.request).then((response) => {
-      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
-      return response;
-    })),
+    fetch(event.request)
+      .then((response) => {
+        if (response.ok) {
+          // Clone before returning the response; cloning later races the browser's body consumption.
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request)),
   );
 });
