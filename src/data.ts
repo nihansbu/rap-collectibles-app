@@ -6,6 +6,7 @@ export { CONTENT_MASTERY_TRACKS } from "./data/mastery";
 export { SHARED_DROP_POOLS } from "./data/dropPools";
 export { COSMETICS } from "./data/cosmetics";
 export { ACHIEVEMENTS } from "./data/achievements";
+export { SKILL_CAPES } from "./data/skillCapes";
 export { CONTENT_FAMILIES } from "./data/contentFamilies";
 export type {
   CollectionSetDefinition,
@@ -22,6 +23,8 @@ export type {
   AchievementCondition,
   AchievementDefinition,
   AchievementReward,
+  SkillCapeDefinition,
+  SkillCapeTier,
   SharedDropPool,
 } from "./data/contentTypes";
 

@@ -1,4 +1,4 @@
-import { ChartNoAxesColumnIncreasing, Compass, Gem, Layers3, Shield, Trophy, UserRound } from "lucide-react";
+import { Archive, ChartNoAxesColumnIncreasing, Compass, Gem, Shield, Trophy, UserRound } from "lucide-react";
 import type { CategoryId } from "../data";
 import { activityRap, type ActivityOption } from "../economy";
 import { formatNumber } from "../format";
@@ -24,11 +24,11 @@ export function MainMenuPage({
   onOpenActivities,
   onOpenCategory,
   onOpenBonuses,
-  onOpenSets,
+  onOpenVault,
   onOpenProfile,
   onOpenAchievements,
   achievementPoints,
-  setProgress,
+  skillCapeProgress,
 }: {
   activities: ActivityOption[];
   categoryProgress: DashboardCategoryProgress[];
@@ -40,11 +40,11 @@ export function MainMenuPage({
   onOpenActivities: () => void;
   onOpenCategory: (id: CategoryId) => void;
   onOpenBonuses: () => void;
-  onOpenSets: () => void;
+  onOpenVault: () => void;
   onOpenProfile: () => void;
   onOpenAchievements: () => void;
   achievementPoints: number;
-  setProgress: { completed: number; total: number };
+  skillCapeProgress: { unlocked: number; total: number };
 }) {
   return (
     <div className="dashboard-page">
@@ -97,11 +97,11 @@ export function MainMenuPage({
               </span>
             </button>
           ))}
-          <button className="dashboard-collection-tile" onClick={onOpenSets}>
-            <span className="dashboard-nav-icon"><Layers3 size={22} /></span>
-            <strong>Sets</strong>
-            <small>{setProgress.completed}/{setProgress.total}</small>
-            <span className="mini-progress-track" aria-hidden="true"><span style={{ width: `${setProgress.total ? (setProgress.completed / setProgress.total) * 100 : 0}%` }} /></span>
+          <button className="dashboard-collection-tile" onClick={onOpenVault}>
+            <span className="dashboard-nav-icon"><Archive size={22} /></span>
+            <strong>Vault</strong>
+            <small>{skillCapeProgress.unlocked}/{skillCapeProgress.total} capes</small>
+            <span className="mini-progress-track" aria-hidden="true"><span style={{ width: `${skillCapeProgress.total ? (skillCapeProgress.unlocked / skillCapeProgress.total) * 100 : 0}%` }} /></span>
           </button>
         </div>
       </section>

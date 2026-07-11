@@ -19,7 +19,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - No separated currencies for different activity types at this stage.
 - Collectibles are the main progression system.
 - The Codex is the collection overview and should make progress visible quickly.
-- Collection categories should be tile-based, for example Heroes, Classes, Races, Skills, Tools, Mounts, Pets, Sets, and future categories.
+- Collection categories should be tile-based, for example Heroes, Classes, Races, Skills, Tools, Mounts, Pets, Vault, and future categories.
 - The setting is high fantasy.
 - Heroes are predefined account Collectibles rather than separately played characters. They may provide profile cosmetics or other account-wide rewards.
 - Fantasy Races and Classes remain separate Collectible categories.
@@ -49,10 +49,12 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
 - `src/cosmetics.ts`: default Theme availability plus derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
 - `src/achievements.ts`: pure Achievement progress evaluation, tag/category filtering, AP derivation, chained completion reconciliation, and idempotent reward grants.
+- `src/skillCapes.ts`: Skill Cape lookup, Level 99/120 entitlement derivation, idempotent reconciliation, tier labels, and Vault progress summaries.
 - `src/sets.ts`: Set lookup and progress selectors derived from owned Collectibles.
 - `src/skillAcquisition.ts`: machine-readable Skill Acquisition Matrix and the Direct Training retirement gate.
 - `src/data/balance/`: centralized placeholder economy, XP-share, Mastery, modifier, and drop constants.
 - `src/data/{mastery,dropPools,sets,cosmetics,achievements,contentFamilies}.ts`: typed progression and content registries.
+- `src/data/skillCapes.ts`: data-driven Level 99 and Level 120 Cape definitions derived from the canonical Skill catalog.
 - `src/catalog.ts`: catalog selectors and rules such as collectible lookup, category filtering, requirement state, unlock state, status grouping, and catalog ordering.
 - `src/data.ts`: stable public facade that re-exports modular catalog data.
 - `src/data/types.ts`: shared catalog types.
@@ -63,14 +65,18 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system through v8, migrations, validation, revision conflict detection, Achievement reconciliation, active progress normalization, and throttled backup rotation.
+- `src/save.ts`: versioned local save/load system through v9, migrations, validation, revision conflict detection, Achievement and Skill Cape reconciliation, active progress normalization, and throttled backup rotation.
 - `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
 - `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
 - `src/pages/AccountBonusesPage.tsx`: grouped Skill XP, Rolls, Adventure, and Resistance bonus overview.
 - `src/pages/SetsPage.tsx`: cross-category Codex Set progress and reward thresholds.
 - `src/pages/ProfilePage.tsx`: account-wide Titles, curated Themes, Profile Badges, and AP summary.
 - `src/pages/AchievementsPage.tsx`: searchable and filterable Achievement overview with progress, series, rewards, AP, and completion states.
-- `Vault` is the approved future parent area inside `Collectibles` for special collections such as Sets and Skill Capes. The current UI still exposes Sets directly until the Vault implementation task starts.
+- `src/pages/VaultPage.tsx`: Vault hub for special collections, currently Sets and Skill Capes.
+- `src/pages/SkillCapesPage.tsx`: searchable and filterable 60-item Cape overview with Level 99/120, unlocked/locked filters, and Skill detail links.
+- `src/ui/SkillCapeToast.tsx`: one-time Level 99/120 unlock notification.
+- `scripts/generate-skill-cape-reskins.ts`: reusable pipeline that reskins the shared 99/120 base assets with each existing Skill icon and palette into final WebP icons.
+- `Vault` is implemented as the special parent area inside `Collectibles`; the main dashboard and Collectibles overview link to it, while Sets and Skill Capes are its subpages.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
 - `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
@@ -125,7 +131,7 @@ Implemented early systems:
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
-- Save v8 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
+- Save v9 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress. v9 adds owned Skill Capes and acknowledged Cape notifications while accepting v1-v8 saves.
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
@@ -137,15 +143,16 @@ Implemented early systems:
 - Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-10 and centrally capped passive modifiers.
 - Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
+- Skill Capes derive from canonical Skill XP: Level 99 grants the normal Cape and Level 120 grants the Master Cape. All 60 are data-driven and use visible Skill-specific emblems over shared Cape silhouettes.
 - Achievements are typed data under `src/data/achievements.ts`. Generic conditions cover RAP, Skill levels, total level, filtered collection counts/completion, Sets, Adventure runs, Mastery, and AP thresholds.
 - `reconcileAchievements` derives AP from valid completed IDs, iterates chained conditions until stable, grants Cosmetic or exceptional Collectible rewards once, and reconciles downstream Set/Mastery Cosmetics.
-- Save v8 stores completion timestamps and acknowledged notification IDs. Legacy saves backfill eligible Achievements while suppressing a burst of historical toasts; new completions use a timed queue.
+- Save v9 stores completion timestamps, acknowledged Achievement IDs, owned Skill Capes, and acknowledged Cape IDs. Legacy saves backfill eligible Achievements and Capes while suppressing a burst of historical toasts; new completions use timed queues.
 - Titles use the existing `CosmeticKind: "title"`, `unlockedCosmetics`, and `selectedCosmetics.titleId` fields. The Profile permits an unlocked Title or no Title.
 - All current Themes are reconciled into every new or migrated save, while Profile Badges remain progression-gated. Storm Weaver is no longer granted by Fishing Trawler Mastery or the Trawler's Wake Set.
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
-- Save v8 persists Achievements, AP, notification acknowledgement, and selected Title in addition to the v7 Mastery, Shared Roll Unit, and Cosmetic data while migrating v1-v7 saves.
+- Save v9 persists Skill Capes and Cape notification acknowledgement in addition to the v8 Achievement/AP/Title data while migrating v1-v8 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
-- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 18 reusable entries across five categories, supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
+- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 20 reusable entries across five categories, including Vault and Skill Capes, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -259,6 +266,7 @@ Candidate combined skill roster to finalize:
 - Run the complete local quality gate: `npm run check`
 - Regenerate PWA icons from the RAP symbol: `npm run pwa:icons`
 - Generate the current balance comparison report: `npm run balance:report` (writes `tmp/balance-report.md`).
+- Regenerate all Skill Cape reskins after changing the base assets or Skill palette: `npx tsx scripts/generate-skill-cape-reskins.ts` (base assets live in `scripts/assets/skill-capes/`; optional arguments support custom inputs and chunk ranges).
 - Deploy: commit and push to `main`; GitHub Actions workflow `.github/workflows/deploy-pages.yml` uses Node 24, installs with `npm ci`, runs the complete `npm run check` quality gate, and deploys `dist` to GitHub Pages.
 - Enable GitHub Pages for a new repo using Actions: `gh api --method POST repos/nihansbu/rap-collectibles-app/pages -f build_type=workflow`
 - Convert generated transparent icons to optimized WebP: remove chroma key with `C:\Users\nikla\.codex\skills\.system\imagegen\scripts\remove_chroma_key.py`, crop to alpha bounds, center on a 256x256 transparent canvas with max subject size around 220px, and save as WebP quality 90 under `public/assets/icons/...`.

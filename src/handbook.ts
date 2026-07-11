@@ -306,6 +306,37 @@ export const handbookEntries: HandbookEntry[] = [
     relatedEntryIds: ["profile-cosmetics", "collectibles", "content-mastery", "save-progress"],
   },
   {
+    id: "vault",
+    title: "The Vault",
+    summary: "A prestige home for Sets and Skill Capes.",
+    category: "rewards",
+    sections: [
+      {
+        paragraphs: [
+          "The Vault is a special collection area inside Collectibles. It keeps long-term milestone rewards separate from ordinary purchasable Codex entries.",
+          "Sets track cross-category collection progress, while Skill Capes track Level 99 and Level 120 milestones for every Skill.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["collection-sets", "skill-capes", "collectibles", "save-progress"],
+  },
+  {
+    id: "skill-capes",
+    title: "Skill Capes",
+    summary: "Level 99 and Level 120 milestone capes for every Skill.",
+    category: "rewards",
+    sections: [
+      {
+        paragraphs: [
+          "Each Skill has a Skill Cape earned at Level 99 and a Master Cape earned at Level 120. These are permanent account rewards and are not bought with RAP.",
+          "The Vault shows all 60 capes with their Skill-specific icons, milestone level, and locked or unlocked state. The Cape icons share a common silhouette while using the Skill's own emblem and palette for instant recognition.",
+          "When a Skill reaches Level 99 or Level 120, the corresponding Cape is added to the account and a one-time unlock notification appears.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["skills", "skill-training", "collection-sets", "save-progress"],
+  },
+  {
     id: "profile-cosmetics",
     title: "Profile And Cosmetics",
     summary: "Account-wide Titles, Badges, Themes, portraits, and presentation rewards.",
@@ -389,7 +420,19 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "sets",
     title: "Collection Sets",
     intro: "This Codex view groups Collectibles across categories and shows permanent threshold rewards without time-limited availability.",
-    entryIds: ["collection-sets", "collectibles", "profile-cosmetics", "account-bonuses"],
+    entryIds: ["collection-sets", "skill-capes", "collectibles", "profile-cosmetics", "account-bonuses"],
+  },
+  vault: {
+    id: "vault",
+    title: "Vault",
+    intro: "The Vault contains prestige collections such as cross-category Sets and Skill Capes earned from Level 99 and Level 120 milestones.",
+    entryIds: ["collection-sets", "skill-capes", "skills", "profile-cosmetics", "save-progress"],
+  },
+  "skill-capes": {
+    id: "skill-capes",
+    title: "Skill Capes",
+    intro: "This page shows the 99er and 120er Skill Capes earned from the account's Skill levels.",
+    entryIds: ["skill-capes", "skills", "skill-training", "vault", "save-progress"],
   },
   profile: {
     id: "profile",

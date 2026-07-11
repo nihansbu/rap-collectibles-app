@@ -28,7 +28,7 @@ Acceptance criteria:
 - [x] Make the initial Theme collection directly selectable and keep Badge rewards progression-gated.
 - [x] Add a machine-readable Skill Acquisition Matrix.
 - [x] Add the account-wide Achievement foundation with non-spendable AP, multi-stage series, title rewards, completion notifications, and a dedicated overview.
-- [ ] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages.
+- [x] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages, including all 99/120 Skill Cape definitions, assets, unlock reconciliation, and notifications.
 
 Acceptance criteria:
 
@@ -37,6 +37,7 @@ Acceptance criteria:
 - Set completion is derived from owned Collectibles; Sets are not a second inventory.
 - Direct Skill Training remains available until every Skill has a Level 1 gameplay source.
 - Achievement progress is derived from existing account state; completion rewards remain idempotent across reloads and save migration.
+- Vault progress is derived from Sets and Skill levels; all 60 Skill Capes have stable data IDs, Skill-specific icons, and save migration coverage.
 
 ## Later: Content Expansion
 

@@ -244,15 +244,17 @@ Titles:
 
 ## Vault
 
-Approved direction:
+Implemented design:
 
-- `Vault` is the planned parent area for special, account-wide collection systems within the `Collectibles` section.
+- `Vault` is the parent area for special, account-wide collection systems within the `Collectibles` section.
 - The first Vault subpages will be `Sets` and `Skill Capes`.
 - Vault content represents prestigious or milestone-based collections rather than ordinary purchasable Collectibles.
 - Sets remain cross-category collection groups with their own progress and rewards.
 - Skill Capes remain Skill milestone rewards for Level 99 and Level 120 and are not ordinary Collectible purchases.
 - The Vault is intentionally distinct from `Collectibles`, `Achievements`, and `Profile`: Collectibles answers what is owned, Achievements tracks goals, Profile selects presentation, and Vault presents special long-term collections.
-- The final Vault navigation and presentation are approved as a future implementation task; no UI rename is implied until that task begins.
+- The Vault currently contains a hub, the existing Sets view, and a Skill Capes view with all 60 Skill Capes (30 Skills × two tiers).
+- Skill Cape icons share a recognizable cape silhouette but use each Skill's emblem and palette so the associated Skill is identifiable at a glance. Level 99 and Level 120 have distinct base treatments.
+- Reaching Level 99 or Level 120 grants the corresponding Cape automatically. Cape grants are permanent, idempotent, persisted, and shown through a one-time unlock toast.
 
 ## Classes And Races
 
@@ -441,7 +443,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
-- Save v8 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, Cosmetic selections, Achievement completions, notification acknowledgements, AP, and selected Title. Saves v1-v7 migrate forward.
+- Save v9 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, Cosmetic selections, Achievement completions, notification acknowledgements, AP, selected Title, owned Skill Capes, and Cape notification acknowledgements. Saves v1-v8 migrate forward.
 - Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -455,7 +457,7 @@ Current first screen elements:
 - Button: gain 10,000 RAP.
 - Page title in the topbar.
 - Main menu dashboard uses consistent sections for World, Account, Collectibles, and manual Activity Log tiles.
-- The Collectibles page contains category tiles for Heroes, Classes, Races, Skills, Tools, Pets, Mounts, and Sets.
+- The Collectibles page contains category tiles for Heroes, Classes, Races, Skills, Tools, Pets, Mounts, and a Vault entry for Sets and Skill Capes.
 - Collectibles category tiles show count, percentage, and progress bar.
 - The main menu includes a compact manual `Log Activity` grid for one-hour activity entries.
 - The Handbook is a global contextual topbar action, not a main-menu tile.

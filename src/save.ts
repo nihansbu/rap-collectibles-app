@@ -6,8 +6,9 @@ import {
   type ActiveActivityRun,
   type ActivityRunResult,
 } from "./activities";
-import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, skills, type SkillId } from "./data";
+import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, SKILL_CAPES, skills, type SkillId } from "./data";
 import { reconcileAchievements } from "./achievements";
+import { reconcileUnlockedSkillCapes } from "./skillCapes";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
 import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
 import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
@@ -31,6 +32,8 @@ export type PlayerState = {
   completedAchievements: Record<string, number>;
   notifiedAchievementIds: string[];
   achievementPoints: number;
+  ownedSkillCapes: string[];
+  notifiedSkillCapeIds: string[];
 };
 
 type SavePlayerV1 = {
@@ -72,6 +75,11 @@ type SavePlayerV8 = SavePlayerV7 & {
   notifiedAchievementIds?: string[];
   achievementPoints?: number;
   selectedCosmetics?: { themeId?: string | null; profileBadgeId?: string | null; titleId?: string | null };
+};
+
+type SavePlayerV9 = SavePlayerV8 & {
+  ownedSkillCapes?: string[];
+  notifiedSkillCapeIds?: string[];
 };
 
 type SaveFileV1 = {
@@ -125,6 +133,13 @@ type SaveFileV8 = {
   player: SavePlayerV8;
 };
 
+type SaveFileV9 = {
+  version: 9;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV9;
+};
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type SaveSnapshot = {
@@ -137,13 +152,17 @@ export type SaveWriteResult =
   | { ok: true; revision: number; savedAt: string }
   | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
 
-export const CURRENT_SAVE_VERSION = 8;
-export const SAVE_KEY = "rap-collectibles.save.v8";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v8";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v8.1", "rap-collectibles.save.backup.v8.2"];
-const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v8.timestamp";
+export const CURRENT_SAVE_VERSION = 9;
+export const SAVE_KEY = "rap-collectibles.save.v9";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v9";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v9.1", "rap-collectibles.save.backup.v9.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v9.timestamp";
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v8",
+  "rap-collectibles.save.lastKnownGood.v8",
+  "rap-collectibles.save.backup.v8.1",
+  "rap-collectibles.save.backup.v8.2",
   "rap-collectibles.save.v7",
   "rap-collectibles.save.lastKnownGood.v7",
   "rap-collectibles.save.backup.v7.1",
@@ -184,6 +203,7 @@ const masteryTrackIds = new Set(CONTENT_MASTERY_TRACKS.map((track) => track.id))
 const sharedDropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
 const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
 const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
+const skillCapeIds = new Set(SKILL_CAPES.map((cape) => cape.id));
 
 export function createInitialPlayerState(): PlayerState {
   return {
@@ -204,6 +224,8 @@ export function createInitialPlayerState(): PlayerState {
     completedAchievements: {},
     notifiedAchievementIds: [],
     achievementPoints: 0,
+    ownedSkillCapes: [],
+    notifiedSkillCapeIds: [],
   };
 }
 
@@ -222,7 +244,7 @@ export function loadPlayerSnapshot(storage: StorageLike | null = getStorage()): 
     if (snapshot) {
       return {
         ...snapshot,
-        player: reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player))),
+        player: reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player)))),
       };
     }
   }
@@ -264,12 +286,12 @@ export function savePlayerState(
 }
 
 export function exportPlayerState(player: PlayerState): string {
-  return serializeSave(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(player))), 0, new Date().toISOString());
+  return serializeSave(reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(player)))), 0, new Date().toISOString());
 }
 
 export function importPlayerState(rawSave: string): PlayerState | null {
   const snapshot = parseSaveSnapshot(rawSave);
-  return snapshot ? reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player))) : null;
+  return snapshot ? reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player)))) : null;
 }
 
 function getStorage(): StorageLike | null {
@@ -286,7 +308,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
-  const saveFile: SaveFileV8 = {
+  const saveFile: SaveFileV9 = {
     version: CURRENT_SAVE_VERSION,
     revision,
     savedAt,
@@ -310,17 +332,17 @@ export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 | SaveFileV9 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, 5, 6, 7, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, 6, 7, 8, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8 | SavePlayerV9): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -349,6 +371,8 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     "completedAchievements" in player ? player.completedAchievements : undefined,
   );
   const migratedFromLegacyAchievements = !("completedAchievements" in player);
+  const ownedSkillCapes = normalizeSkillCapeIds("ownedSkillCapes" in player ? player.ownedSkillCapes : undefined);
+  const migratedFromLegacySkillCapes = !("ownedSkillCapes" in player);
   const normalizedPlayer: PlayerState = {
     rp: sanitizeNumber(player.rp, 0, MAX_RAP),
     lifetimeRap: sanitizeNumber("lifetimeRap" in player ? player.lifetimeRap : player.rp, 0, MAX_RAP),
@@ -367,17 +391,24 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     completedAchievements,
     notifiedAchievementIds: [],
     achievementPoints: 0,
+    ownedSkillCapes,
+    notifiedSkillCapeIds: [],
   };
 
-  const reconciled = reconcileAchievements(normalizedPlayer);
+  const reconciled = reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(normalizedPlayer));
   const notifiedAchievementIds = migratedFromLegacyAchievements
     ? Object.keys(reconciled.completedAchievements)
     : normalizeAchievementIds("notifiedAchievementIds" in player ? player.notifiedAchievementIds : undefined)
       .filter((id) => reconciled.completedAchievements[id] !== undefined);
+  const notifiedSkillCapeIds = migratedFromLegacySkillCapes
+    ? reconciled.ownedSkillCapes
+    : normalizeSkillCapeIds("notifiedSkillCapeIds" in player ? player.notifiedSkillCapeIds : undefined)
+      .filter((id) => reconciled.ownedSkillCapes.includes(id));
 
   return {
     ...reconciled,
     notifiedAchievementIds,
+    notifiedSkillCapeIds,
     selectedCosmetics: normalizeSelectedCosmetics(
       "selectedCosmetics" in player ? player.selectedCosmetics : undefined,
       reconciled.unlockedCosmetics,
@@ -409,6 +440,19 @@ function normalizeAchievementCompletions(value: unknown) {
       .filter(([id, completedAt]) => achievementIds.has(id) && typeof completedAt === "number" && Number.isFinite(completedAt))
       .map(([id, completedAt]) => [id, sanitizeInteger(completedAt, 0, Number.MAX_SAFE_INTEGER)]),
   );
+}
+
+function normalizeSkillCapeIds(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value)].filter((id): id is string => typeof id === "string" && skillCapeIds.has(id))
+    : [];
+}
+
+function reconcileUnlockedSkillCapesOnPlayer(player: PlayerState): PlayerState {
+  return {
+    ...player,
+    ownedSkillCapes: reconcileUnlockedSkillCapes(player.ownedSkillCapes, player.skillXp),
+  };
 }
 
 function normalizeSelectedCosmetics(value: unknown, unlockedValue: unknown) {

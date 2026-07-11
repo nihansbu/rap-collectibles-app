@@ -11,6 +11,7 @@ import {
   COSMETICS,
   ACHIEVEMENTS,
   SHARED_DROP_POOLS,
+  SKILL_CAPES,
   skills,
 } from "../src/data";
 import { XP_SHARE_EPSILON } from "../src/data/balance/xp";
@@ -24,6 +25,7 @@ describe("content catalog", () => {
   const dropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
   const familyIds = new Set(CONTENT_FAMILIES.map((family) => family.id));
   const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
+  const skillCapeIds = new Set(SKILL_CAPES.map((cape) => cape.id));
 
   it("uses unique stable IDs", () => {
     expect(skillIds.size).toBe(skills.length);
@@ -34,12 +36,21 @@ describe("content catalog", () => {
     expect(dropPoolIds.size).toBe(SHARED_DROP_POOLS.length);
     expect(familyIds.size).toBe(CONTENT_FAMILIES.length);
     expect(achievementIds.size).toBe(ACHIEVEMENTS.length);
+    expect(skillCapeIds.size).toBe(SKILL_CAPES.length);
+    expect(SKILL_CAPES).toHaveLength(skills.length * 2);
   });
 
   it("resolves every icon and content reference", () => {
     for (const skill of skills) {
       expect(skill.icon, `${skill.id} needs an icon`).toBeTruthy();
       expect(existsSync(resolve("public", skill.icon ?? "")), `${skill.id} icon is missing`).toBe(true);
+    }
+
+    for (const cape of SKILL_CAPES) {
+      expect(skillIds.has(cape.skillId), `${cape.id} references a missing Skill`).toBe(true);
+      expect([99, 120]).toContain(cape.tier);
+      expect(cape.icon, `${cape.id} needs an icon`).toBeTruthy();
+      expect(existsSync(resolve("public", cape.icon)), `${cape.id} icon is missing`).toBe(true);
     }
 
     for (const item of collectibles) {

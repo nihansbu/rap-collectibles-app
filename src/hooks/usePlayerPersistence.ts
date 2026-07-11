@@ -7,6 +7,7 @@ import {
   type SaveSnapshot,
 } from "../save";
 import { reconcileAchievements } from "../achievements";
+import { reconcileUnlockedSkillCapes } from "../skillCapes";
 
 export type SaveStatus = "saved" | "saving" | "conflict" | "error";
 
@@ -32,7 +33,10 @@ export function usePlayerPersistence(): {
       const next = typeof action === "function"
         ? (action as (value: PlayerState) => PlayerState)(current)
         : action;
-      return reconcileAchievements(next);
+      return {
+        ...reconcileAchievements(next),
+        ownedSkillCapes: reconcileUnlockedSkillCapes(next.ownedSkillCapes, next.skillXp),
+      };
     });
   }, []);
 

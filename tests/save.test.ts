@@ -8,6 +8,7 @@ import {
   savePlayerState,
   type StorageLike,
 } from "../src/save";
+import { xpForLevel } from "../src/xp";
 
 class MemoryStorage implements StorageLike {
   private values = new Map<string, string>();
@@ -47,6 +48,8 @@ describe("save system", () => {
     expect(imported?.achievementPoints).toBe(0);
     expect(imported?.completedAchievements).toEqual({});
     expect(imported?.selectedCosmetics.titleId).toBeNull();
+    expect(imported?.ownedSkillCapes).toEqual([]);
+    expect(imported?.notifiedSkillCapeIds).toEqual([]);
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 
@@ -80,7 +83,7 @@ describe("save system", () => {
     player.contentMasteryPoints["mastery-fishers-trawler"] = 250_000;
 
     const exported = exportPlayerState(player);
-    expect(JSON.parse(exported).version).toBe(8);
+    expect(JSON.parse(exported).version).toBe(9);
     expect(importPlayerState(exported)).toEqual(player);
   });
 
@@ -98,5 +101,23 @@ describe("save system", () => {
       "achievement-rap-10k",
       "achievement-rap-100k",
     ]));
+  });
+
+  it("backfills Skill Cape entitlements from legacy Skill XP without replaying notifications", () => {
+    const imported = importPlayerState(JSON.stringify({
+      version: 8,
+      revision: 4,
+      savedAt: "2026-01-01T00:00:00.000Z",
+      player: {
+        rp: 123,
+        lifetimeRap: 123,
+        owned: [],
+        skillXp: { fishing: xpForLevel(99) },
+      },
+    }));
+
+    expect(imported?.ownedSkillCapes).toContain("skill-cape-fishing-99");
+    expect(imported?.ownedSkillCapes).not.toContain("skill-cape-fishing-120");
+    expect(imported?.notifiedSkillCapeIds).toContain("skill-cape-fishing-99");
   });
 });

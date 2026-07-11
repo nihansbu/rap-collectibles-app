@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Check,
+  Archive,
   ChevronRight,
   Compass,
   Dice5,
   Gem,
   Lock,
-  Layers3,
   Search,
   Swords,
   X,
@@ -48,7 +48,7 @@ import {
   sourceActivityFor,
   statusLabel,
 } from "./catalog";
-import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillCapeDefinition, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
@@ -59,6 +59,8 @@ import { AccountBonusesPage } from "./pages/AccountBonusesPage";
 import { SetsPage } from "./pages/SetsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { AchievementsPage } from "./pages/AchievementsPage";
+import { VaultPage } from "./pages/VaultPage";
+import { SkillCapesPage } from "./pages/SkillCapesPage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
@@ -67,6 +69,7 @@ import { MasteryProgress } from "./ui/MasteryProgress";
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
 import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
 import { getAchievement } from "./achievements";
+import { getSkillCape, getSkillCapesForSkill, isSkillCapeUnlocked, skillCapeSummary, skillCapeTierLabel } from "./skillCapes";
 import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
 import { masteryEconomicModifiers } from "./mastery";
 import { getSetsForCollectible } from "./sets";
@@ -84,6 +87,7 @@ import {
 } from "./training";
 import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 import { AchievementToast } from "./ui/AchievementToast";
+import { SkillCapeToast } from "./ui/SkillCapeToast";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -99,7 +103,9 @@ type ContentPage =
   | { type: "world" }
   | { type: "settings" }
   | { type: "bonuses" }
+  | { type: "vault" }
   | { type: "sets" }
+  | { type: "skill-capes" }
   | { type: "profile" }
   | { type: "achievements" }
   | { type: "adventures"; from?: "main" | "world" }
@@ -172,6 +178,7 @@ export function App() {
   const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
   const [achievementQueue, setAchievementQueue] = useState<AchievementDefinition[]>([]);
+  const [skillCapeQueue, setSkillCapeQueue] = useState<SkillCapeDefinition[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importValue, setImportValue] = useState("");
   const showDevTools = import.meta.env.DEV || new URLSearchParams(window.location.search).get("dev") === "1";
@@ -188,12 +195,16 @@ export function App() {
         ? "World"
         : page.type === "bonuses"
           ? "Account Bonuses"
-          : page.type === "sets"
-            ? "Sets"
-            : page.type === "profile"
-              ? "Profile"
-              : page.type === "achievements"
-                ? "Achievements"
+          : page.type === "vault"
+            ? "Vault"
+            : page.type === "sets"
+              ? "Sets"
+              : page.type === "skill-capes"
+                ? "Skill Capes"
+                : page.type === "profile"
+                  ? "Profile"
+                  : page.type === "achievements"
+                    ? "Achievements"
         : page.type === "handbook"
           ? "Handbook"
           : page.type === "adventures"
@@ -286,6 +297,34 @@ export function App() {
     }, 5_200);
     return () => window.clearTimeout(timeoutId);
   }, [achievementQueue]);
+
+  useEffect(() => {
+    const notified = new Set(player.notifiedSkillCapeIds);
+    const newlyUnlocked = player.ownedSkillCapes
+      .filter((id) => !notified.has(id))
+      .map(getSkillCape)
+      .filter((cape): cape is SkillCapeDefinition => Boolean(cape));
+    if (newlyUnlocked.length === 0) return;
+
+    // Skill Cape entitlements are persisted separately from their one-time notification presentation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSkillCapeQueue((current) => [
+      ...current,
+      ...newlyUnlocked.filter((cape) => !current.some((queued) => queued.id === cape.id)),
+    ]);
+    setPlayer((current) => ({
+      ...current,
+      notifiedSkillCapeIds: [...new Set([...current.notifiedSkillCapeIds, ...newlyUnlocked.map((cape) => cape.id)])],
+    }));
+  }, [player.notifiedSkillCapeIds, player.ownedSkillCapes, setPlayer]);
+
+  useEffect(() => {
+    if (skillCapeQueue.length === 0) return;
+    const timeoutId = window.setTimeout(() => {
+      setSkillCapeQueue((current) => current.slice(1));
+    }, 5_200);
+    return () => window.clearTimeout(timeoutId);
+  }, [skillCapeQueue]);
 
   function grantRp() {
     setPlayer((current) => ({ ...current, rp: current.rp + 10_000, lifetimeRap: current.lifetimeRap + 10_000 }));
@@ -418,6 +457,10 @@ export function App() {
     completed: COLLECTION_SETS.filter((set) => set.collectibleIds.every((id) => player.owned.includes(id))).length,
     total: COLLECTION_SETS.length,
   }), [player.owned]);
+  const capeProgress = useMemo(() => {
+    const summary = skillCapeSummary(player.ownedSkillCapes);
+    return { unlocked: summary.total, total: summary.totalCapes };
+  }, [player.ownedSkillCapes]);
   const selectedTheme = player.selectedCosmetics.themeId ? getCosmetic(player.selectedCosmetics.themeId)?.theme : undefined;
   const appThemeStyle = selectedTheme ? {
     "--color-canvas": selectedTheme.canvas,
@@ -461,6 +504,10 @@ export function App() {
             player={player}
             onClose={() => setDetailView(null)}
             onTrain={(hours) => trainSkill(detailView.skillId, hours)}
+            onOpenSkillCapes={() => {
+              setDetailView(null);
+              setPage({ type: "skill-capes" });
+            }}
           />
         ) : detailView?.type === "activity" ? (
           <ActivityDetailView
@@ -489,11 +536,11 @@ export function App() {
             onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
             onOpenActivities={() => setPage({ type: "adventures", from: "main" })}
             onOpenBonuses={() => setPage({ type: "bonuses" })}
-            onOpenSets={() => setPage({ type: "sets" })}
+            onOpenVault={() => setPage({ type: "vault" })}
             onOpenProfile={() => setPage({ type: "profile" })}
             onOpenAchievements={() => setPage({ type: "achievements" })}
             achievementPoints={player.achievementPoints}
-            setProgress={setProgress}
+            skillCapeProgress={capeProgress}
             onOpenCategory={(id) => {
               setTypeFilter("all");
               setPage({ type: "category", id, from: "main" });
@@ -503,8 +550,8 @@ export function App() {
           <CollectiblesOverviewPage
             progress={categoryProgress}
             recentUnlocks={recentUnlocks}
-            setProgress={setProgress}
-            onOpenSets={() => setPage({ type: "sets" })}
+            capeProgress={capeProgress}
+            onOpenVault={() => setPage({ type: "vault" })}
             onOpen={(id) => {
               setTypeFilter("all");
               setPage({ type: "category", id, from: "collectibles" });
@@ -520,8 +567,17 @@ export function App() {
           />
         ) : page.type === "bonuses" ? (
           <AccountBonusesPage player={player} />
+        ) : page.type === "vault" ? (
+          <VaultPage
+            player={player}
+            setProgress={setProgress}
+            onOpenSets={() => setPage({ type: "sets" })}
+            onOpenSkillCapes={() => setPage({ type: "skill-capes" })}
+          />
         ) : page.type === "sets" ? (
           <SetsPage player={player} />
+        ) : page.type === "skill-capes" ? (
+          <SkillCapesPage player={player} onOpenSkill={(skillId) => setDetailView({ type: "skill", skillId })} />
         ) : page.type === "profile" ? (
           <ProfilePage
             player={player}
@@ -573,6 +629,7 @@ export function App() {
       )}
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
       {achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} onClose={() => setAchievementQueue((current) => current.slice(1))} />}
+      {skillCapeQueue[0] && <SkillCapeToast cape={skillCapeQueue[0]} onClose={() => setSkillCapeQueue((current) => current.slice(1))} />}
       {activityResultNotice && (
         <ActivityResultPanel
           result={activityResultNotice}
@@ -602,14 +659,14 @@ function CollectiblesOverviewPage({
   progress,
   recentUnlocks,
   onOpen,
-  onOpenSets,
-  setProgress,
+  onOpenVault,
+  capeProgress,
 }: {
   progress: CategoryProgress[];
   recentUnlocks: Collectible[];
   onOpen: (id: CategoryId) => void;
-  onOpenSets: () => void;
-  setProgress: { completed: number; total: number };
+  onOpenVault: () => void;
+  capeProgress: { unlocked: number; total: number };
 }) {
   return (
     <>
@@ -633,10 +690,10 @@ function CollectiblesOverviewPage({
             </span>
           </button>
         ))}
-        <button className="category-tile" onClick={onOpenSets}>
-          <span className="tile-icon"><Layers3 size={22} /></span>
-          <span className="tile-text"><strong>Sets</strong><small>Cross-category collections</small></span>
-          <span className="tile-progress"><strong>{setProgress.completed}/{setProgress.total}</strong><small>{setProgress.total ? Math.round((setProgress.completed / setProgress.total) * 100) : 0}%</small></span>
+        <button className="category-tile" onClick={onOpenVault}>
+          <span className="tile-icon"><Archive size={22} /></span>
+          <span className="tile-text"><strong>Vault</strong><small>Sets and Skill Capes</small></span>
+          <span className="tile-progress"><strong>{capeProgress.unlocked}/{capeProgress.total}</strong><small>{capeProgress.total ? Math.round((capeProgress.unlocked / capeProgress.total) * 100) : 0}%</small></span>
           <ChevronRight className="tile-chevron" size={18} />
         </button>
       </section>
@@ -1096,13 +1153,16 @@ function SkillDetailView({
   player,
   onClose,
   onTrain,
+  onOpenSkillCapes,
 }: {
   skillId: SkillId;
   player: PlayerState;
   onClose: () => void;
   onTrain: (hours: number) => void;
+  onOpenSkillCapes: () => void;
 }) {
   const skill = skills.find((candidate) => candidate.id === skillId)!;
+  const skillCapes = getSkillCapesForSkill(skillId);
   const xp = player.skillXp[skillId];
   const levelInfo = xpIntoLevel(xp);
   const nextLevel = Math.min(levelInfo.level + 1, MAX_LEVEL);
@@ -1154,6 +1214,15 @@ function SkillDetailView({
           </span>
         </div>
       </div>
+      <section className="skill-cape-detail" aria-label={`${skill.name} Skill Capes`}>
+        <header><span><small>Vault</small><strong>Skill Capes</strong></span><button onClick={onOpenSkillCapes}>View all</button></header>
+        <div className="skill-cape-detail-grid">
+          {skillCapes.map((cape) => {
+            const unlocked = player.ownedSkillCapes.includes(cape.id) || isSkillCapeUnlocked(cape, player.skillXp);
+            return <span key={cape.id} className={unlocked ? "unlocked" : "locked"}><img src={`./${cape.icon}`} alt="" /><small>{skillCapeTierLabel(cape.tier)}</small><strong>{unlocked ? "Unlocked" : `Reach ${cape.tier}`}</strong></span>;
+          })}
+        </div>
+      </section>
       <div className="training-actions">
         {TRAINING_DURATIONS.map((duration) => (
           <button

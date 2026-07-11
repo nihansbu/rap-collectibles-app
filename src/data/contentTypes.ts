@@ -109,6 +109,17 @@ export type AchievementReward =
   | { type: "cosmetic"; cosmeticId: string }
   | { type: "collectible"; collectibleId: string };
 
+export type SkillCapeTier = 99 | 120;
+
+export type SkillCapeDefinition = {
+  id: string;
+  skillId: SkillId;
+  tier: SkillCapeTier;
+  name: string;
+  description: string;
+  icon: string;
+};
+
 export type AchievementDefinition = {
   id: string;
   name: string;
