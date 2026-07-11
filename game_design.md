@@ -242,6 +242,18 @@ Titles:
 - The selected Title appears directly under the account name.
 - Initial Title rewards are `Pathfinder`, `Stablemaster`, and `Achievement Hunter`.
 
+## Vault
+
+Approved direction:
+
+- `Vault` is the planned parent area for special, account-wide collection systems within the `Collectibles` section.
+- The first Vault subpages will be `Sets` and `Skill Capes`.
+- Vault content represents prestigious or milestone-based collections rather than ordinary purchasable Collectibles.
+- Sets remain cross-category collection groups with their own progress and rewards.
+- Skill Capes remain Skill milestone rewards for Level 99 and Level 120 and are not ordinary Collectible purchases.
+- The Vault is intentionally distinct from `Collectibles`, `Achievements`, and `Profile`: Collectibles answers what is owned, Achievements tracks goals, Profile selects presentation, and Vault presents special long-term collections.
+- The final Vault navigation and presentation are approved as a future implementation task; no UI rename is implied until that task begins.
+
 ## Classes And Races
 
 Classes and Races are collectible categories under the main `Collectibles` page.

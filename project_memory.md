@@ -70,6 +70,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/pages/SetsPage.tsx`: cross-category Codex Set progress and reward thresholds.
 - `src/pages/ProfilePage.tsx`: account-wide Titles, curated Themes, Profile Badges, and AP summary.
 - `src/pages/AchievementsPage.tsx`: searchable and filterable Achievement overview with progress, series, rewards, AP, and completion states.
+- `Vault` is the approved future parent area inside `Collectibles` for special collections such as Sets and Skill Capes. The current UI still exposes Sets directly until the Vault implementation task starts.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
 - `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.

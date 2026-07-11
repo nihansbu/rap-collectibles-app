@@ -28,6 +28,7 @@ Acceptance criteria:
 - [x] Make the initial Theme collection directly selectable and keep Badge rewards progression-gated.
 - [x] Add a machine-readable Skill Acquisition Matrix.
 - [x] Add the account-wide Achievement foundation with non-spendable AP, multi-stage series, title rewards, completion notifications, and a dedicated overview.
+- [ ] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages.
 
 Acceptance criteria:
 
