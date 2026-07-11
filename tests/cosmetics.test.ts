@@ -6,7 +6,17 @@ describe("Cosmetic progression", () => {
   it("derives Mastery milestone Cosmetics from raw points", () => {
     expect(deriveUnlockedCosmetics([], { "mastery-fishers-trawler": 799_999 })).toEqual([]);
     expect(deriveUnlockedCosmetics([], { "mastery-fishers-trawler": 800_000 })).toContain("badge-trawler-hand");
-    expect(deriveUnlockedCosmetics([], { "mastery-fishers-trawler": 5_000_000 })).toEqual(expect.arrayContaining(["badge-trawler-hand", "theme-storm-weaver"]));
+    expect(deriveUnlockedCosmetics([], { "mastery-fishers-trawler": 5_000_000 })).toEqual(["badge-trawler-hand"]);
+  });
+
+  it("makes every current Theme available without progression", () => {
+    expect(reconcileUnlockedCosmetics([], [], {})).toEqual(expect.arrayContaining([
+      "theme-storm-weaver",
+      "theme-verdant-warden",
+      "theme-ember-forge",
+      "theme-moonlit-archive",
+      "theme-sunken-meridian",
+    ]));
   });
 
   it("derives Set rewards without creating a second inventory", () => {

@@ -298,7 +298,8 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Profile rewards customize the account without creating separate Hero progression. Curated Themes preserve contrast and readability while changing the Codex presentation.",
-          "Cosmetics are earned through Mastery, Sets, Collectibles, and future expansion content. Locked Cosmetics remain visible with their source.",
+          "The current Theme collection is available from the start so players can choose their presentation immediately. Future Themes can still be connected to Mastery, Sets, Adventures, or other expansion content.",
+          "Profile Badges remain progression rewards. Locked Cosmetics remain visible with their source when a later reward is not yet earned.",
         ],
       },
     ],

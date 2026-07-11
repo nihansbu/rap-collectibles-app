@@ -37,7 +37,13 @@ describe("save system", () => {
     expect(imported?.rp).toBe(123);
     expect(imported?.lastSeenActivityResultId).toBeNull();
     expect(imported?.contentMasteryPoints["mastery-fishers-trawler"]).toBe(0);
-    expect(imported?.unlockedCosmetics).toEqual([]);
+    expect(imported?.unlockedCosmetics).toEqual(expect.arrayContaining([
+      "theme-storm-weaver",
+      "theme-verdant-warden",
+      "theme-ember-forge",
+      "theme-moonlit-archive",
+      "theme-sunken-meridian",
+    ]));
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 

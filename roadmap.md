@@ -25,6 +25,7 @@ Acceptance criteria:
 - [x] Add cross-category Collection Sets and a dedicated Codex Sets view.
 - [x] Rename the player-facing `Characters` category to `Heroes`.
 - [x] Add Profile foundations for Badges and curated Themes without character-specific progression.
+- [x] Make the initial Theme collection directly selectable and keep Badge rewards progression-gated.
 - [x] Add a machine-readable Skill Acquisition Matrix.
 
 Acceptance criteria:

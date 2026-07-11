@@ -7,6 +7,10 @@ export function getCosmetic(cosmeticId: string) {
   return cosmeticIndex.get(cosmeticId);
 }
 
+export function defaultUnlockedCosmetics() {
+  return COSMETICS.filter((cosmetic) => cosmetic.kind === "theme").map((cosmetic) => cosmetic.id);
+}
+
 export function deriveUnlockedCosmetics(ownedIds: string[], masteryPoints: Record<string, number>) {
   const unlocked = new Set<string>();
 
@@ -32,6 +36,9 @@ export function reconcileUnlockedCosmetics(
   ownedIds: string[],
   masteryPoints: Record<string, number>,
 ) {
-  return [...new Set([...currentIds, ...deriveUnlockedCosmetics(ownedIds, masteryPoints)])].filter((id) => cosmeticIndex.has(id));
+  return [...new Set([
+    ...defaultUnlockedCosmetics(),
+    ...currentIds,
+    ...deriveUnlockedCosmetics(ownedIds, masteryPoints),
+  ])].filter((id) => cosmeticIndex.has(id));
 }
-

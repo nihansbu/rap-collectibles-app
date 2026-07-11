@@ -23,6 +23,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - The setting is high fantasy.
 - Heroes are predefined account Collectibles rather than separately played characters. They may provide profile cosmetics or other account-wide rewards.
 - Fantasy Races and Classes remain separate Collectible categories.
+- Profile Themes are curated account-wide palettes and are initially available from the start; future Themes may later receive Adventure, Set, or Mastery sources without changing the selection UI.
 - Skill levels currently support direct RAP training as a development bridge. The long-term source of Skill XP is gameplay content once every Skill has a Level-1 acquisition path.
 - Skill levels can be prerequisites for collectible purchases.
 - Example unlock requirement: Mount requires Herblore level 73 plus RAP cost.
@@ -46,7 +47,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
 - `src/mastery.ts`: generic Content Mastery Level 0-10 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
 - `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
-- `src/cosmetics.ts`: derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
+- `src/cosmetics.ts`: default Theme availability plus derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
 - `src/sets.ts`: Set lookup and progress selectors derived from owned Collectibles.
 - `src/skillAcquisition.ts`: machine-readable Skill Acquisition Matrix and the Direct Training retirement gate.
 - `src/data/balance/`: centralized placeholder economy, XP-share, Mastery, modifier, and drop constants.
@@ -132,6 +133,7 @@ Implemented early systems:
 - Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-10 and centrally capped passive modifiers.
 - Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
+- All current Themes are reconciled into every new or migrated save, while Profile Badges remain progression-gated. Storm Weaver is no longer granted by Fishing Trawler Mastery or the Trawler's Wake Set.
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
 - Save v7 persists Mastery points, Shared Roll Units, Cosmetic entitlements, and selected Theme/Badge while migrating v1-v6 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.

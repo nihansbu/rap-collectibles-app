@@ -9,7 +9,6 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     passiveBonuses: [{ type: "content-xp", percentPerLevel: 0.5 }],
     milestones: [
       { level: 4, label: "Trawler Hand Badge", reward: { type: "cosmetic", cosmeticId: "badge-trawler-hand" } },
-      { level: 10, label: "Storm Weaver Theme", reward: { type: "cosmetic", cosmeticId: "theme-storm-weaver" } },
     ],
   },
   {
@@ -37,4 +36,3 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     milestones: [],
   },
 ];
-

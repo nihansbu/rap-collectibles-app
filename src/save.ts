@@ -8,7 +8,7 @@ import {
 } from "./activities";
 import { collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
-import { reconcileUnlockedCosmetics } from "./cosmetics";
+import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
 import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
 
@@ -176,7 +176,7 @@ export function createInitialPlayerState(): PlayerState {
     lastSeenActivityResultId: null,
     contentMasteryPoints: Object.fromEntries(CONTENT_MASTERY_TRACKS.map((track) => [track.id, 0])),
     sharedDropPoolRollUnits: Object.fromEntries(SHARED_DROP_POOLS.map((pool) => [pool.id, 0])),
-    unlockedCosmetics: [],
+    unlockedCosmetics: defaultUnlockedCosmetics(),
     selectedCosmetics: { themeId: null, profileBadgeId: null },
   };
 }

@@ -337,6 +337,8 @@ Current provisional threshold ratios are 2%, 5%, 10%, 16%, 24%, 34%, 46%, 60%, 8
 - Event-styled Sets remain permanently available and never create FOMO.
 - Cosmetics are account-wide presentation unlocks, not separate inventory power.
 - Curated Themes control validated color tokens rather than exposing unrestricted color editing.
+- The initial Theme collection is directly available from the start so players can choose a presentation immediately. Future Themes may be connected to Adventures, Sets, or Mastery later.
+- Profile Badges remain earned rewards; Theme availability and Badge progression are intentionally separate.
 - Heroes can unlock Profile rewards but never have separate levels, inventories, currencies, or progression saves.
 
 Modifier order:

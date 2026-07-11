@@ -10,8 +10,6 @@ export const COLLECTION_SETS: CollectionSetDefinition[] = [
     collectibleIds: ["pet-trawler-gull", "tool-dragon-harpoon", "mount-brine-ray", "tool-storm-harpoon"],
     rewards: [
       { requiredCount: 2, label: "Trawler Hand Badge", reward: { type: "cosmetic", cosmeticId: "badge-trawler-hand" } },
-      { requiredCount: 4, label: "Storm Weaver Theme", reward: { type: "cosmetic", cosmeticId: "theme-storm-weaver" } },
     ],
   },
 ];
-
