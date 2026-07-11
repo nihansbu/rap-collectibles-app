@@ -1976,6 +1976,10 @@ button,
   gap: 10px;
 }
 
+.training-actions.single-action {
+  grid-template-columns: 1fr;
+}
+
 .set-strip {
   height: 4px;
   position: absolute;
@@ -2252,6 +2256,16 @@ button,
 .training-actions .primary-action {
   min-height: 46px;
   font-size: 13px;
+}
+
+.training-toggle.stop {
+  border: 1px solid color-mix(in srgb, var(--color-danger) 68%, transparent);
+  color: #ffd8d0;
+  background: color-mix(in srgb, var(--color-danger) 22%, var(--color-panel));
+}
+
+.training-toggle.stop:hover {
+  background: color-mix(in srgb, var(--color-danger) 30%, var(--color-panel));
 }
 
 .action-note {

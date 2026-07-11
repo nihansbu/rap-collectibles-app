@@ -11,7 +11,7 @@ import { reconcileAchievements } from "./achievements";
 import { reconcileUnlockedSkillCapes } from "./skillCapes";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
 import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
-import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
+import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings, TRAINING_WINDOW_HOURS } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
 
 export type PlayerState = {
@@ -480,14 +480,15 @@ function normalizeActiveTrainings(value: unknown): ActiveTraining[] {
     if (!Number.isFinite(candidate.startedAt)) continue;
     if (!Number.isFinite(candidate.lastUpdatedAt)) continue;
     if (!Number.isFinite(candidate.endsAt)) continue;
-    if (candidate.endsAt <= candidate.lastUpdatedAt) continue;
+    const endsAt = Math.min(candidate.endsAt, candidate.startedAt + TRAINING_WINDOW_HOURS * 60 * 60 * 1000);
+    if (endsAt <= candidate.lastUpdatedAt) continue;
 
     normalized.push({
       id: candidate.id,
       skillId: candidate.skillId,
       startedAt: candidate.startedAt,
       lastUpdatedAt: candidate.lastUpdatedAt,
-      endsAt: candidate.endsAt,
+      endsAt,
     });
     usedSkillIds.add(candidate.skillId);
 

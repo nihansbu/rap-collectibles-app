@@ -32,6 +32,7 @@ Acceptance criteria:
 - [x] Add a global Inspect view for raster icons and images without changing surrounding card actions.
 - [x] Simplify Adventure overview/detail presentation and add shared focused Info Panels for Requirements and Drops.
 - [x] Present primary Skill and Collectible artwork on their detail pages, remove the Skill-detail Vault block, and eliminate the separate primary image-preview step.
+- [x] Route every Collectible purchase through its detail panel, remove tile Quick Buy, prevent owned items from reopening purchase confirmation, and simplify Skill training to one 72-hour Start/Stop action.
 
 Acceptance criteria:
 

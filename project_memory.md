@@ -80,7 +80,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `Vault` is implemented as the special parent area inside `Collectibles`; the main dashboard and Collectibles overview link to it, while Sets and Skill Capes are its subpages.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
 - `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
-- `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
+- `src/training.ts`: fixed 72-hour Skill training windows, free stop behavior, XP rates, concurrency rules, timestamp processing, and formatting helpers.
 - `src/ui/`: reusable UI components such as `TopBar`, dialogs, icon renderers, and tile visuals.
 - `src/xp.ts`: RuneScape-style XP curve and level helpers.
 - `src/styles.css`: mobile-only visual styling.
@@ -115,10 +115,9 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Tools are standard Collectibles. Some are direct purchases and some are Adventure drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
 - Direct main-menu entries remember their origin: backing out of a category or Activities page opened from the main dashboard returns to the main dashboard, not to the older intermediate overview page.
-- Tapping a direct-purchase Collectible card is the primary buy action and opens the purchase confirmation when the item is affordable and requirements are met. Long-pressing opens the full-content detail view under the topbar.
-- Tapping an unavailable, owned, or Activity-drop Collectible falls back to the detail view because there is no valid buy action.
+- Tapping any Collectible card opens the full-content detail view under the topbar. Eligible direct purchases are initiated from that detail view and still require confirmation; collection tiles have no Quick Buy path.
 - Tapping an Adventure card opens the compact Adventure detail view. The detail view shows the combined Adventure/Mastery icon, requirements, runtime, XP split, drops, and the Start Run action; tapping a Requirement or Drop opens a focused read-only Info Panel, while tapping the artwork preserves global image inspection.
-- Skill cards still open the Skill detail view because training requires choosing a duration.
+- Skill cards open the Skill detail view, where one contextual button starts a 72-hour window or stops active training without penalty.
 - The Adventure Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
 - Katalogdaten are modularized by domain/category. `src/data.ts` remains the stable import facade so existing systems can keep importing from `./data`.
 - Catalog lookup and unlock rules live in `src/catalog.ts` rather than page components. Future database/indexing work should attach at this selector layer before touching UI components.
@@ -128,7 +127,7 @@ Implemented early systems:
 
 - RAP wallet: persisted through versioned browser `localStorage`.
 - Lifetime RAP and recent manual activity log: persisted through versioned browser `localStorage`.
-- Active skill training: supports 1, 2, 5, and 12 hour training jobs with up to three concurrent skills.
+- Active skill training: supports one fixed 72-hour window per Skill with up to three concurrent Skills. Training can be stopped freely, and active windows cannot be stacked beyond 72 hours.
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
@@ -575,6 +574,14 @@ Candidate combined skill roster to finalize:
 - Why it works: the player reaches the useful Skill or Collectible information immediately, while close inspection remains available for supporting artwork that benefits from it.
 - Files involved: `src/App.tsx`, `src/ui/icons.tsx`, `src/styles.css`, `src/handbook.ts`, `game_design.md`, `roadmap.md`.
 - Validation: `npm run check` passed (lint, 38 tests, production build, icon preparation), `npm run test:coverage` passed with 69.39% statement coverage, and in-app browser QA passed at 390px and 320px without horizontal overflow. Skill and Moon Elf detail artwork stayed non-inspectable and no separate preview dialog opened.
+
+2026-07-11: Detail-first Collectible purchases and 72-hour Skill training.
+
+- Original problem: affordable or already owned Collectible tiles could open a Quick Buy confirmation because the shared unlock predicate did not exclude ownership. A second purchase was internally rejected, so the repeated dialog appeared to accept the action without deducting RAP. Skill details also exposed four duration buttons that encouraged stacking sessions.
+- Successful solution: every Collectible tile now opens its detail page, the detail page is the only purchase entry point, and owned Collectibles fail the shared `canUnlock` rule. Skill training now uses one fixed 72-hour window, one contextual Start/Stop button, free cancellation with earned XP retained, and save normalization that caps legacy stacked windows at 72 hours.
+- Why it works: purchase intent always passes through the full item context and confirmation, while idempotent ownership checks prevent stale or duplicate unlock attempts. Timestamp processing still charges only elapsed training time, so stopping needs no refund or penalty.
+- Files involved: `src/App.tsx`, `src/catalog.ts`, `src/training.ts`, `src/save.ts`, `src/styles.css`, `src/handbook.ts`, `tests/catalog.test.ts`, `tests/training.test.ts`, `tests/save.test.ts`, `game_design.md`, `roadmap.md`.
+- Validation: `npm run check` passed with lint, 40 tests, production build, and icon preparation. `npm run test:coverage` passed with 71.42% statement coverage. In-app browser QA at 390px confirmed detail-first purchase, exact 14,000 RAP deduction, disabled `Unlocked` state after ownership, one 72-hour Start/Stop action, free stop with XP retained, and no console warnings or errors. The 320px Skill detail had no horizontal overflow.
 
 ## Known Issues
 

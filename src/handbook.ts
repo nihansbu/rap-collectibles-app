@@ -85,7 +85,7 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Heroes, Classes, Races, Tools, Pets, and Mounts are permanent account unlocks. Skills also live in the Codex as long-term progression.",
-          "Some Collectibles can be bought with RAP. Others are exclusive drops from Adventures and still appear in their normal Codex category.",
+          "Tap any Collectible to open its detail page. Eligible direct purchases are confirmed there; collection tiles never buy immediately. Other Collectibles are exclusive drops from Adventures and still appear in their normal Codex category.",
         ],
       },
     ],
@@ -161,8 +161,8 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "Training sessions can run for 1, 2, 5, or 12 hours. Up to three different Skills can train concurrently.",
-          "Training consumes RAP gradually and pauses when no RAP remains. Timestamped progress continues correctly after the app is closed or reloaded.",
+          "One button starts a 72-hour training window. Up to three different Skills can train concurrently, and an expired Skill can be started again for a fresh 72-hour window.",
+          "Training consumes RAP gradually and stops when no RAP remains. Active training can be stopped at any time without a fee or XP penalty, and timestamped progress continues correctly after the app is closed or reloaded.",
         ],
       },
     ],
@@ -512,13 +512,13 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "collectible-detail": {
     id: "collectible-detail",
     title: "Collectible Details",
-    intro: "This detail page shows the Collectible artwork prominently above its source, status, cost, requirements, and permanent Account Bonuses.",
+    intro: "Every Collectible opens this detail page first. It shows the artwork above its source, status, cost, requirements, and permanent Account Bonuses; eligible direct purchases are confirmed from here.",
     entryIds: ["collectibles", "requirements", "codex-states", "account-bonuses"],
   },
   "skill-detail": {
     id: "skill-detail",
     title: "Skill Details",
-    intro: "This detail page shows the Skill artwork prominently above its current level, XP progress, training state, and available training durations.",
+    intro: "This detail page shows the Skill artwork above its current level, XP progress, and one Start or Stop action for its 72-hour training window.",
     entryIds: ["skills", "skill-training", "rap", "requirements"],
   },
   "activity-detail": {

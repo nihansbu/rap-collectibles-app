@@ -9,6 +9,7 @@ import {
   type StorageLike,
 } from "../src/save";
 import { xpForLevel } from "../src/xp";
+import { TRAINING_WINDOW_HOURS } from "../src/training";
 
 class MemoryStorage implements StorageLike {
   private values = new Map<string, string>();
@@ -85,6 +86,29 @@ describe("save system", () => {
     const exported = exportPlayerState(player);
     expect(JSON.parse(exported).version).toBe(9);
     expect(importPlayerState(exported)).toEqual(player);
+  });
+
+  it("caps legacy stacked training windows at 72 hours", () => {
+    const now = Date.now();
+    const player = createInitialPlayerState();
+    player.rp = 1_000_000;
+    player.activeTrainings = [{
+      id: `agility-${now}`,
+      skillId: "agility",
+      startedAt: now,
+      lastUpdatedAt: now,
+      endsAt: now + 200 * 60 * 60 * 1000,
+    }];
+
+    const imported = importPlayerState(JSON.stringify({
+      version: 9,
+      revision: 1,
+      savedAt: new Date(now).toISOString(),
+      player,
+    }));
+
+    expect(imported?.activeTrainings).toHaveLength(1);
+    expect(imported?.activeTrainings[0].endsAt).toBe(now + TRAINING_WINDOW_HOURS * 60 * 60 * 1000);
   });
 
   it("backfills legacy Achievement progress without replaying notification toasts", () => {

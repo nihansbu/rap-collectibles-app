@@ -17,14 +17,10 @@ export type TrainablePlayerState = {
 
 export const MAX_ACTIVE_TRAININGS = 3;
 export const TRAINING_RAP_PER_HOUR = 10_000;
-export const TRAINING_DURATIONS = [
-  { hours: 1, label: "Train 1 Hour" },
-  { hours: 2, label: "Train 2 Hours" },
-  { hours: 5, label: "Train 5 Hours" },
-  { hours: 12, label: "Train 12 Hours" },
-] as const;
+export const TRAINING_WINDOW_HOURS = 72;
 
 const HOUR_MS = 60 * 60 * 1000;
+const TRAINING_WINDOW_MS = TRAINING_WINDOW_HOURS * HOUR_MS;
 const RAP_PER_MS = TRAINING_RAP_PER_HOUR / HOUR_MS;
 const TIME_EPSILON_MS = 0.001;
 
@@ -50,35 +46,41 @@ export function isSkillTraining(player: TrainablePlayerState, skillId: SkillId) 
 export function startSkillTraining<T extends TrainablePlayerState>(
   player: T,
   skillId: SkillId,
-  hours: number,
   now = Date.now(),
 ): T {
   const current = processActiveTrainings(player, now);
   const currentXp = current.skillXp[skillId] ?? 0;
-  if (currentXp >= xpTable[MAX_LEVEL]) return current;
+  if (currentXp >= xpTable[MAX_LEVEL] || current.rp <= 0) return current;
 
   const existing = current.activeTrainings.find((training) => training.skillId === skillId);
+  if (existing) return current;
   if (!existing && current.activeTrainings.length >= MAX_ACTIVE_TRAININGS) return current;
 
-  const durationMs = hours * HOUR_MS;
-  const activeTrainings = existing
-    ? current.activeTrainings.map((training) =>
-        training.skillId === skillId
-          ? { ...training, endsAt: Math.max(training.endsAt, now) + durationMs }
-          : training,
-      )
-    : [
-        ...current.activeTrainings,
-        {
-          id: `${skillId}-${now}`,
-          skillId,
-          startedAt: now,
-          lastUpdatedAt: now,
-          endsAt: now + durationMs,
-        },
-      ];
+  const activeTrainings = [
+    ...current.activeTrainings,
+    {
+      id: `${skillId}-${now}`,
+      skillId,
+      startedAt: now,
+      lastUpdatedAt: now,
+      endsAt: now + TRAINING_WINDOW_MS,
+    },
+  ];
 
   return { ...current, activeTrainings };
+}
+
+export function stopSkillTraining<T extends TrainablePlayerState>(
+  player: T,
+  skillId: SkillId,
+  now = Date.now(),
+): T {
+  const current = processActiveTrainings(player, now);
+  if (!current.activeTrainings.some((training) => training.skillId === skillId)) return current;
+  return {
+    ...current,
+    activeTrainings: current.activeTrainings.filter((training) => training.skillId !== skillId),
+  };
 }
 
 export function processActiveTrainings<T extends TrainablePlayerState>(player: T, now = Date.now()): T {

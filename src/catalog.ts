@@ -82,6 +82,7 @@ export function sourceActivityFor(item: Collectible) {
 }
 
 export function canUnlock(item: Collectible, player: PlayerState) {
+  if (player.owned.includes(item.id)) return false;
   if (isActivityDrop(item)) return false;
   return player.rp >= item.cost && requirementsMet(item, player);
 }

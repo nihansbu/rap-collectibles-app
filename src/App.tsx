@@ -62,7 +62,6 @@ import { SkillCapesPage } from "./pages/SkillCapesPage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
-import { useLongPress } from "./ui/useLongPress";
 import { MasteryRing } from "./ui/MasteryProgress";
 import { AdventureInfoPanel, type AdventureInfoPanelDetails } from "./ui/AdventureInfoPanel";
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
@@ -80,8 +79,9 @@ import {
   processActiveTrainings,
   remainingTrainingMs,
   startSkillTraining,
-  TRAINING_DURATIONS,
+  stopSkillTraining,
   TRAINING_RAP_PER_HOUR,
+  TRAINING_WINDOW_HOURS,
   trainingXpPerHour,
 } from "./training";
 import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
@@ -355,10 +355,13 @@ export function App() {
     }));
   }
 
-  function trainSkill(skillId: SkillId, hours: number) {
+  function toggleSkillTraining(skillId: SkillId) {
     setPlayer((current) => {
-      if (current.rp <= 0) return current;
-      return startSkillTraining(current, skillId, hours);
+      const now = Date.now();
+      const processed = processActiveTrainings(current, now);
+      return isSkillTraining(processed, skillId)
+        ? stopSkillTraining(processed, skillId, now)
+        : startSkillTraining(processed, skillId, now);
     });
   }
 
@@ -386,15 +389,6 @@ export function App() {
     setRecentUnlocks((current) => [item, ...current.filter((candidate) => candidate.id !== item.id)].slice(0, 3));
     setConfirmItem(null);
     setDetailView(null);
-  }
-
-  function handleCollectiblePrimaryAction(item: Collectible) {
-    if (canUnlock(item, player)) {
-      setConfirmItem(item);
-      return;
-    }
-
-    setDetailView({ type: "collectible", item });
   }
 
   function openHandbook() {
@@ -497,7 +491,7 @@ export function App() {
             skillId={detailView.skillId}
             player={player}
             onClose={() => setDetailView(null)}
-            onTrain={(hours) => trainSkill(detailView.skillId, hours)}
+            onToggleTraining={() => toggleSkillTraining(detailView.skillId)}
           />
         ) : detailView?.type === "activity" ? (
           <ActivityDetailView
@@ -609,7 +603,6 @@ export function App() {
             onTypeFilter={setTypeFilter}
             onSort={setSort}
             onOpenDetails={(item) => setDetailView({ type: "collectible", item })}
-            onPrimaryAction={handleCollectiblePrimaryAction}
           />
         )}
       </main>
@@ -874,7 +867,6 @@ function CollectionPage({
   onTypeFilter,
   onSort,
   onOpenDetails,
-  onPrimaryAction,
 }: {
   category: Exclude<CategoryId, "skills">;
   player: PlayerState;
@@ -885,7 +877,6 @@ function CollectionPage({
   onTypeFilter: (type: string) => void;
   onSort: (sort: SortMode) => void;
   onOpenDetails: (item: Collectible) => void;
-  onPrimaryAction: (item: Collectible) => void;
 }) {
   const categoryItems = useMemo(() => getCollectiblesByCategory(category), [category]);
   const types = useMemo(() => [...new Set(categoryItems.map((item) => item.type))].sort(), [categoryItems]);
@@ -933,7 +924,6 @@ function CollectionPage({
             item={item}
             player={player}
             onOpenDetails={onOpenDetails}
-            onPrimaryAction={onPrimaryAction}
           />
         ))}
       </section>
@@ -945,27 +935,21 @@ function CollectibleCard({
   item,
   player,
   onOpenDetails,
-  onPrimaryAction,
 }: {
   item: Collectible;
   player: PlayerState;
   onOpenDetails: (item: Collectible) => void;
-  onPrimaryAction: (item: Collectible) => void;
 }) {
   const owned = player.owned.includes(item.id);
   const status = collectibleStatus(item, player);
   const collectionSet = getSetsForCollectible(item.id)[0];
-  const longPress = useLongPress({
-    onPress: () => onPrimaryAction(item),
-    onLongPress: () => onOpenDetails(item),
-  });
 
   return (
     <button
       type="button"
       className={`icon-tile ${status} ${isActivityDrop(item) ? "activity-source" : ""}`}
-      aria-label={`${item.name}, ${item.type}, ${statusLabel[status]}. Press for the primary action; hold or open the context menu for details.`}
-      {...longPress}
+      aria-label={`${item.name}, ${item.type}, ${statusLabel[status]}. Open details.`}
+      onClick={() => onOpenDetails(item)}
     >
       {collectionSet && <small className="set-strip" style={{ "--set-color": collectionSet.color } as CSSProperties} aria-label={`${collectionSet.name} Set`} />}
       <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} label={item.name} inspectSubtitle={item.type} inspectable={false} sourceType={item.source?.type} />
@@ -1104,12 +1088,12 @@ function SkillDetailView({
   skillId,
   player,
   onClose,
-  onTrain,
+  onToggleTraining,
 }: {
   skillId: SkillId;
   player: PlayerState;
   onClose: () => void;
-  onTrain: (hours: number) => void;
+  onToggleTraining: () => void;
 }) {
   const skill = skills.find((candidate) => candidate.id === skillId)!;
   const xp = player.skillXp[skillId];
@@ -1163,19 +1147,20 @@ function SkillDetailView({
           </span>
         </div>
       </div>
-      <div className="training-actions">
-        {TRAINING_DURATIONS.map((duration) => (
-          <button
-            key={duration.hours}
-            className="primary-action"
-            disabled={disabledReason !== null}
-            onClick={() => onTrain(duration.hours)}
-          >
-            {duration.label}
-          </button>
-        ))}
+      <div className="training-actions single-action">
+        <button
+          className={`primary-action training-toggle ${activeTraining ? "stop" : "start"}`}
+          disabled={!activeTraining && disabledReason !== null}
+          onClick={onToggleTraining}
+        >
+          {activeTraining ? "Stop Training" : `Start ${TRAINING_WINDOW_HOURS}h Training`}
+        </button>
       </div>
-      <p className="action-note">{disabledReason ?? `Maximum ${MAX_ACTIVE_TRAININGS} active skills`}</p>
+      <p className="action-note">
+        {activeTraining
+          ? "Stopping is free and keeps all XP already earned."
+          : disabledReason ?? `Runs for up to ${TRAINING_WINDOW_HOURS} hours - Maximum ${MAX_ACTIVE_TRAININGS} active skills`}
+      </p>
     </section>
   );
 }

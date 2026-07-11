@@ -39,6 +39,10 @@ describe("catalog rules", () => {
     expect(canUnlock(direct, funded)).toBe(true);
     expect(collectibleActionLabel(direct, funded)).toBe("Buy");
     expect(collectibleStatusRank(direct, funded)).toBe(1);
+
+    const owned = { ...funded, owned: [direct.id] };
+    expect(canUnlock(direct, owned)).toBe(false);
+    expect(collectibleActionLabel(direct, owned)).toBe("Unlocked");
   });
 
   it("evaluates skill requirements and ownership", () => {

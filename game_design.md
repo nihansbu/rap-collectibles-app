@@ -414,9 +414,11 @@ Design rules:
 - Use only skills that exist in RuneScape 3 and/or Old School RuneScape.
 - Do not invent new skills.
 - Skills serve primarily as progression gates for collectibles.
-- Skill training should remain simple at first: choose a training duration, then RAP is gradually converted into XP over time.
+- Skill training uses one 72-hour window per Skill, during which RAP is gradually converted into XP over time.
 - Up to three skills can train at the same time.
-- Training duration buttons are `Train 1 Hour`, `Train 2 Hours`, `Train 5 Hours`, and `Train 12 Hours`.
+- The Skill detail page has one contextual action: `Start 72h Training` while idle and `Stop Training` while active.
+- Stopping is immediate and free. It never removes XP already earned and does not refund RAP already consumed.
+- When a window expires, the player must start that Skill again to open a fresh 72-hour window. Active windows cannot be stacked beyond 72 hours.
 - Each active skill consumes up to 10,000 RAP/hour. Training can start with less than 10,000 RAP and stops automatically if RAP reaches zero.
 - Active training should be visible through an animated gold state on the Skill tile and status copy in the Skill detail panel.
 - Training jobs continue through reloads/closed-app time by processing saved timestamps.
@@ -485,14 +487,13 @@ Collection subpages should show:
 
 Interaction decision:
 
-- Short tap is the primary action whenever a tile has one.
-- Long press opens the detail/info panel.
+- Short tap on every Collectible tile opens its detail/info panel.
 - The detail panel fills the content area under the topbar.
-- Direct-purchase Collectible tiles use tap as the buy action, but still show a confirmation dialog before RAP is spent.
-- Collectible tiles with no valid direct action, such as owned entries, unavailable entries, or Adventure-only drops, open the detail panel on tap.
+- Direct Collectible purchases are initiated only from the detail panel and still use a confirmation dialog before RAP is spent. There is no Quick Buy action on collection tiles.
+- Owned Collectibles are never considered unlockable again; their detail action remains disabled and labeled `Unlocked`.
 - Adventure tiles use tap to open the Adventure detail view. The detail view contains the Start Adventure action after the player reviews the compact requirements, rewards, and drops.
 - Manual Log Activity tiles use tap to log one hour and long press for details.
-- Skill tiles still open the Skill detail panel on tap because training requires choosing a duration.
+- Skill tiles open the Skill detail panel on tap because training starts or stops there.
 - Skill and Collectible tiles do not intercept their primary artwork with a separate image preview; tapping the tile performs its normal action or opens its detail view.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
 - Skill and Collectible detail panels place a larger primary artwork block above the supporting information. Secondary requirement, drop, Cape, and system artwork may still be inspected when useful.
