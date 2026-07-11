@@ -1,5 +1,6 @@
 /* global self, caches, fetch, URL */
-const CACHE_NAME = "idle-life-shell-v1";
+// Bump this when a deployed asset was previously cached with an invalid or stale response.
+const CACHE_NAME = "idle-life-shell-v2";
 const scopeUrl = new URL("./", self.location.href).href;
 
 self.addEventListener("install", (event) => {

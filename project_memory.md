@@ -549,12 +549,20 @@ Candidate combined skill roster to finalize:
 - Files involved: `scripts/prepare-icon-prompts.mjs`, `src/data/collectibles/characters.ts`, `src/data/collectibles/mounts.ts`, `src/data/collectibles/pets.ts`, `src/data/collectibles/races.ts`, `src/data/collectibles/tools.ts`, `src/ui/TopBar.tsx`, `src/styles.css`, `public/assets/icons/**`.
 - Commands and tools used: built-in Image Gen, `remove_chroma_key.py`, `python scripts\\normalize-icon.py`, `npm run icons:prepare`, `npm run build`, `view_image` inspection.
 
+2026-07-11: Invalidate stale Skill Cape asset cache.
+
+- Original problem: the first deployed Vault build briefly contained an empty Sailing Level 99 WebP. Browsers using the existing service-worker cache continued to show a broken image even after the repository asset was corrected.
+- Successful solution: replace the valid local/deployed Sailing asset and bump `public/sw.js` from `idle-life-shell-v1` to `idle-life-shell-v2`, causing clients to delete the old cache and fetch the corrected asset.
+- Why it works: the service worker's activation handler removes cache versions other than the current name, so a stale zero-byte response cannot continue to win via `caches.match`.
+- Files involved: `public/assets/icons/skill-capes/skill-cape-sailing-99.webp`, `public/sw.js`.
+- Validation: direct deployed fetch returned HTTP 200, `image/webp`, 14,464 bytes; live Playwright navigation found `naturalWidth: 256` and no broken images.
+
 ## Known Issues
 
 - Need to avoid feature creep. First prototype should remain RAP button plus simple mount purchasing and Codex progress.
 - Progress is currently persisted locally in the browser only. Clearing browser site data, switching browsers/devices, or using private mode can still lose local progress. Cloud sync/export-import is a planned future hardening step.
 - Current manual Activity Log is a placeholder and always logs exactly 1 hour per tap. Duration choice, editing, deletion, anti-cheat, and real sensor integrations are not implemented yet.
-- Icon coverage is complete for the current 43 collectible entries. Future additions must go through `npm run icons:prepare` and the transparent normalization pipeline before they are considered ready.
+- Icon coverage is complete for the current 43 collectible entries and all 60 Skill Cape entries. Future additions must go through `npm run icons:prepare` and the transparent normalization pipeline before they are considered ready.
 - Native browser text selection should stay disabled across the app. If Android/Chrome selection overlays reappear, check the global CSS `user-select: none`, `-webkit-touch-callout: none`, and the document-level event listeners in `src/App.tsx`.
 - `127.0.0.1` links do not work from a phone because they point to the phone itself. Use the Windows host LAN IP, for example `http://192.168.0.203:5173`, while both devices are on the same network.
 - `.codex-remote-attachments/` must stay ignored; it contains chat-uploaded local attachments and should not be committed.
