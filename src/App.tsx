@@ -88,6 +88,7 @@ import {
 import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 import { AchievementToast } from "./ui/AchievementToast";
 import { SkillCapeToast } from "./ui/SkillCapeToast";
+import { InspectableImage } from "./ui/IconInspect";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -703,7 +704,7 @@ function CollectiblesOverviewPage({
           <div>
             {recentUnlocks.map((item) => (
               <article key={item.id} className="recent-unlock">
-                <TileVisual icon={item.icon} category={item.category} owned sourceType={item.source?.type} />
+                <TileVisual icon={item.icon} category={item.category} owned label={item.name} inspectSubtitle="Recent unlock" sourceType={item.source?.type} />
                 <span>
                   <strong>{item.name}</strong>
                   <small>{categories.find((category) => category.id === item.category)?.name ?? item.type}</small>
@@ -1016,7 +1017,7 @@ function CollectibleCard({
       {...longPress}
     >
       {collectionSet && <small className="set-strip" style={{ "--set-color": collectionSet.color } as CSSProperties} aria-label={`${collectionSet.name} Set`} />}
-      <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} sourceType={item.source?.type} />
+      <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} label={item.name} inspectSubtitle={item.type} sourceType={item.source?.type} />
       <h2>{item.name}</h2>
       <span>{item.type}</span>
       {item.source?.type === "activity" && <small className="source-strip">Adventure Drop</small>}
@@ -1062,7 +1063,7 @@ function SkillsPage({
           const training = isSkillTraining(player, skill.id);
           return (
             <button type="button" className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
-              <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} />
+              {skill.icon ? <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} label={skill.name} inspectSubtitle="Skill icon" /> : <TileVisual category={categoryForSkill(skill.id)} />}
               <h2 style={{ fontSize: skillNameFontSize(skill.name) }}>{skill.name}</h2>
               <span>Lv. {levelInfo.level}</span>
             </button>
@@ -1104,7 +1105,7 @@ function CollectibleDetailView({
         <X size={18} />
       </button>
       <div className="sheet-icon">
-        {item.icon ? <img src={item.icon} alt="" draggable="false" /> : owned ? <Check size={32} /> : status === "ready" ? <Gem size={32} /> : <Lock size={32} />}
+        {item.icon ? <InspectableImage src={item.icon} title={item.name} subtitle={item.type} /> : owned ? <Check size={32} /> : status === "ready" ? <Gem size={32} /> : <Lock size={32} />}
       </div>
       <div className="detail-status-row">
         <span className={`status-pill ${sourceActivity && owned ? "activity" : status}`}>{sourceActivity && owned ? "Adventure Drop" : statusLabel[status]}</span>
@@ -1183,7 +1184,7 @@ function SkillDetailView({
         <X size={18} />
       </button>
       <div className="sheet-icon">
-        {skill.icon ? <img src={skill.icon} alt="" draggable="false" /> : <Swords size={32} />}
+        {skill.icon ? <InspectableImage src={skill.icon} title={skill.name} subtitle="Skill icon" /> : <Swords size={32} />}
       </div>
       <h2>{skill.name}</h2>
       <p>
@@ -1219,7 +1220,7 @@ function SkillDetailView({
         <div className="skill-cape-detail-grid">
           {skillCapes.map((cape) => {
             const unlocked = player.ownedSkillCapes.includes(cape.id) || isSkillCapeUnlocked(cape, player.skillXp);
-            return <span key={cape.id} className={unlocked ? "unlocked" : "locked"}><img src={`./${cape.icon}`} alt="" /><small>{skillCapeTierLabel(cape.tier)}</small><strong>{unlocked ? "Unlocked" : `Reach ${cape.tier}`}</strong></span>;
+            return <span key={cape.id} className={unlocked ? "unlocked" : "locked"}><InspectableImage src={`./${cape.icon}`} title={cape.name} subtitle={`${skill.name} · ${skillCapeTierLabel(cape.tier)}`} /><small>{skillCapeTierLabel(cape.tier)}</small><strong>{unlocked ? "Unlocked" : `Reach ${cape.tier}`}</strong></span>;
           })}
         </div>
       </section>
@@ -1403,7 +1404,7 @@ function ActivityRequirementList({ requirements, player }: { requirements: Requi
           return (
             <div key={key} className={`requirement-row ${state.met ? "met" : ""}`}>
               <span className="requirement-icon">
-                {skill?.icon ? <img src={skill.icon} alt="" draggable="false" /> : <Swords size={15} />}
+                {skill?.icon ? <InspectableImage src={skill.icon} title={skill.name} subtitle="Skill requirement" /> : <Swords size={15} />}
                 <span className="requirement-badge" aria-hidden="true">
                   {state.met ? <Check size={9} /> : <Lock size={9} />}
                 </span>
@@ -1451,7 +1452,7 @@ function ActivityDropTable({
           return (
             <div key={drop.collectibleId} className={`drop-row ${owned ? "owned" : ""}`}>
               <span className="drop-item-icon">
-                {item ? <TileVisual icon={item.icon} category={item.category} owned={owned} sourceType={item.source?.type} /> : <Dice5 size={20} />}
+                {item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Adventure drop" sourceType={item.source?.type} /> : <Dice5 size={20} />}
               </span>
               <span className="drop-copy">
                 <strong>{item?.name ?? drop.collectibleId}</strong>
@@ -1470,7 +1471,7 @@ function ActivityDropTable({
           const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
           return (
             <div key={`${pool.id}-${entry.collectibleId}`} className={`drop-row shared ${owned ? "owned" : ""}`}>
-              <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
+              <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Shared drop" sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
               <span className="drop-copy">
                 <strong>{item?.name ?? entry.collectibleId}</strong>
                 <small>{pool.name} · {item ? `${item.rarity} ${categoryName}` : "Shared Chaser"}</small>
@@ -1517,9 +1518,9 @@ function RequirementList({ item, player }: { item: Collectible; player: PlayerSt
             <div key={key} className={`requirement-row ${state.met ? "met" : ""}`}>
               <span className="requirement-icon">
                 {skill?.icon ? (
-                  <img src={skill.icon} alt="" draggable="false" />
+                  <InspectableImage src={skill.icon} title={skill.name} subtitle="Skill requirement" />
                 ) : requiredCollectible?.icon ? (
-                  <img src={requiredCollectible.icon} alt="" draggable="false" />
+                  <InspectableImage src={requiredCollectible.icon} title={requiredCollectible.name} subtitle="Collectible requirement" />
                 ) : requirement.type === "skill" ? (
                   <Swords size={15} />
                 ) : (

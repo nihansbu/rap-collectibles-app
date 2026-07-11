@@ -4,6 +4,7 @@ import { SKILL_CAPES, skills, type SkillCapeDefinition } from "../data";
 import { formatNumber } from "../format";
 import { isSkillCapeUnlocked, skillCapeSummary, skillCapeTierLabel } from "../skillCapes";
 import type { PlayerState } from "../save";
+import { InspectableImage } from "../ui/IconInspect";
 
 type CapeFilter = "all" | "99" | "120" | "unlocked" | "locked";
 
@@ -48,7 +49,7 @@ function SkillCapeCard({ cape, player, onOpen }: { cape: SkillCapeDefinition; pl
   const unlocked = player.ownedSkillCapes.includes(cape.id) || isSkillCapeUnlocked(cape, player.skillXp);
   const skill = skills.find((candidate) => candidate.id === cape.skillId);
   return <button className={`skill-cape-card ${unlocked ? "unlocked" : "locked"}`} onClick={onOpen} aria-label={`${cape.name}, ${unlocked ? "unlocked" : "locked"}`}>
-    <span className="skill-cape-art"><img src={`./${cape.icon}`} alt="" draggable="false" />{unlocked ? <span className="skill-cape-owned"><Check size={11} /></span> : <span className="skill-cape-lock"><Lock size={11} /></span>}</span>
+    <span className="skill-cape-art"><InspectableImage src={`./${cape.icon}`} title={cape.name} subtitle={`${skill?.name ?? cape.skillId} · ${skillCapeTierLabel(cape.tier)}`} />{unlocked ? <span className="skill-cape-owned"><Check size={11} /></span> : <span className="skill-cape-lock"><Lock size={11} /></span>}</span>
     <strong>{skill?.name ?? cape.skillId}</strong>
     <small>{skillCapeTierLabel(cape.tier)}</small>
   </button>;

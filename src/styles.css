@@ -1428,6 +1428,107 @@ button,
   background: rgba(0, 0, 0, 0.58);
 }
 
+.icon-inspect-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+  background: rgba(4, 8, 6, 0.76);
+  backdrop-filter: blur(8px);
+}
+
+.icon-inspect-dialog {
+  width: min(100%, 430px);
+  max-height: 100%;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 18px 16px 16px;
+  color: var(--color-text);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 38%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0, color-mix(in srgb, var(--color-gold) 14%, transparent), transparent 44%),
+    color-mix(in srgb, var(--color-panel) 96%, black);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .64);
+  animation: iconInspectIn 180ms ease-out;
+}
+
+.icon-inspect-close {
+  width: 34px;
+  height: 34px;
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+}
+
+.icon-inspect-stage {
+  width: min(78vw, 330px);
+  height: min(62vh, 330px);
+  display: grid;
+  place-items: center;
+  margin: 20px 0 8px;
+  border: 1px solid rgba(224, 202, 142, .14);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(126, 166, 127, .26), transparent 56%),
+    linear-gradient(145deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .025));
+}
+
+.icon-inspect-stage img {
+  width: 94%;
+  height: 94%;
+  object-fit: contain;
+  filter: brightness(1.14) saturate(1.04) drop-shadow(0 18px 18px rgba(0, 0, 0, .42));
+}
+
+.icon-inspect-dialog > strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-inspect-dialog > small {
+  color: var(--color-gold);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.icon-inspect-hint {
+  margin-top: 7px;
+  color: var(--color-muted);
+  font-size: 9px;
+}
+
+.tile-art img,
+.sheet-icon img,
+.skill-cape-art img,
+.skill-cape-detail-grid img,
+.skill-cape-toast-art img,
+.wallet-symbol {
+  cursor: zoom-in;
+}
+
+@keyframes iconInspectIn {
+  from { opacity: 0; transform: scale(.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .confirm-dialog {
   width: min(100vw, 430px);
   border: 1px solid rgba(224, 202, 142, 0.18);

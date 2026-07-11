@@ -75,6 +75,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/pages/VaultPage.tsx`: Vault hub for special collections, currently Sets and Skill Capes.
 - `src/pages/SkillCapesPage.tsx`: searchable and filterable 60-item Cape overview with Level 99/120, unlocked/locked filters, and Skill detail links.
 - `src/ui/SkillCapeToast.tsx`: one-time Level 99/120 unlock notification.
+- `src/ui/IconInspect.tsx`: global inspect provider and reusable image trigger/large preview dialog for all raster artwork.
 - `scripts/generate-skill-cape-reskins.ts`: reusable pipeline that reskins the shared 99/120 base assets with each existing Skill icon and palette into final WebP icons.
 - `Vault` is implemented as the special parent area inside `Collectibles`; the main dashboard and Collectibles overview link to it, while Sets and Skill Capes are its subpages.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
@@ -135,6 +136,7 @@ Implemented early systems:
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
+- Raster artwork is inspectable from its source image without triggering the surrounding card action. The global preview locks background scrolling, supports X/backdrop/Escape close, and works at 320px and 390px.
 - On viewports up to 400px, dense Collectible and Skill grids use four columns to keep names legible; wider mobile layouts retain five.
 - Activity run counts and recent Activity results are persisted in save v5.
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
@@ -152,7 +154,7 @@ Implemented early systems:
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
 - Save v9 persists Skill Capes and Cape notification acknowledgement in addition to the v8 Achievement/AP/Title data while migrating v1-v8 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
-- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 20 reusable entries across five categories, including Vault and Skill Capes, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
+- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 21 reusable entries across five categories, including Vault, Skill Capes, and Icon Inspect, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.

@@ -1,5 +1,6 @@
 import { ArrowLeft, BookOpen, Plus, Settings } from "lucide-react";
 import { formatNumber } from "../format";
+import { InspectableImage } from "./IconInspect";
 
 export function TopBar({
   title,
@@ -61,7 +62,7 @@ export function TopBar({
         </button>
         <div className="wallet">
           <span className="wallet-display">
-            <img className="wallet-symbol" src="./assets/icons/ui/ui-rap.webp" alt="" />
+            <InspectableImage className="wallet-symbol" src="./assets/icons/ui/ui-rap.webp" title="RAP" subtitle="Real Life Activity Points" />
             <span className="wallet-value">{formatNumber(rp)} RAP</span>
           </span>
           {showDevTools && (

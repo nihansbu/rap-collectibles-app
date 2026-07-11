@@ -29,6 +29,7 @@ Acceptance criteria:
 - [x] Add a machine-readable Skill Acquisition Matrix.
 - [x] Add the account-wide Achievement foundation with non-spendable AP, multi-stage series, title rewards, completion notifications, and a dedicated overview.
 - [x] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages, including all 99/120 Skill Cape definitions, assets, unlock reconciliation, and notifications.
+- [x] Add a global Inspect view for raster icons and images without changing surrounding card actions.
 
 Acceptance criteria:
 

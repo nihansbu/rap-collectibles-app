@@ -103,6 +103,8 @@ Collectible and system icons are reusable transparent assets in a gritty, matte,
 
 New icons should remain readable at small sizes while introducing measured variety across the collection: distinct silhouettes, poses or orientations, materials, palettes, and one memorable prop or construction detail. Characters and races should not all be helmeted armored busts. Pets, mounts, tools, classes, and UI symbols should each retain their category identity without becoming visually interchangeable. Existing approved icons can remain in use, but future additions should follow this broader variation rule.
 
+Every raster image shown in the UI exposes an Inspect action that enlarges the artwork without changing the surrounding card action or progression state. Inspect views reuse the transparent asset and close through X, backdrop tap, or Escape.
+
 The RAP wallet uses a compact transparent activity sigil above the numeric RAP value in the TopBar. It is a UI symbol, not a second currency or a decorative tile.
 
 ## Collections And Codex

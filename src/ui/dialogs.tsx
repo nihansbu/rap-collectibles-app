@@ -49,7 +49,7 @@ export function UnlockNotice({ item, onClose }: { item: Collectible; onClose: ()
     <div className="sheet-backdrop unlock-backdrop" role="presentation" onClick={onClose}>
       <section {...dialog} className="unlock-notice" role="dialog" aria-modal="true" aria-label={`${item.name} unlocked`} onClick={(event) => event.stopPropagation()}>
         <div className="unlock-burst">
-          <TileVisual icon={item.icon} category={item.category} owned />
+          <TileVisual icon={item.icon} category={item.category} owned label={item.name} inspectSubtitle="Unlocked Collectible" />
         </div>
         <span className="unlock-kicker">Unlocked</span>
         <h2>{item.name}</h2>
@@ -132,7 +132,7 @@ export function ActivityResultPanel({ result, onClose }: { result: ActivityRunRe
         <div className={`result-drop ${droppedItem ? "hit" : ""}`}>
           {droppedItem ? (
             <>
-              <TileVisual icon={droppedItem.icon} category={droppedItem.category} owned sourceType={droppedItem.source?.type} />
+              <TileVisual icon={droppedItem.icon} category={droppedItem.category} owned label={droppedItem.name} inspectSubtitle="Adventure drop" sourceType={droppedItem.source?.type} />
               <span>
                 <strong>{droppedItem.name}</strong>
                 <small>Added to Codex</small>

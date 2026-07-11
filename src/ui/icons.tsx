@@ -20,6 +20,7 @@ import {
 import type { GameplayActivity } from "../activities";
 import type { CategoryId, Collectible } from "../data";
 import type { ActivityOption } from "../economy";
+import { InspectableImage } from "./IconInspect";
 
 export function AppIcon({ category }: { category: CategoryId }) {
   const common = { size: 22, strokeWidth: 1.8 };
@@ -57,16 +58,20 @@ export function TileVisual({
   locked = false,
   owned = false,
   sourceType,
+  label = "Collectible icon",
+  inspectSubtitle,
 }: {
   icon?: string;
   category: CategoryId;
   locked?: boolean;
   owned?: boolean;
   sourceType?: Collectible["source"] extends infer Source ? Source extends { type: infer Type } ? Type : never : never;
+  label?: string;
+  inspectSubtitle?: string;
 }) {
   return (
     <div className={`tile-art ${locked ? "locked" : ""} ${owned ? "owned" : ""} ${sourceType === "activity" ? "activity-source" : ""}`}>
-      {icon ? <img src={icon} alt="" draggable="false" /> : <AppIcon category={category} />}
+      {icon ? <InspectableImage src={icon} title={label} subtitle={inspectSubtitle} /> : <AppIcon category={category} />}
       {locked && (
         <span className="tile-lock" aria-hidden="true">
           <Lock size={12} />

@@ -109,6 +109,21 @@ export const handbookEntries: HandbookEntry[] = [
     relatedEntryIds: ["collectibles", "requirements", "drop-tables"],
   },
   {
+    id: "icon-inspect",
+    title: "Inspecting Icons",
+    summary: "Open any collectible, Skill, Cape, or system image at a larger size.",
+    category: "basics",
+    sections: [
+      {
+        paragraphs: [
+          "Tap an image or icon to open its Inspect view. The preview enlarges the transparent artwork without changing the card's status or progression.",
+          "Close the preview with the X button, by tapping outside the panel, or with Escape on a keyboard. The underlying card action is not triggered when the image itself is inspected.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["collectibles", "skills", "skill-capes"],
+  },
+  {
     id: "requirements",
     title: "Requirements",
     summary: "Skill levels and Collectible ownership can gate progression.",
@@ -396,7 +411,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "collectibles",
     title: "Collectibles",
     intro: "The Collectibles overview is your Codex. It shows permanent unlock progress across every category and your combined Skill total.",
-    entryIds: ["collectibles", "codex-states", "requirements", "account-bonuses"],
+    entryIds: ["collectibles", "codex-states", "icon-inspect", "requirements", "account-bonuses"],
   },
   world: {
     id: "world",
@@ -420,19 +435,19 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "sets",
     title: "Collection Sets",
     intro: "This Codex view groups Collectibles across categories and shows permanent threshold rewards without time-limited availability.",
-    entryIds: ["collection-sets", "skill-capes", "collectibles", "profile-cosmetics", "account-bonuses"],
+    entryIds: ["collection-sets", "skill-capes", "icon-inspect", "collectibles", "profile-cosmetics", "account-bonuses"],
   },
   vault: {
     id: "vault",
     title: "Vault",
     intro: "The Vault contains prestige collections such as cross-category Sets and Skill Capes earned from Level 99 and Level 120 milestones.",
-    entryIds: ["collection-sets", "skill-capes", "skills", "profile-cosmetics", "save-progress"],
+    entryIds: ["collection-sets", "skill-capes", "icon-inspect", "skills", "profile-cosmetics", "save-progress"],
   },
   "skill-capes": {
     id: "skill-capes",
     title: "Skill Capes",
     intro: "This page shows the 99er and 120er Skill Capes earned from the account's Skill levels.",
-    entryIds: ["skill-capes", "skills", "skill-training", "vault", "save-progress"],
+    entryIds: ["skill-capes", "icon-inspect", "skills", "skill-training", "vault", "save-progress"],
   },
   profile: {
     id: "profile",
@@ -474,7 +489,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "category:skills",
     title: "Skills",
     intro: "The Skills grid shows all Skill levels at once. Open a Skill to inspect XP progress and begin a timed training session.",
-    entryIds: ["skills", "skill-training", "rap", "requirements"],
+    entryIds: ["skills", "icon-inspect", "skill-training", "rap", "requirements"],
   },
   "category:tools": {
     id: "category:tools",
@@ -504,7 +519,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "skill-detail",
     title: "Skill Details",
     intro: "This detail page shows the Skill's current level, XP progress, training state, and available training durations.",
-    entryIds: ["skills", "skill-training", "rap", "requirements"],
+    entryIds: ["skills", "icon-inspect", "skill-training", "rap", "requirements"],
   },
   "activity-detail": {
     id: "activity-detail",
