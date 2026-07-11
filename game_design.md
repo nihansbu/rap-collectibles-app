@@ -219,6 +219,29 @@ Design direction:
 - The account has one customizable Profile assembled from unlocked presentation options.
 - Heroes never receive separate levels, inventories, currencies, or save files.
 
+## Achievements And Titles
+
+Implemented design:
+
+- Achievements are permanent, account-wide goals evaluated from RAP, Skills, Collectibles, Sets, Adventures, Content Mastery, and prior Achievement Points.
+- Achievement Points (AP) are a cumulative score. They cannot be spent and never replace RAP.
+- AP totals do not grant fixed generic ranks. Data-defined Achievements may instead require an AP threshold and award a named reward.
+- Multi-stage Achievements use separate one-time stages grouped into a shared series so every stage can grant its own AP and reward.
+- Current progress is derived from the existing account state. Only completed IDs, completion timestamps, notification acknowledgement, and resulting unlocks are persisted.
+- Collection conditions use typed category filters and optional Collectible tags such as `aquatic`, `land`, and `adventure-drop`.
+- Achievement rewards prioritize Profile customization: Titles, Profile Badges, Themes, portraits, Tile Styles, and unlock animations.
+- Exceptional Achievements may explicitly award a Mount, Pet, or other Collectible, but these rewards must remain rare and deterministic rather than random.
+- Newly completed Achievements appear in a timed, queued notification showing their name, AP, and optional reward.
+- The Achievement overview shows total AP, completion percentage, filters, search, category tabs, progress bars, series stages, rewards, and completion dates.
+- The initial Achievement definitions and AP values are provisional starter content and require future balancing and expansion.
+
+Titles:
+
+- Titles are account-wide Profile Cosmetics.
+- An unlocked Title may be selected on the Profile page, or the player may display no Title.
+- The selected Title appears directly under the account name.
+- Initial Title rewards are `Pathfinder`, `Stablemaster`, and `Achievement Hunter`.
+
 ## Classes And Races
 
 Classes and Races are collectible categories under the main `Collectibles` page.
@@ -340,6 +363,7 @@ Current provisional threshold ratios are 2%, 5%, 10%, 16%, 24%, 34%, 46%, 60%, 8
 - The initial Theme collection is directly available from the start so players can choose a presentation immediately. Future Themes may be connected to Adventures, Sets, or Mastery later.
 - Profile Badges remain earned rewards; Theme availability and Badge progression are intentionally separate.
 - Heroes can unlock Profile rewards but never have separate levels, inventories, currencies, or progression saves.
+- Achievement rewards use the same account-wide Cosmetic entitlements and Title selection rather than a separate inventory.
 
 Modifier order:
 
@@ -405,7 +429,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
-- Save v7 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, and Cosmetic selections. Future progression changes migrate through later save versions.
+- Save v8 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, Cosmetic selections, Achievement completions, notification acknowledgements, AP, and selected Title. Saves v1-v7 migrate forward.
 - Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -507,6 +531,7 @@ The first version should prioritize clarity and fast collection feedback over de
 - Shared Chaser Drop Pools across eligible content.
 - Cross-category Collection Sets without time-limited availability.
 - Account Bonus overview, Heroes, Profile Badges, curated Themes, and earned Cosmetics.
+- Expanded Achievement series, AP-threshold rewards, and rare exceptional Collectible rewards.
 - Skill Mastery Level 1-100 after normal Skill Level 120; no Level 999 progression.
 
 ## Current MVP Scope

@@ -6,7 +6,8 @@ import {
   type ActiveActivityRun,
   type ActivityRunResult,
 } from "./activities";
-import { collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, skills, type SkillId } from "./data";
+import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, skills, type SkillId } from "./data";
+import { reconcileAchievements } from "./achievements";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
 import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
 import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings } from "./training";
@@ -26,7 +27,10 @@ export type PlayerState = {
   contentMasteryPoints: Record<string, number>;
   sharedDropPoolRollUnits: Record<string, number>;
   unlockedCosmetics: string[];
-  selectedCosmetics: { themeId: string | null; profileBadgeId: string | null };
+  selectedCosmetics: { themeId: string | null; profileBadgeId: string | null; titleId: string | null };
+  completedAchievements: Record<string, number>;
+  notifiedAchievementIds: string[];
+  achievementPoints: number;
 };
 
 type SavePlayerV1 = {
@@ -61,6 +65,13 @@ type SavePlayerV7 = SavePlayerV6 & {
   sharedDropPoolRollUnits?: Record<string, number>;
   unlockedCosmetics?: string[];
   selectedCosmetics?: { themeId?: string | null; profileBadgeId?: string | null };
+};
+
+type SavePlayerV8 = SavePlayerV7 & {
+  completedAchievements?: Record<string, number>;
+  notifiedAchievementIds?: string[];
+  achievementPoints?: number;
+  selectedCosmetics?: { themeId?: string | null; profileBadgeId?: string | null; titleId?: string | null };
 };
 
 type SaveFileV1 = {
@@ -107,6 +118,13 @@ type SaveFileV7 = {
   player: SavePlayerV7;
 };
 
+type SaveFileV8 = {
+  version: 8;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV8;
+};
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type SaveSnapshot = {
@@ -119,13 +137,17 @@ export type SaveWriteResult =
   | { ok: true; revision: number; savedAt: string }
   | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
 
-export const CURRENT_SAVE_VERSION = 7;
-export const SAVE_KEY = "rap-collectibles.save.v7";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v7";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v7.1", "rap-collectibles.save.backup.v7.2"];
-const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v7.timestamp";
+export const CURRENT_SAVE_VERSION = 8;
+export const SAVE_KEY = "rap-collectibles.save.v8";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v8";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v8.1", "rap-collectibles.save.backup.v8.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v8.timestamp";
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v7",
+  "rap-collectibles.save.lastKnownGood.v7",
+  "rap-collectibles.save.backup.v7.1",
+  "rap-collectibles.save.backup.v7.2",
   "rap-collectibles.save.v6",
   "rap-collectibles.save.lastKnownGood.v6",
   "rap-collectibles.save.backup.v6.1",
@@ -161,6 +183,7 @@ const gameplayActivityIds = new Set(GAMEPLAY_ACTIVITIES.map((activity) => activi
 const masteryTrackIds = new Set(CONTENT_MASTERY_TRACKS.map((track) => track.id));
 const sharedDropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
 const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
+const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
 
 export function createInitialPlayerState(): PlayerState {
   return {
@@ -177,7 +200,10 @@ export function createInitialPlayerState(): PlayerState {
     contentMasteryPoints: Object.fromEntries(CONTENT_MASTERY_TRACKS.map((track) => [track.id, 0])),
     sharedDropPoolRollUnits: Object.fromEntries(SHARED_DROP_POOLS.map((pool) => [pool.id, 0])),
     unlockedCosmetics: defaultUnlockedCosmetics(),
-    selectedCosmetics: { themeId: null, profileBadgeId: null },
+    selectedCosmetics: { themeId: null, profileBadgeId: null, titleId: null },
+    completedAchievements: {},
+    notifiedAchievementIds: [],
+    achievementPoints: 0,
   };
 }
 
@@ -196,7 +222,7 @@ export function loadPlayerSnapshot(storage: StorageLike | null = getStorage()): 
     if (snapshot) {
       return {
         ...snapshot,
-        player: processActiveActivityRuns(processActiveTrainings(snapshot.player)),
+        player: reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player))),
       };
     }
   }
@@ -238,12 +264,12 @@ export function savePlayerState(
 }
 
 export function exportPlayerState(player: PlayerState): string {
-  return serializeSave(processActiveActivityRuns(processActiveTrainings(player)), 0, new Date().toISOString());
+  return serializeSave(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(player))), 0, new Date().toISOString());
 }
 
 export function importPlayerState(rawSave: string): PlayerState | null {
   const snapshot = parseSaveSnapshot(rawSave);
-  return snapshot ? processActiveActivityRuns(processActiveTrainings(snapshot.player)) : null;
+  return snapshot ? reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player))) : null;
 }
 
 function getStorage(): StorageLike | null {
@@ -260,7 +286,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
-  const saveFile: SaveFileV7 = {
+  const saveFile: SaveFileV8 = {
     version: CURRENT_SAVE_VERSION,
     revision,
     savedAt,
@@ -284,17 +310,17 @@ export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, 5, 6, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, 6, 7, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -319,7 +345,11 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     contentMasteryPoints,
   );
 
-  return {
+  const completedAchievements = normalizeAchievementCompletions(
+    "completedAchievements" in player ? player.completedAchievements : undefined,
+  );
+  const migratedFromLegacyAchievements = !("completedAchievements" in player);
+  const normalizedPlayer: PlayerState = {
     rp: sanitizeNumber(player.rp, 0, MAX_RAP),
     lifetimeRap: sanitizeNumber("lifetimeRap" in player ? player.lifetimeRap : player.rp, 0, MAX_RAP),
     owned,
@@ -333,9 +363,24 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     contentMasteryPoints,
     sharedDropPoolRollUnits: normalizeIdNumberRecord("sharedDropPoolRollUnits" in player ? player.sharedDropPoolRollUnits : undefined, sharedDropPoolIds),
     unlockedCosmetics,
+    selectedCosmetics: { themeId: null, profileBadgeId: null, titleId: null },
+    completedAchievements,
+    notifiedAchievementIds: [],
+    achievementPoints: 0,
+  };
+
+  const reconciled = reconcileAchievements(normalizedPlayer);
+  const notifiedAchievementIds = migratedFromLegacyAchievements
+    ? Object.keys(reconciled.completedAchievements)
+    : normalizeAchievementIds("notifiedAchievementIds" in player ? player.notifiedAchievementIds : undefined)
+      .filter((id) => reconciled.completedAchievements[id] !== undefined);
+
+  return {
+    ...reconciled,
+    notifiedAchievementIds,
     selectedCosmetics: normalizeSelectedCosmetics(
       "selectedCosmetics" in player ? player.selectedCosmetics : undefined,
-      unlockedCosmetics,
+      reconciled.unlockedCosmetics,
     ),
   };
 }
@@ -351,12 +396,28 @@ function normalizeCosmeticIds(value: unknown) {
     : [];
 }
 
+function normalizeAchievementIds(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value)].filter((id): id is string => typeof id === "string" && achievementIds.has(id))
+    : [];
+}
+
+function normalizeAchievementCompletions(value: unknown) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .filter(([id, completedAt]) => achievementIds.has(id) && typeof completedAt === "number" && Number.isFinite(completedAt))
+      .map(([id, completedAt]) => [id, sanitizeInteger(completedAt, 0, Number.MAX_SAFE_INTEGER)]),
+  );
+}
+
 function normalizeSelectedCosmetics(value: unknown, unlockedValue: unknown) {
   const selected = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const unlocked = new Set(normalizeCosmeticIds(unlockedValue));
   const themeId = typeof selected.themeId === "string" && unlocked.has(selected.themeId) ? selected.themeId : null;
   const profileBadgeId = typeof selected.profileBadgeId === "string" && unlocked.has(selected.profileBadgeId) ? selected.profileBadgeId : null;
-  return { themeId, profileBadgeId };
+  const titleId = typeof selected.titleId === "string" && unlocked.has(selected.titleId) ? selected.titleId : null;
+  return { themeId, profileBadgeId, titleId };
 }
 
 function normalizeActiveTrainings(value: unknown): ActiveTraining[] {

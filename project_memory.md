@@ -48,10 +48,11 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/mastery.ts`: generic Content Mastery Level 0-10 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
 - `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
 - `src/cosmetics.ts`: default Theme availability plus derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
+- `src/achievements.ts`: pure Achievement progress evaluation, tag/category filtering, AP derivation, chained completion reconciliation, and idempotent reward grants.
 - `src/sets.ts`: Set lookup and progress selectors derived from owned Collectibles.
 - `src/skillAcquisition.ts`: machine-readable Skill Acquisition Matrix and the Direct Training retirement gate.
 - `src/data/balance/`: centralized placeholder economy, XP-share, Mastery, modifier, and drop constants.
-- `src/data/{mastery,dropPools,sets,cosmetics,contentFamilies}.ts`: typed progression and content registries.
+- `src/data/{mastery,dropPools,sets,cosmetics,achievements,contentFamilies}.ts`: typed progression and content registries.
 - `src/catalog.ts`: catalog selectors and rules such as collectible lookup, category filtering, requirement state, unlock state, status grouping, and catalog ordering.
 - `src/data.ts`: stable public facade that re-exports modular catalog data.
 - `src/data/types.ts`: shared catalog types.
@@ -62,12 +63,13 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system through v7, migrations, validation, revision conflict detection, active progress normalization, and throttled backup rotation.
+- `src/save.ts`: versioned local save/load system through v8, migrations, validation, revision conflict detection, Achievement reconciliation, active progress normalization, and throttled backup rotation.
 - `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
 - `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
 - `src/pages/AccountBonusesPage.tsx`: grouped Skill XP, Rolls, Adventure, and Resistance bonus overview.
 - `src/pages/SetsPage.tsx`: cross-category Codex Set progress and reward thresholds.
-- `src/pages/ProfilePage.tsx`: account-wide curated Themes and Profile Badges.
+- `src/pages/ProfilePage.tsx`: account-wide Titles, curated Themes, Profile Badges, and AP summary.
+- `src/pages/AchievementsPage.tsx`: searchable and filterable Achievement overview with progress, series, rewards, AP, and completion states.
 - `tests/`: XP, training, activity, save migration/conflict, catalog, and content-integrity tests.
 - `public/manifest.webmanifest` and `public/sw.js`: installable PWA metadata and offline application-shell caching.
 - `src/training.ts`: skill training durations, XP rates, concurrent training rules, timestamp processing, and formatting helpers.
@@ -87,6 +89,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - The `Collectibles` page is the Codex overview. Main category tiles appear in order: Heroes, Classes, Races, Skills, Tools, Pets, Mounts, Sets.
 - `World` is the gameplay hub. Its first content type is `Adventures`; Minigames and Bossing are future siblings.
 - The `Handbook` is a player-facing contextual wiki for systems that should not clutter the main gameplay UI. Every topbar exposes it through a compact book icon.
+- `Achievements` is an Account dashboard destination; it tracks derived permanent goals and non-spendable AP outside the Codex inventory.
 - No bottom navigation in the first prototype.
 - A sticky topbar always shows the current page name, contextual Handbook and Settings buttons, and current RAP. The 10,000 RAP grant control is development-only (`?dev=1`).
 - Subpages use a back button in the topbar.
@@ -121,7 +124,7 @@ Implemented early systems:
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
-- Save v7 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
+- Save v8 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress.
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
@@ -133,11 +136,15 @@ Implemented early systems:
 - Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-10 and centrally capped passive modifiers.
 - Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
+- Achievements are typed data under `src/data/achievements.ts`. Generic conditions cover RAP, Skill levels, total level, filtered collection counts/completion, Sets, Adventure runs, Mastery, and AP thresholds.
+- `reconcileAchievements` derives AP from valid completed IDs, iterates chained conditions until stable, grants Cosmetic or exceptional Collectible rewards once, and reconciles downstream Set/Mastery Cosmetics.
+- Save v8 stores completion timestamps and acknowledged notification IDs. Legacy saves backfill eligible Achievements while suppressing a burst of historical toasts; new completions use a timed queue.
+- Titles use the existing `CosmeticKind: "title"`, `unlockedCosmetics`, and `selectedCosmetics.titleId` fields. The Profile permits an unlocked Title or no Title.
 - All current Themes are reconciled into every new or migrated save, while Profile Badges remain progression-gated. Storm Weaver is no longer granted by Fishing Trawler Mastery or the Trawler's Wake Set.
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
-- Save v7 persists Mastery points, Shared Roll Units, Cosmetic entitlements, and selected Theme/Badge while migrating v1-v6 saves.
+- Save v8 persists Achievements, AP, notification acknowledgement, and selected Title in addition to the v7 Mastery, Shared Roll Unit, and Cosmetic data while migrating v1-v7 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
-- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 17 reusable entries across five categories, supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
+- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 18 reusable entries across five categories, supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
@@ -152,6 +159,7 @@ Implemented early systems:
 Likely entities:
 
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
+- Achievement state: completion timestamp by stable Achievement ID, derived AP total, acknowledged notification IDs, and rewards stored through existing Cosmetic/Collectible entitlements.
 - Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
 - Adventure content: ID, family, Mastery track, RAP cost, runtime, requirements, 100% XP reward split, direct Drop Table, optional Shared Chaser Pools, and Bad Luck Protection state.
 - Active Adventure run: content ID, startedAt, endsAt, prepaid effective RAP cost, undiscounted base RAP, effective runtime, base runtime, Skill Advantage, Mastery track, and deterministic seed.

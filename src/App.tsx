@@ -48,7 +48,7 @@ import {
   sourceActivityFor,
   statusLabel,
 } from "./catalog";
-import { categories, COLLECTION_SETS, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
+import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
@@ -58,6 +58,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { AccountBonusesPage } from "./pages/AccountBonusesPage";
 import { SetsPage } from "./pages/SetsPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { AchievementsPage } from "./pages/AchievementsPage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
@@ -65,6 +66,7 @@ import { useLongPress } from "./ui/useLongPress";
 import { MasteryProgress } from "./ui/MasteryProgress";
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
 import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
+import { getAchievement } from "./achievements";
 import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
 import { masteryEconomicModifiers } from "./mastery";
 import { getSetsForCollectible } from "./sets";
@@ -81,6 +83,7 @@ import {
   trainingXpPerHour,
 } from "./training";
 import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
+import { AchievementToast } from "./ui/AchievementToast";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -98,6 +101,7 @@ type ContentPage =
   | { type: "bonuses" }
   | { type: "sets" }
   | { type: "profile" }
+  | { type: "achievements" }
   | { type: "adventures"; from?: "main" | "world" }
   | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type Page = ContentPage | {
@@ -167,6 +171,7 @@ export function App() {
   const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
   const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
+  const [achievementQueue, setAchievementQueue] = useState<AchievementDefinition[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importValue, setImportValue] = useState("");
   const showDevTools = import.meta.env.DEV || new URLSearchParams(window.location.search).get("dev") === "1";
@@ -187,6 +192,8 @@ export function App() {
             ? "Sets"
             : page.type === "profile"
               ? "Profile"
+              : page.type === "achievements"
+                ? "Achievements"
         : page.type === "handbook"
           ? "Handbook"
           : page.type === "adventures"
@@ -251,6 +258,34 @@ export function App() {
 
     return () => window.clearTimeout(timeoutId);
   }, [unlockNotice]);
+
+  useEffect(() => {
+    const notified = new Set(player.notifiedAchievementIds);
+    const newlyCompleted = Object.keys(player.completedAchievements)
+      .filter((id) => !notified.has(id))
+      .map(getAchievement)
+      .filter((achievement): achievement is AchievementDefinition => Boolean(achievement));
+    if (newlyCompleted.length === 0) return;
+
+    // Completion reconciliation is account state; this effect only queues its one-time presentation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAchievementQueue((current) => [
+      ...current,
+      ...newlyCompleted.filter((achievement) => !current.some((queued) => queued.id === achievement.id)),
+    ]);
+    setPlayer((current) => ({
+      ...current,
+      notifiedAchievementIds: [...new Set([...current.notifiedAchievementIds, ...newlyCompleted.map((achievement) => achievement.id)])],
+    }));
+  }, [player.completedAchievements, player.notifiedAchievementIds, setPlayer]);
+
+  useEffect(() => {
+    if (achievementQueue.length === 0) return;
+    const timeoutId = window.setTimeout(() => {
+      setAchievementQueue((current) => current.slice(1));
+    }, 5_200);
+    return () => window.clearTimeout(timeoutId);
+  }, [achievementQueue]);
 
   function grantRp() {
     setPlayer((current) => ({ ...current, rp: current.rp + 10_000, lifetimeRap: current.lifetimeRap + 10_000 }));
@@ -456,6 +491,8 @@ export function App() {
             onOpenBonuses={() => setPage({ type: "bonuses" })}
             onOpenSets={() => setPage({ type: "sets" })}
             onOpenProfile={() => setPage({ type: "profile" })}
+            onOpenAchievements={() => setPage({ type: "achievements" })}
+            achievementPoints={player.achievementPoints}
             setProgress={setProgress}
             onOpenCategory={(id) => {
               setTypeFilter("all");
@@ -490,7 +527,10 @@ export function App() {
             player={player}
             onSelectTheme={(themeId) => setPlayer((current) => ({ ...current, selectedCosmetics: { ...current.selectedCosmetics, themeId } }))}
             onSelectBadge={(profileBadgeId) => setPlayer((current) => ({ ...current, selectedCosmetics: { ...current.selectedCosmetics, profileBadgeId } }))}
+            onSelectTitle={(titleId) => setPlayer((current) => ({ ...current, selectedCosmetics: { ...current.selectedCosmetics, titleId } }))}
           />
+        ) : page.type === "achievements" ? (
+          <AchievementsPage player={player} />
         ) : page.type === "world" ? (
           <WorldPage
             player={player}
@@ -532,6 +572,7 @@ export function App() {
         <ConfirmDialog item={confirmItem} onCancel={() => setConfirmItem(null)} onConfirm={() => buyItem(confirmItem)} />
       )}
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
+      {achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} onClose={() => setAchievementQueue((current) => current.slice(1))} />}
       {activityResultNotice && (
         <ActivityResultPanel
           result={activityResultNotice}

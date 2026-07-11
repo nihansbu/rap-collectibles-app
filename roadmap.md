@@ -27,6 +27,7 @@ Acceptance criteria:
 - [x] Add Profile foundations for Badges and curated Themes without character-specific progression.
 - [x] Make the initial Theme collection directly selectable and keep Badge rewards progression-gated.
 - [x] Add a machine-readable Skill Acquisition Matrix.
+- [x] Add the account-wide Achievement foundation with non-spendable AP, multi-stage series, title rewards, completion notifications, and a dedicated overview.
 
 Acceptance criteria:
 
@@ -34,6 +35,7 @@ Acceptance criteria:
 - Account Bonus sources are inspectable and totals use one documented modifier order.
 - Set completion is derived from owned Collectibles; Sets are not a second inventory.
 - Direct Skill Training remains available until every Skill has a Level 1 gameplay source.
+- Achievement progress is derived from existing account state; completion rewards remain idempotent across reloads and save migration.
 
 ## Later: Content Expansion
 
@@ -41,6 +43,7 @@ Acceptance criteria:
 - Minigames and Bossing using the same Requirements, Rewards, Mastery, and Drop Pool systems.
 - Skill Mastery 1-100 after normal Level 120.
 - More Heroes, Sets, Profile rewards, Themes, Tile Styles, and unlock animations.
+- Expand the provisional Achievement catalog, balance AP values, add rare exceptional Collectible rewards, and introduce further AP-threshold Title Achievements.
 - User-defined real-life Activities and timestamp-based Activity timers.
 - Native HealthKit and Health Connect adapters while preserving manual logging.
 - Cloud accounts and cross-device synchronization before broad public release.
@@ -53,6 +56,7 @@ Acceptance criteria:
 - Progression is account-based; Heroes do not have separate levels, inventories, or saves.
 - Released content remains available. Themes and event-styled Sets do not create FOMO.
 - Cosmetics are earned through play or expansion content, not designed around microtransactions.
+- Achievement Points are permanent account score, never an expendable currency or RAP substitute.
 
 ## Provisional Balance Values
 
@@ -65,3 +69,4 @@ The following remain placeholders until balance reports and play data justify lo
 - Drop denominators and Bad Luck Protection thresholds
 - Account and Mastery bonus percentages
 - Requirements and route unlock levels
+- Achievement Point values and reward thresholds

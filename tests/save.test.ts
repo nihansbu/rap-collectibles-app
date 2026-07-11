@@ -44,6 +44,9 @@ describe("save system", () => {
       "theme-moonlit-archive",
       "theme-sunken-meridian",
     ]));
+    expect(imported?.achievementPoints).toBe(0);
+    expect(imported?.completedAchievements).toEqual({});
+    expect(imported?.selectedCosmetics.titleId).toBeNull();
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 
@@ -77,7 +80,23 @@ describe("save system", () => {
     player.contentMasteryPoints["mastery-fishers-trawler"] = 250_000;
 
     const exported = exportPlayerState(player);
-    expect(JSON.parse(exported).version).toBe(7);
+    expect(JSON.parse(exported).version).toBe(8);
     expect(importPlayerState(exported)).toEqual(player);
+  });
+
+  it("backfills legacy Achievement progress without replaying notification toasts", () => {
+    const imported = importPlayerState(JSON.stringify({
+      version: 7,
+      revision: 3,
+      savedAt: "2026-01-01T00:00:00.000Z",
+      player: { rp: 123, lifetimeRap: 100_000, owned: [], skillXp: {} },
+    }));
+
+    expect(imported?.completedAchievements).toHaveProperty("achievement-rap-10k");
+    expect(imported?.completedAchievements).toHaveProperty("achievement-rap-100k");
+    expect(imported?.notifiedAchievementIds).toEqual(expect.arrayContaining([
+      "achievement-rap-10k",
+      "achievement-rap-100k",
+    ]));
   });
 });

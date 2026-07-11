@@ -6,6 +6,7 @@ import {
   type PlayerState,
   type SaveSnapshot,
 } from "../save";
+import { reconcileAchievements } from "../achievements";
 
 export type SaveStatus = "saved" | "saving" | "conflict" | "error";
 
@@ -19,13 +20,21 @@ export function usePlayerPersistence(): {
   flushSave: () => void;
 } {
   const [initialSnapshot] = useState<SaveSnapshot>(loadPlayerSnapshot);
-  const [player, setPlayer] = useState<PlayerState>(initialSnapshot.player);
+  const [player, setStoredPlayer] = useState<PlayerState>(initialSnapshot.player);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialSnapshot.savedAt);
   const playerRef = useRef(player);
   const revisionRef = useRef(initialSnapshot.revision);
   const autosaveTimerRef = useRef<number | null>(null);
   const suppressNextAutosaveRef = useRef(false);
+  const setPlayer = useCallback<Dispatch<SetStateAction<PlayerState>>>((action) => {
+    setStoredPlayer((current) => {
+      const next = typeof action === "function"
+        ? (action as (value: PlayerState) => PlayerState)(current)
+        : action;
+      return reconcileAchievements(next);
+    });
+  }, []);
 
   useEffect(() => {
     playerRef.current = player;
@@ -35,7 +44,7 @@ export function usePlayerPersistence(): {
     revisionRef.current = snapshot.revision;
     setLastSavedAt(snapshot.savedAt);
     suppressNextAutosaveRef.current = true;
-    setPlayer(snapshot.player);
+    setStoredPlayer(snapshot.player);
   }, []);
 
   const flushSave = useCallback(() => {

@@ -290,20 +290,36 @@ export const handbookEntries: HandbookEntry[] = [
     relatedEntryIds: ["collectibles", "profile-cosmetics", "account-bonuses"],
   },
   {
+    id: "achievements",
+    title: "Achievements And Points",
+    summary: "Permanent account goals, Achievement Points, series, and profile rewards.",
+    category: "progression",
+    sections: [
+      {
+        paragraphs: [
+          "Achievements watch account progress across RAP, Skills, the Codex, Adventures, Sets, and Content Mastery. Multi-stage series award each stage separately, and every Achievement can only be completed once.",
+          "Achievement Points are a permanent score, not a spendable currency. Some Achievements can require a previous AP total and then unlock account-wide presentation rewards.",
+          "Achievement rewards focus on Profile customization such as Titles, Badges, Themes, portraits, tile styles, and unlock animations. Collectible rewards are supported for exceptional future goals but are intended to remain rare.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["profile-cosmetics", "collectibles", "content-mastery", "save-progress"],
+  },
+  {
     id: "profile-cosmetics",
     title: "Profile And Cosmetics",
-    summary: "Account-wide Badges, Themes, portraits, and presentation rewards.",
+    summary: "Account-wide Titles, Badges, Themes, portraits, and presentation rewards.",
     category: "account",
     sections: [
       {
         paragraphs: [
           "Profile rewards customize the account without creating separate Hero progression. Curated Themes preserve contrast and readability while changing the Codex presentation.",
           "The current Theme collection is available from the start so players can choose their presentation immediately. Future Themes can still be connected to Mastery, Sets, Adventures, or other expansion content.",
-          "Profile Badges remain progression rewards. Locked Cosmetics remain visible with their source when a later reward is not yet earned.",
+          "Titles and Profile Badges remain earned progression rewards. Choose one unlocked Title on the Profile page or display no Title. Locked Cosmetics remain visible until their source is completed.",
         ],
       },
     ],
-    relatedEntryIds: ["collection-sets", "content-mastery", "collectibles"],
+    relatedEntryIds: ["achievements", "collection-sets", "content-mastery", "collectibles"],
   },
   {
     id: "account-bonuses",
@@ -328,7 +344,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Adventure runs, Mastery, results, Cosmetics, and manual logs are restored on reload.",
+          "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Adventure runs, Mastery, results, Achievements, Titles, Cosmetics, and manual logs are restored on reload.",
           "Settings shows the latest local save state and provides JSON export and import. Export a backup before clearing site data or changing devices.",
           "A newer save from another open tab takes priority, preventing an older tab from silently overwriting progress. Cross-device cloud saves are planned for a later account system.",
         ],
@@ -343,7 +359,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
     id: "main-menu",
     title: "Main Menu",
     intro: "The Menu is your account hub. Open World Adventures, browse the Codex, inspect Account progression, or log real-life activity for RAP.",
-    entryIds: ["getting-started", "rap", "activities", "collectibles", "account-bonuses", "manual-activity-log"],
+    entryIds: ["getting-started", "rap", "activities", "collectibles", "achievements", "account-bonuses", "manual-activity-log"],
   },
   collectibles: {
     id: "collectibles",
@@ -378,8 +394,14 @@ const contextDefinitions: Record<string, HandbookContext> = {
   profile: {
     id: "profile",
     title: "Profile",
-    intro: "Profile applies account-wide Badges and curated Themes earned through permanent progression.",
-    entryIds: ["profile-cosmetics", "collection-sets", "content-mastery"],
+    intro: "Profile applies account-wide Titles, Badges, and curated Themes earned through permanent progression.",
+    entryIds: ["profile-cosmetics", "achievements", "collection-sets", "content-mastery"],
+  },
+  achievements: {
+    id: "achievements",
+    title: "Achievements",
+    intro: "This page tracks permanent account goals, progress toward each condition, non-spendable Achievement Points, and presentation rewards.",
+    entryIds: ["achievements", "profile-cosmetics", "collectibles", "content-mastery", "save-progress"],
   },
   settings: {
     id: "settings",

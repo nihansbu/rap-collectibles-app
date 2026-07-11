@@ -1,4 +1,5 @@
 import type { AccountBonus, Requirement, SkillId } from "./types";
+import type { CategoryId } from "./types";
 
 export type ContentKind = "adventure" | "minigame" | "boss";
 
@@ -84,6 +85,42 @@ export type CosmeticDefinition = {
   };
 };
 
+export type AchievementCategory = "account" | "skills" | "collection" | "adventures" | "mastery";
+
+export type AchievementCollectibleFilter = {
+  category?: Exclude<CategoryId, "skills">;
+  tags?: string[];
+  type?: string;
+  sourceActivityId?: string;
+};
+
+export type AchievementCondition =
+  | { type: "lifetime-rap"; amount: number }
+  | { type: "skill-level"; level: number; skillId?: SkillId }
+  | { type: "total-skill-level"; level: number }
+  | { type: "collectibles-owned"; count: number; filter?: AchievementCollectibleFilter }
+  | { type: "collectibles-complete"; filter: AchievementCollectibleFilter }
+  | { type: "set-complete"; setId?: string }
+  | { type: "activity-runs"; count: number; activityId?: string }
+  | { type: "mastery-level"; level: number; trackId: string }
+  | { type: "achievement-points"; points: number };
+
+export type AchievementReward =
+  | { type: "cosmetic"; cosmeticId: string }
+  | { type: "collectible"; collectibleId: string };
+
+export type AchievementDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  category: AchievementCategory;
+  points: number;
+  condition: AchievementCondition;
+  rewards?: AchievementReward[];
+  hidden?: boolean;
+  series?: { id: string; stage: number; totalStages: number };
+};
+
 export type CollectionSetReward =
   | { type: "cosmetic"; cosmeticId: string }
   | { type: "account-bonus"; bonus: AccountBonus };
@@ -97,4 +134,3 @@ export type CollectionSetDefinition = {
   collectibleIds: string[];
   rewards: Array<{ requiredCount: number; label: string; reward: CollectionSetReward }>;
 };
-

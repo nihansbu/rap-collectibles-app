@@ -10,6 +10,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/stable-pony.webp",
     cost: 10_000,
     rarity: "Common",
+    tags: ["land"],
     requirements: [],
   },
 {
@@ -21,6 +22,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/greyfang-wolf.webp",
     cost: 24_000,
     rarity: "Uncommon",
+    tags: ["land"],
     requirements: [{ type: "skill", skillId: "hunter", level: 18 }],
   },
 {
@@ -32,6 +34,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/verdant-stag.webp",
     cost: 90_000,
     rarity: "Epic",
+    tags: ["land"],
     requirements: [{ type: "skill", skillId: "herblore", level: 73 }],
   },
 {
@@ -43,6 +46,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/granite-ram.webp",
     cost: 65_000,
     rarity: "Rare",
+    tags: ["land"],
     requirements: [
       { type: "skill", skillId: "mining", level: 55 },
       { type: "skill", skillId: "smithing", level: 45 },
@@ -57,6 +61,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/ashwing-drake.webp",
     cost: 180_000,
     rarity: "Legendary",
+    tags: ["land"],
     requirements: [
       { type: "skill", skillId: "magic", level: 80 },
       { type: "skill", skillId: "slayer", level: 75 },
@@ -72,6 +77,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/moonlit-skiff.webp",
     cost: 58_000,
     rarity: "Rare",
+    tags: ["aquatic"],
     requirements: [{ type: "skill", skillId: "sailing", level: 50 }],
   },
 {
@@ -83,6 +89,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/mount-brine-ray.webp",
     cost: 0,
     rarity: "Epic",
+    tags: ["aquatic", "adventure-drop"],
     requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
     source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
   },
@@ -95,6 +102,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/silkclimb-spider.webp",
     cost: 96_000,
     rarity: "Epic",
+    tags: ["land"],
     requirements: [
       { type: "skill", skillId: "dungeoneering", level: 68 },
       { type: "skill", skillId: "agility", level: 54 },
@@ -109,6 +117,7 @@ export const mountsCollectibles: Collectible[] = [
     icon: "assets/icons/mounts/runestone-golem.webp",
     cost: 145_000,
     rarity: "Legendary",
+    tags: ["land"],
     requirements: [
       { type: "skill", skillId: "rune-crafting", level: 82 },
       { type: "skill", skillId: "construction", level: 70 },

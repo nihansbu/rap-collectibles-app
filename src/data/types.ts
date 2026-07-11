@@ -57,6 +57,7 @@ export type Collectible = {
   requirements: Requirement[];
   source?: { type: "activity"; activityId: string; label: string };
   bonuses?: AccountBonus[];
+  tags?: string[];
 };
 
 export type SkillDefinition = {

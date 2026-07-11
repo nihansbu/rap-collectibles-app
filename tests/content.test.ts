@@ -9,6 +9,7 @@ import {
   CONTENT_FAMILIES,
   CONTENT_MASTERY_TRACKS,
   COSMETICS,
+  ACHIEVEMENTS,
   SHARED_DROP_POOLS,
   skills,
 } from "../src/data";
@@ -22,6 +23,7 @@ describe("content catalog", () => {
   const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
   const dropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
   const familyIds = new Set(CONTENT_FAMILIES.map((family) => family.id));
+  const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
 
   it("uses unique stable IDs", () => {
     expect(skillIds.size).toBe(skills.length);
@@ -31,6 +33,7 @@ describe("content catalog", () => {
     expect(cosmeticIds.size).toBe(COSMETICS.length);
     expect(dropPoolIds.size).toBe(SHARED_DROP_POOLS.length);
     expect(familyIds.size).toBe(CONTENT_FAMILIES.length);
+    expect(achievementIds.size).toBe(ACHIEVEMENTS.length);
   });
 
   it("resolves every icon and content reference", () => {
@@ -103,6 +106,19 @@ describe("content catalog", () => {
         expect(reward.requiredCount).toBeLessThanOrEqual(set.collectibleIds.length);
         if (reward.reward.type === "cosmetic") expect(cosmeticIds.has(reward.reward.cosmeticId)).toBe(true);
         if (reward.reward.type === "account-bonus") expect(reward.reward.bonus.percent).toBeGreaterThan(0);
+      }
+    }
+    for (const achievement of ACHIEVEMENTS) {
+      expect(achievement.points).toBeGreaterThan(0);
+      if (achievement.condition.type === "set-complete" && achievement.condition.setId) {
+        const setId = achievement.condition.setId;
+        expect(COLLECTION_SETS.some((set) => set.id === setId)).toBe(true);
+      }
+      if (achievement.condition.type === "mastery-level") expect(masteryIds.has(achievement.condition.trackId)).toBe(true);
+      if (achievement.condition.type === "activity-runs" && achievement.condition.activityId) expect(activityIds.has(achievement.condition.activityId)).toBe(true);
+      for (const reward of achievement.rewards ?? []) {
+        if (reward.type === "cosmetic") expect(cosmeticIds.has(reward.cosmeticId)).toBe(true);
+        if (reward.type === "collectible") expect(collectibleIds.has(reward.collectibleId)).toBe(true);
       }
     }
   });

@@ -5,6 +5,7 @@ export { COLLECTION_SETS } from "./data/sets";
 export { CONTENT_MASTERY_TRACKS } from "./data/mastery";
 export { SHARED_DROP_POOLS } from "./data/dropPools";
 export { COSMETICS } from "./data/cosmetics";
+export { ACHIEVEMENTS } from "./data/achievements";
 export { CONTENT_FAMILIES } from "./data/contentFamilies";
 export type {
   CollectionSetDefinition,
@@ -16,6 +17,11 @@ export type {
   ContentMasteryTrack,
   CosmeticDefinition,
   CosmeticKind,
+  AchievementCategory,
+  AchievementCollectibleFilter,
+  AchievementCondition,
+  AchievementDefinition,
+  AchievementReward,
   SharedDropPool,
 } from "./data/contentTypes";
 

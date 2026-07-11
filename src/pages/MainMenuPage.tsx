@@ -1,4 +1,4 @@
-import { ChartNoAxesColumnIncreasing, Compass, Gem, Layers3, Shield, UserRound } from "lucide-react";
+import { ChartNoAxesColumnIncreasing, Compass, Gem, Layers3, Shield, Trophy, UserRound } from "lucide-react";
 import type { CategoryId } from "../data";
 import { activityRap, type ActivityOption } from "../economy";
 import { formatNumber } from "../format";
@@ -26,6 +26,8 @@ export function MainMenuPage({
   onOpenBonuses,
   onOpenSets,
   onOpenProfile,
+  onOpenAchievements,
+  achievementPoints,
   setProgress,
 }: {
   activities: ActivityOption[];
@@ -40,6 +42,8 @@ export function MainMenuPage({
   onOpenBonuses: () => void;
   onOpenSets: () => void;
   onOpenProfile: () => void;
+  onOpenAchievements: () => void;
+  achievementPoints: number;
   setProgress: { completed: number; total: number };
 }) {
   return (
@@ -74,6 +78,7 @@ export function MainMenuPage({
         <div className="dashboard-nav-grid account-nav-grid">
           <button className="dashboard-nav-tile" onClick={onOpenBonuses}><span className="dashboard-nav-icon"><ChartNoAxesColumnIncreasing size={22} /></span><strong>Bonuses</strong><small>Permanent power</small></button>
           <button className="dashboard-nav-tile" onClick={onOpenProfile}><span className="dashboard-nav-icon"><UserRound size={22} /></span><strong>Profile</strong><small>Themes and badges</small></button>
+          <button className="dashboard-nav-tile achievement-menu-tile" onClick={onOpenAchievements}><span className="dashboard-nav-icon"><Trophy size={22} /></span><strong>Achievements</strong><small>{formatNumber(achievementPoints)} AP</small></button>
         </div>
       </section>
 

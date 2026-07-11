@@ -2,6 +2,24 @@ import type { CosmeticDefinition } from "./contentTypes";
 
 export const COSMETICS: CosmeticDefinition[] = [
   {
+    id: "title-pathfinder",
+    name: "Pathfinder",
+    kind: "title",
+    description: "Earned by completing a first Adventure.",
+  },
+  {
+    id: "title-stablemaster",
+    name: "Stablemaster",
+    kind: "title",
+    description: "Earned by completing the current Mount collection.",
+  },
+  {
+    id: "title-achievement-hunter",
+    name: "Achievement Hunter",
+    kind: "title",
+    description: "Earned by building a substantial Achievement Point total.",
+  },
+  {
     id: "badge-trawler-hand",
     name: "Trawler Hand",
     kind: "profile-badge",

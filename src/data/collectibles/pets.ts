@@ -57,6 +57,7 @@ export const petsCollectibles: Collectible[] = [
     icon: "assets/icons/pets/compass-crab.webp",
     cost: 26_000,
     rarity: "Uncommon",
+    tags: ["aquatic"],
     requirements: [{ type: "skill", skillId: "fishing", level: 28 }],
   },
 {
@@ -68,6 +69,7 @@ export const petsCollectibles: Collectible[] = [
     icon: "assets/icons/pets/pet-trawler-gull.webp",
     cost: 0,
     rarity: "Rare",
+    tags: ["aquatic", "adventure-drop"],
     requirements: [{ type: "skill", skillId: "fishing", level: 40 }],
     source: { type: "activity", activityId: "fishers-trawler", label: "Fisher's Trawler" },
   },
