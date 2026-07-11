@@ -144,7 +144,7 @@ Implemented early systems:
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
 - Content Mastery is derived from saved undiscounted base RAP investment. Each activity has one unique track with configurable ratio thresholds for Level 0-50 and centrally capped passive modifiers. Mastery is earned only by that activity, only affects that activity, and is never an entry requirement.
 - Global Chaser items use one unique Collectible ID, fixed denominator, explicit eligible activity IDs, and account-wide ownership. Every source rolls independently; there are no Roll Units, Bad Luck Protection, or duplicate awards.
-- Specializations are data-driven Level 1-120 sub-disciplines. They auto-unlock from parent Skill level, cannot use direct RAP training, and gain additional XP from eligible World activities. Active runs snapshot eligible Specializations at start.
+- Specializations are data-driven Level 1-120 sub-disciplines. All 30 Skills currently have exactly three broad tracks with provisional parent-Skill unlocks at Levels 30, 60, and 90. They auto-unlock, cannot use direct RAP training, and gain additional XP only from eligible World activities. Active runs snapshot eligible Specializations at start; only Maritime Fishing currently has an XP source.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
 - Skill Capes derive from canonical Skill XP: Level 99 grants the normal Cape and Level 120 grants the Master Cape. All 60 are data-driven and use visible Skill-specific emblems over shared Cape silhouettes.
 - Achievements are typed data under `src/data/achievements.ts`. Generic conditions cover RAP, Skill levels, total level, filtered collection counts/completion, Sets, Adventure runs, Mastery, and AP thresholds.
@@ -592,6 +592,14 @@ Candidate combined skill roster to finalize:
 - Why it works: Specializations provide a reusable progression bridge without coupling content into families; a run-start snapshot prevents retroactive XP when a parent Skill unlocks mid-run. Global ownership makes a Chaser immediately owned in every eligible source, while independent fixed rolls preserve each activity's identity. Deterministic parents keep both the app Back button and browser Back predictable.
 - Files involved: `src/data/specializations.ts`, `src/specializations.ts`, `src/data/chaserItems.ts`, `src/chasers.ts`, `src/activities.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, tests, and the persistent project documents.
 - Validation: `npm run check` passed with lint, 41 tests, production build, and icon preparation. `npm run test:coverage` passed with 71.25% statement coverage. In-app browser QA at 390px and 320px covered Specialization unlock/detail UI, hierarchical Back, Fisher's Trawler XP sections, Requirement info history, the fixed 1/25,000 Storm Harpoon Chaser, responsive one-column Specialization layout, horizontal overflow, and browser warnings/errors.
+
+2026-07-11: Complete provisional Skill Specialization catalog.
+
+- Original problem: only Fishing exposed a Specialization, so the intended second progression layer was invisible across most of the Skill catalog and could not guide future World-content planning.
+- Successful solution: define exactly three broad Specializations for each of the 30 Skills, using provisional parent-Skill unlock milestones at Levels 30, 60, and 90. The catalog contains 90 stable IDs and reuses each parent Skill's icon until dedicated art is justified. Unconnected Specialization details explicitly state that no World XP source is connected yet.
+- Why it works: broad domains such as `Fortification`, `Ancient Mysteries`, and `Abyssal Weaving` can support multiple independent Adventures, Minigames, Quests, or Bosses without creating content families. Existing saves normalize all new XP keys to zero automatically, so no save-version bump or retroactive progress is required.
+- Files involved: `src/data/specializations.ts`, `src/data/contentTypes.ts`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, `tests/content.test.ts`, `tests/save.test.ts`, `game_design.md`, `roadmap.md`, and `project_memory.md`.
+- Validation: `npm run check`, `npm run test:coverage` with 71.25% statement coverage, and in-app browser QA at 390px and 320px. QA confirmed 30 indicator groups and 90 dots, readable two-column/one-column layouts, the locked detail state, explicit empty-source messaging, no horizontal overflow, and no browser warnings or errors.
 
 ## Known Issues
 

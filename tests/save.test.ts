@@ -10,6 +10,7 @@ import {
 } from "../src/save";
 import { xpForLevel } from "../src/xp";
 import { TRAINING_WINDOW_HOURS } from "../src/training";
+import { SPECIALIZATIONS } from "../src/data";
 
 class MemoryStorage implements StorageLike {
   private values = new Map<string, string>();
@@ -52,6 +53,7 @@ describe("save system", () => {
     expect(imported?.ownedSkillCapes).toEqual([]);
     expect(imported?.notifiedSkillCapeIds).toEqual([]);
     expect(imported?.specializationXp["maritime-fishing"]).toBe(0);
+    expect(Object.keys(imported?.specializationXp ?? {})).toHaveLength(SPECIALIZATIONS.length);
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 

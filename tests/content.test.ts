@@ -140,6 +140,19 @@ describe("content catalog", () => {
     }
   });
 
+  it("provides three broad specialization milestones for every Skill", () => {
+    expect(SPECIALIZATIONS).toHaveLength(skills.length * 3);
+    for (const skill of skills) {
+      const skillSpecializations = SPECIALIZATIONS.filter((specialization) => specialization.parentSkillId === skill.id);
+      expect(skillSpecializations, `${skill.name} specialization count`).toHaveLength(3);
+      expect(skillSpecializations.map((specialization) => specialization.unlockLevel)).toEqual([30, 60, 90]);
+      for (const specialization of skillSpecializations) {
+        expect(specialization.name.trim().length).toBeGreaterThan(2);
+        expect(specialization.description.trim().length).toBeGreaterThan(20);
+      }
+    }
+  });
+
   it("keeps category definitions aligned with the catalog", () => {
     const categoryIds = new Set(categories.map((category) => category.id));
     for (const item of collectibles) expect(categoryIds.has(item.category)).toBe(true);

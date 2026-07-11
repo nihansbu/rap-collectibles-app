@@ -431,7 +431,8 @@ Design rules:
 - Specializations are broad sub-disciplines linked to one parent Skill. They unlock automatically from parent Skill levels and have their own Level 1-120 XP using the same curve.
 - Specializations cannot be trained with the 72-hour RAP action. They gain additional XP from eligible World activities and are intended to progress more slowly than parent Skills.
 - Specialization eligibility is captured when a run starts. Locked tracks receive no XP and no retroactive credit.
-- The first playable pilot is `Maritime Fishing`, unlocked at Fishing 30 and trained by Fisher's Trawler.
+- Every current Skill has three broad Specializations at provisional parent-Skill unlock Levels 30, 60, and 90. Names and unlock levels may be revised when concrete World content is connected.
+- `Maritime Fishing` is the first connected Specialization. It unlocks at Fishing 30 and is trained by Fisher's Trawler; the remaining catalog entries deliberately have no XP source yet.
 - XP/hour should be conservative because later real-world activity can generate roughly 20,000 to 50,000 RAP/hour. Current XP rates per active skill are:
   - Level 1-9: 4,000 XP/hour
   - Level 10-29: 6,000 XP/hour

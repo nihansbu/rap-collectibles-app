@@ -3420,6 +3420,15 @@ button,
 
 .specialization-info-list span,
 .specialization-sources span { color: var(--color-muted); }
+.specialization-empty-source {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--color-text, #f4f0df) 16%, transparent);
+  border-radius: 9px;
+  color: var(--color-muted);
+  font-size: .82rem;
+  text-align: center;
+}
 .reward-subheading { margin-top: 14px; }
 .specialization-reward small { color: var(--color-muted); }
 .specialization-reward.locked { opacity: .58; }

@@ -38,10 +38,8 @@ export type ChaserItemDefinition = {
   eligibleActivityIds: string[];
 };
 
-export type SpecializationId = "maritime-fishing";
-
 export type SpecializationDefinition = {
-  id: SpecializationId;
+  id: string;
   parentSkillId: SkillId;
   name: string;
   description: string;

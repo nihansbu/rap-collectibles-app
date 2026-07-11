@@ -1299,10 +1299,10 @@ function SpecializationDetailView({
       </div>
       <div className="specialization-sources">
         <h3>XP Sources</h3>
-        {sources.map((activity) => {
+        {sources.length > 0 ? sources.map((activity) => {
           const reward = activity.specializationXpRewards.find((entry) => entry.specializationId === specializationId)!;
           return <div key={activity.id}><span>{activity.name}</span><strong>+{Math.round(reward.share * 100)}% base XP</strong></div>;
-        })}
+        }) : <p className="specialization-empty-source">No World XP source connected yet.</p>}
       </div>
     </section>
   );

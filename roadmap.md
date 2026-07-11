@@ -35,6 +35,7 @@ Acceptance criteria:
 - [x] Present primary Skill and Collectible artwork on their detail pages, remove the Skill-detail Vault block, and eliminate the separate primary image-preview step.
 - [x] Route every Collectible purchase through its detail panel, remove tile Quick Buy, prevent owned items from reopening purchase confirmation, and simplify Skill training to one 72-hour Start/Stop action.
 - [x] Add the first playable Skill Specialization pilot: Maritime Fishing unlocks from Fishing 30, uses the main Level 1-120 XP curve, gains additional XP from Fisher's Trawler, and has compact overview/detail UI.
+- [x] Populate every Skill with three broad provisional Specializations at parent-Skill Levels 30, 60, and 90, while leaving unconnected tracks visible but without XP sources.
 - [x] Make topbar and browser Back follow deterministic hierarchy, including Specialization-to-Skill, detail-to-list, Vault children-to-Vault, and utility origin restoration.
 
 Acceptance criteria:
@@ -48,7 +49,7 @@ Acceptance criteria:
 
 ## Later: Content Expansion
 
-- Add 3-5 broad, content-supported Specializations per Skill only as playable XP sources become available.
+- Connect the provisional Specialization catalog to suitable Adventures, Minigames, Quests, and Bosses; revise names or unlock levels where actual content requires it.
 - Minigames, Quests, and Bossing as independent activities using shared account Skills, Specializations, Collectibles, and explicit prerequisites.
 - Skill Mastery 1-100 after normal Level 120.
 - More Heroes, Sets, Profile rewards, Themes, Tile Styles, and unlock animations.

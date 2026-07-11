@@ -163,7 +163,8 @@ export const handbookEntries: HandbookEntry[] = [
         paragraphs: [
           "A specialization unlocks automatically when its parent Skill reaches the listed level. It has its own XP and Level 1-120 progression, but it cannot be trained with RAP directly.",
           "Eligible World activities award specialization XP in addition to their core Skill XP. Eligibility is fixed when a run starts, and locked specializations receive no retroactive XP.",
-          "Maritime Fishing is the first playable specialization. Fisher's Trawler awards it 25% additional base XP while its normal Fishing and Cooking split remains 100%.",
+          "Every Skill currently has three broad specialization tracks, unlocked at parent Skill Levels 30, 60, and 90. These unlock levels are provisional while their World content is developed.",
+          "Maritime Fishing is the first connected specialization. Fisher's Trawler awards it 25% additional base XP while its normal Fishing and Cooking split remains 100%. Tracks without a connected XP source are visible for planning but cannot gain XP yet.",
         ],
       },
     ],
