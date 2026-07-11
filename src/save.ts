@@ -1,19 +1,20 @@
 import {
   GAMEPLAY_ACTIVITIES,
   getActivity,
-  processActiveActivityRuns,
   seedFromString,
   type ActiveActivityRun,
   type ActivityRunResult,
 } from "./activities";
-import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SKILL_CAPES, SPECIALIZATIONS, skills, type SkillId, type SpecializationId } from "./data";
+import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, QUESTS, SKILL_CAPES, SPECIALIZATIONS, skills, type SkillId, type SpecializationId } from "./data";
 import { reconcileAchievements } from "./achievements";
 import { reconcileUnlockedSkillCapes } from "./skillCapes";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
 import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
-import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings, TRAINING_WINDOW_HOURS } from "./training";
+import { type ActiveTraining, MAX_ACTIVE_TRAININGS, TRAINING_WINDOW_HOURS } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
 import { createEmptySpecializationXp } from "./specializations";
+import { type ActiveQuest, MAX_ACTIVE_QUESTS } from "./quests";
+import { processPlayerProgress } from "./progress";
 
 export type PlayerState = {
   rp: number;
@@ -35,6 +36,9 @@ export type PlayerState = {
   achievementPoints: number;
   ownedSkillCapes: string[];
   notifiedSkillCapeIds: string[];
+  activeQuests: ActiveQuest[];
+  completedQuests: Record<string, number>;
+  notifiedQuestIds: string[];
 };
 
 type SavePlayerV1 = {
@@ -85,6 +89,12 @@ type SavePlayerV9 = SavePlayerV8 & {
 
 type SavePlayerV10 = SavePlayerV9 & {
   specializationXp?: Partial<Record<SpecializationId, number>>;
+};
+
+type SavePlayerV11 = SavePlayerV10 & {
+  activeQuests?: ActiveQuest[];
+  completedQuests?: Record<string, number>;
+  notifiedQuestIds?: string[];
 };
 
 type SaveFileV1 = {
@@ -152,6 +162,13 @@ type SaveFileV10 = {
   player: SavePlayerV10;
 };
 
+type SaveFileV11 = {
+  version: 11;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV11;
+};
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type SaveSnapshot = {
@@ -164,13 +181,17 @@ export type SaveWriteResult =
   | { ok: true; revision: number; savedAt: string }
   | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
 
-export const CURRENT_SAVE_VERSION = 10;
-export const SAVE_KEY = "rap-collectibles.save.v10";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v10";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v10.1", "rap-collectibles.save.backup.v10.2"];
-const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v10.timestamp";
+export const CURRENT_SAVE_VERSION = 11;
+export const SAVE_KEY = "rap-collectibles.save.v11";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v11";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v11.1", "rap-collectibles.save.backup.v11.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v11.timestamp";
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v10",
+  "rap-collectibles.save.lastKnownGood.v10",
+  "rap-collectibles.save.backup.v10.1",
+  "rap-collectibles.save.backup.v10.2",
   "rap-collectibles.save.v9",
   "rap-collectibles.save.lastKnownGood.v9",
   "rap-collectibles.save.backup.v9.1",
@@ -220,6 +241,7 @@ const specializationIds = new Set(SPECIALIZATIONS.map((specialization) => specia
 const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
 const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
 const skillCapeIds = new Set(SKILL_CAPES.map((cape) => cape.id));
+const questIds = new Set(QUESTS.map((quest) => quest.id));
 
 export function createInitialPlayerState(): PlayerState {
   return {
@@ -242,6 +264,9 @@ export function createInitialPlayerState(): PlayerState {
     achievementPoints: 0,
     ownedSkillCapes: [],
     notifiedSkillCapeIds: [],
+    activeQuests: [],
+    completedQuests: {},
+    notifiedQuestIds: [],
   };
 }
 
@@ -260,7 +285,7 @@ export function loadPlayerSnapshot(storage: StorageLike | null = getStorage()): 
     if (snapshot) {
       return {
         ...snapshot,
-        player: reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player)))),
+        player: reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processPlayerProgress(snapshot.player))),
       };
     }
   }
@@ -302,12 +327,12 @@ export function savePlayerState(
 }
 
 export function exportPlayerState(player: PlayerState): string {
-  return serializeSave(reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(player)))), 0, new Date().toISOString());
+  return serializeSave(reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processPlayerProgress(player))), 0, new Date().toISOString());
 }
 
 export function importPlayerState(rawSave: string): PlayerState | null {
   const snapshot = parseSaveSnapshot(rawSave);
-  return snapshot ? reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processActiveActivityRuns(processActiveTrainings(snapshot.player)))) : null;
+  return snapshot ? reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(processPlayerProgress(snapshot.player))) : null;
 }
 
 function getStorage(): StorageLike | null {
@@ -324,7 +349,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
-  const saveFile: SaveFileV10 = {
+  const saveFile: SaveFileV11 = {
     version: CURRENT_SAVE_VERSION,
     revision,
     savedAt,
@@ -348,17 +373,17 @@ export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 | SaveFileV9 | SaveFileV10 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 | SaveFileV9 | SaveFileV10 | SaveFileV11 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8 | SavePlayerV9 | SavePlayerV10): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8 | SavePlayerV9 | SavePlayerV10 | SavePlayerV11): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -398,6 +423,8 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
   const migratedFromLegacyAchievements = !("completedAchievements" in player);
   const ownedSkillCapes = normalizeSkillCapeIds("ownedSkillCapes" in player ? player.ownedSkillCapes : undefined);
   const migratedFromLegacySkillCapes = !("ownedSkillCapes" in player);
+  const completedQuests = normalizeQuestCompletions("completedQuests" in player ? player.completedQuests : undefined);
+  const migratedFromLegacyQuests = !("completedQuests" in player);
   const normalizedPlayer: PlayerState = {
     rp: sanitizeNumber(player.rp, 0, MAX_RAP),
     lifetimeRap: sanitizeNumber("lifetimeRap" in player ? player.lifetimeRap : player.rp, 0, MAX_RAP),
@@ -418,6 +445,9 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     achievementPoints: 0,
     ownedSkillCapes,
     notifiedSkillCapeIds: [],
+    activeQuests: normalizeActiveQuests("activeQuests" in player ? player.activeQuests : undefined, completedQuests),
+    completedQuests,
+    notifiedQuestIds: [],
   };
 
   const reconciled = reconcileUnlockedSkillCapesOnPlayer(reconcileAchievements(normalizedPlayer));
@@ -429,11 +459,16 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     ? reconciled.ownedSkillCapes
     : normalizeSkillCapeIds("notifiedSkillCapeIds" in player ? player.notifiedSkillCapeIds : undefined)
       .filter((id) => reconciled.ownedSkillCapes.includes(id));
+  const notifiedQuestIds = migratedFromLegacyQuests
+    ? Object.keys(reconciled.completedQuests)
+    : normalizeQuestIds("notifiedQuestIds" in player ? player.notifiedQuestIds : undefined)
+      .filter((id) => reconciled.completedQuests[id] !== undefined);
 
   return {
     ...reconciled,
     notifiedAchievementIds,
     notifiedSkillCapeIds,
+    notifiedQuestIds,
     selectedCosmetics: normalizeSelectedCosmetics(
       "selectedCosmetics" in player ? player.selectedCosmetics : undefined,
       reconciled.unlockedCosmetics,
@@ -471,6 +506,53 @@ function normalizeSkillCapeIds(value: unknown) {
   return Array.isArray(value)
     ? [...new Set(value)].filter((id): id is string => typeof id === "string" && skillCapeIds.has(id))
     : [];
+}
+
+function normalizeQuestIds(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value)].filter((id): id is string => typeof id === "string" && questIds.has(id))
+    : [];
+}
+
+function normalizeQuestCompletions(value: unknown) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return Object.fromEntries(
+    Object.entries(source)
+      .filter(([id, completedAt]) => questIds.has(id) && typeof completedAt === "number" && Number.isFinite(completedAt))
+      .map(([id, completedAt]) => [id, sanitizeInteger(completedAt, 0, Number.MAX_SAFE_INTEGER)]),
+  );
+}
+
+function normalizeActiveQuests(value: unknown, completedQuests: Record<string, number>): ActiveQuest[] {
+  if (!Array.isArray(value)) return [];
+  const usedQuestIds = new Set<string>();
+  const normalized: ActiveQuest[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object") continue;
+    const candidate = entry as ActiveQuest;
+    const definition = getQuestDefinition(candidate.questId);
+    if (!definition || typeof candidate.id !== "string" || usedQuestIds.has(candidate.questId)) continue;
+    if (completedQuests[candidate.questId] !== undefined) continue;
+    if (!Number.isFinite(candidate.startedAt) || !Number.isFinite(candidate.lastProcessedAt)) continue;
+    if (candidate.lastProcessedAt < candidate.startedAt) continue;
+    const fundedMs = sanitizeNumber(candidate.fundedMs, 0, definition.durationMs);
+    if (fundedMs >= definition.durationMs) continue;
+    normalized.push({
+      id: candidate.id,
+      questId: candidate.questId,
+      startedAt: sanitizeInteger(candidate.startedAt, 0, Number.MAX_SAFE_INTEGER),
+      lastProcessedAt: sanitizeInteger(candidate.lastProcessedAt, 0, Number.MAX_SAFE_INTEGER),
+      fundedMs,
+      rapSpent: sanitizeNumber(candidate.rapSpent, 0, definition.totalRapCost),
+    });
+    usedQuestIds.add(candidate.questId);
+    if (normalized.length >= MAX_ACTIVE_QUESTS) break;
+  }
+  return normalized;
+}
+
+function getQuestDefinition(questId: unknown) {
+  return typeof questId === "string" ? QUESTS.find((quest) => quest.id === questId) : undefined;
 }
 
 function reconcileUnlockedSkillCapesOnPlayer(player: PlayerState): PlayerState {

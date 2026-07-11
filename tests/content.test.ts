@@ -11,6 +11,9 @@ import {
   COSMETICS,
   ACHIEVEMENTS,
   SPECIALIZATIONS,
+  QUESTS,
+  QUEST_CHAPTERS,
+  QUEST_CAMPAIGNS,
   SKILL_CAPES,
   skills,
 } from "../src/data";
@@ -157,5 +160,65 @@ describe("content catalog", () => {
     const categoryIds = new Set(categories.map((category) => category.id));
     for (const item of collectibles) expect(categoryIds.has(item.category)).toBe(true);
     expect(categoryIds.has("skills")).toBe(true);
+  });
+
+  it("keeps the Quest campaign graph valid and acyclic", () => {
+    const questIds = new Set(QUESTS.map((quest) => quest.id));
+    const chapterIds = new Set(QUEST_CHAPTERS.map((chapter) => chapter.id));
+    const campaignIds = new Set(QUEST_CAMPAIGNS.map((campaign) => campaign.id));
+    expect(questIds.size).toBe(QUESTS.length);
+    expect(chapterIds.size).toBe(QUEST_CHAPTERS.length);
+    expect(campaignIds.size).toBe(QUEST_CAMPAIGNS.length);
+
+    for (const campaign of QUEST_CAMPAIGNS) {
+      expect(campaign.chapterIds.length).toBeGreaterThanOrEqual(2);
+      expect(campaign.chapterIds.length).toBeLessThanOrEqual(7);
+      expect(questIds.has(campaign.finaleQuestId)).toBe(true);
+      const campaignFinales = QUESTS.filter((quest) => quest.campaignId === campaign.id && quest.campaignFinale);
+      expect(campaignFinales).toHaveLength(1);
+      expect(campaignFinales[0]).toMatchObject({ id: campaign.finaleQuestId, chapterId: null });
+      for (const chapterId of campaign.chapterIds) expect(chapterIds.has(chapterId)).toBe(true);
+    }
+    for (const chapter of QUEST_CHAPTERS) {
+      expect(campaignIds.has(chapter.campaignId)).toBe(true);
+      expect(chapter.questIds.length).toBeGreaterThanOrEqual(9);
+      expect(chapter.questIds.length).toBeLessThanOrEqual(25);
+      for (const questId of chapter.questIds) expect(questIds.has(questId)).toBe(true);
+    }
+    for (const quest of QUESTS) {
+      expect(campaignIds.has(quest.campaignId)).toBe(true);
+      if (quest.chapterId) expect(chapterIds.has(quest.chapterId)).toBe(true);
+      if (quest.campaignFinale) expect(quest.chapterId).toBeNull();
+      expect(quest.totalRapCost).toBeGreaterThan(0);
+      expect(quest.durationMs).toBeGreaterThan(0);
+      expect(quest.lane).toBeGreaterThanOrEqual(0);
+      expect(quest.lane).toBeLessThanOrEqual(2);
+      for (const requirement of quest.requirements) {
+        if (requirement.type === "quest") expect(questIds.has(requirement.questId)).toBe(true);
+        if (requirement.type === "chapter") expect(chapterIds.has(requirement.chapterId)).toBe(true);
+        if (requirement.type === "collectible") expect(collectibleIds.has(requirement.collectibleId)).toBe(true);
+        if (requirement.type === "skill") expect(skillIds.has(requirement.skillId)).toBe(true);
+        if (requirement.type === "specialization") expect(specializationIds.has(requirement.specializationId)).toBe(true);
+      }
+      for (const reward of quest.rewards) {
+        if (reward.type === "collectible") expect(collectibleIds.has(reward.collectibleId)).toBe(true);
+        if (reward.type === "cosmetic") expect(cosmeticIds.has(reward.cosmeticId)).toBe(true);
+        if (reward.type === "skill-xp") expect(skillIds.has(reward.skillId)).toBe(true);
+        if (reward.type === "specialization-xp") expect(specializationIds.has(reward.specializationId)).toBe(true);
+      }
+    }
+
+    const dependencies = new Map(QUESTS.map((quest) => [quest.id, quest.requirements.filter((requirement) => requirement.type === "quest").map((requirement) => requirement.questId)]));
+    const visiting = new Set<string>();
+    const visited = new Set<string>();
+    function visit(id: string) {
+      expect(visiting.has(id), `Quest cycle at ${id}`).toBe(false);
+      if (visited.has(id)) return;
+      visiting.add(id);
+      for (const dependency of dependencies.get(id) ?? []) visit(dependency);
+      visiting.delete(id);
+      visited.add(id);
+    }
+    for (const id of questIds) visit(id);
   });
 });

@@ -23,6 +23,7 @@ Long-term loop:
 4. Player spends RAP to unlock direct-purchase collectibles or run Adventures.
 5. Adventures award skill XP, Mastery, and can drop exclusive collectibles.
 6. Player watches Codex completion increase.
+7. Player keeps up to three costly one-time Quests progressing in the background for story, Quest Points, XP, and rare profile rewards.
 
 ## RAP
 
@@ -33,6 +34,7 @@ Design rules:
 - RAP is the only currency at the start.
 - RAP can be used for all purchases and skill training.
 - RAP can be spent on repeatable gameplay Adventures.
+- RAP continuously funds active one-time Quests at each Quest's displayed hourly rate.
 - A simple RAP grant button remains available only as a development tool; it is not part of the production player flow.
 - The first player-facing earning placeholder is a manual `Log Activity` panel. Each tap logs 1 hour and grants RAP immediately.
 - Real activity tracking can be added later without changing the core economy.
@@ -77,6 +79,8 @@ Current Handbook topics:
 - RAP
 - Skills
 - Adventures
+- Quests and Campaigns
+- Quest Funding and States
 - Tools
 - Account Bonuses
 - Drops
@@ -298,7 +302,7 @@ Race names can be specific variants while the type remains the broader fantasy f
 
 `World` is the home for repeatable gameplay systems. It is separate from `Collectibles`, because `Collectibles` answers "What do I own?", while `World` answers "What can I do?"
 
-The first World subpage is `Adventures`. Future siblings include `Minigames` and `Bossing`.
+The implemented World subpages are repeatable `Adventures` and one-time long-running `Quests`. Future siblings include `Minigames` and `Bossing`.
 
 Adventure design rules:
 
@@ -349,6 +353,41 @@ Bad Luck Protection:
 - Example: a `1 / 500` drop becomes `3 / 500` at 1,000 completed runs.
 - Adventure Drop Tables should keep this compact: local drops show their current chance and `Protected` only when active; global Chasers show their fixed chance and `Chaser` or `Owned`.
 - Bad Luck Protection does not apply to global Chaser items.
+
+## Quests And Campaigns
+
+`Quests` is the second implemented World system. Quests are expensive one-time background journeys, not Achievements, Adventures, Collectibles, or Content Mastery tracks.
+
+Structure and presentation:
+
+- The Quest overview shows permanent Quest Points, the number of active Quests, and compact Campaign tiles.
+- A Campaign contains two to seven ordered Chapters and exactly one Campaign Finale.
+- A released normal Chapter contains nine to twenty-five Quests. The first pilot uses nine Quests in each of three Chapters.
+- Campaign tiles show one dot per Chapter and an indigo outline while any contained Quest is active.
+- Chapter tiles lead to a vertical three-lane Quest tree. The tree may branch and converge, but each Quest remains a single deterministic node.
+- Quest detail pages lead with story and status, then show requirements, total RAP cost, duration, derived RAP/hour, rewards, and the Start action.
+- The first complete pilot is `The Slayer's Oath`: `First Blood`, `Contracts in Shadow`, `Beasts Beyond the Veil`, and finale `The Apex Covenant`.
+
+Quest rules:
+
+- States are grey `Locked`, gold `Ready`, indigo `Active`, muted indigo `Waiting for RAP`, and green `Completed`.
+- Requirements can reference Skills, Specializations, Collectibles, prior Quests, completed Chapters, or Quest Points.
+- Starting a Quest requires all requirements, a free active slot, and enough RAP to cover one combined hour across all active Quests after the new Quest is added.
+- A maximum of three Quests can be active in parallel.
+- Active Quests share elapsed wall-clock time fairly. Their RAP/hour rates are summed, and all receive the same funded duration until RAP is exhausted.
+- At zero RAP, Quests remain active in a waiting state. New RAP resumes progress from that moment; paused time is never granted or charged retroactively.
+- A started Quest cannot be cancelled or manually paused.
+- Completion is timestamp-based, deterministic, idempotent, and safe across reloads and tabs.
+- Quests have no player-entered objectives, random drops, Bad Luck Protection, route variants, or Content Mastery.
+
+Quest rewards and progression:
+
+- Quest Points are a permanent non-spendable score, entirely separate from Achievement Points and RAP.
+- Quest Points are derived from completed Quest rewards plus Chapter and Campaign completion bonuses.
+- Individual Quests can grant Quest Points, Skill XP, Specialization XP, RAP, Cosmetics, or exceptional Collectibles.
+- Chapter completion awards bonus Quest Points. Campaign completion requires its Finale and awards a further bonus.
+- Major profile rewards belong mainly to Chapter or Campaign milestones. `The Apex Covenant` grants the `Oathbound` Title.
+- Balance values in the pilot are provisional until pacing is tested against real RAP earning.
 
 ## Content Mastery
 
@@ -459,7 +498,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
-- Save v10 includes current RAP, lifetime RAP, owned collectibles, Skill and Specialization XP, active Skill training jobs, active Adventure runs with run-start Specialization eligibility, run counts, recent results, recent manual Activity Log entries, local Content Mastery, Cosmetic selections, Achievement completions, notification acknowledgements, AP, selected Title, owned Skill Capes, and Cape notification acknowledgements. Saves v1-v9 migrate forward without retroactive Specialization XP; legacy shared Chaser Roll Units are discarded.
+- Save v11 includes current RAP, lifetime RAP, owned collectibles, Skill and Specialization XP, active Skill training jobs, active Adventure runs with run-start Specialization eligibility, active and completed Quests, Quest notification acknowledgements, run counts, recent results, recent manual Activity Log entries, local Content Mastery, Cosmetic selections, Achievement completions, notification acknowledgements, AP, selected Title, owned Skill Capes, and Cape notification acknowledgements. Saves v1-v10 migrate forward without fabricated Quest progress; legacy shared Chaser Roll Units are discarded.
 - Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -573,9 +612,10 @@ Build only:
 - Button to gain 10,000 RAP.
 - Manual one-hour activity logging that grants RAP.
 - Mount purchasing with RAP.
-- Main Menu with Collectibles and Adventure.
+- Main Menu ordered as Account, World, Collectibles, and Log Activity. Account shows Profile, Bonuses, then Achievements; World shows Adventures and Quests as equal destinations.
 - Contextual Handbook available from every topbar, plus a searchable complete wiki index.
 - Repeatable Adventures under World.
+- Long-running one-time Quests, Campaigns, Chapter grids, and Quest trees under World.
 - Adventure-only Collectible drops visible in their normal Codex categories.
 - Bad Luck Protection display for Adventure drops.
 - Skill levels required by some mounts.
@@ -585,11 +625,10 @@ Build only:
 - All RuneScape/Old School RuneScape skills, max level 120.
 - Shared collection page pattern for Heroes, Pets, and Mounts.
 
-Avoid for MVP:
+Still out of scope for the current prototype:
 
 - Real activity tracking.
 - Combat.
-- Quests.
 - Inventory complexity.
 - Equipment stats.
 - Social systems.

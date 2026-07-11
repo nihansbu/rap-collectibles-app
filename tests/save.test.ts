@@ -55,6 +55,9 @@ describe("save system", () => {
     expect(imported?.specializationXp["maritime-fishing"]).toBe(0);
     expect(Object.keys(imported?.specializationXp ?? {})).toHaveLength(SPECIALIZATIONS.length);
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
+    expect(imported?.activeQuests).toEqual([]);
+    expect(imported?.completedQuests).toEqual({});
+    expect(imported?.notifiedQuestIds).toEqual([]);
   });
 
   it("rejects a stale writer instead of overwriting a newer revision", () => {
@@ -87,8 +90,27 @@ describe("save system", () => {
     player.contentMasteryPoints["mastery-fishers-trawler"] = 250_000;
 
     const exported = exportPlayerState(player);
-    expect(JSON.parse(exported).version).toBe(10);
+    expect(JSON.parse(exported).version).toBe(11);
     expect(importPlayerState(exported)).toEqual(player);
+  });
+
+  it("migrates version 10 saves without inventing Quest progress", () => {
+    const player = createInitialPlayerState();
+    const legacyPlayer = { ...player } as Record<string, unknown>;
+    delete legacyPlayer.activeQuests;
+    delete legacyPlayer.completedQuests;
+    delete legacyPlayer.notifiedQuestIds;
+
+    const imported = importPlayerState(JSON.stringify({
+      version: 10,
+      revision: 7,
+      savedAt: "2026-07-11T00:00:00.000Z",
+      player: legacyPlayer,
+    }));
+
+    expect(imported?.activeQuests).toEqual([]);
+    expect(imported?.completedQuests).toEqual({});
+    expect(imported?.notifiedQuestIds).toEqual([]);
   });
 
   it("caps legacy stacked training windows at 72 hours", () => {

@@ -20,6 +20,12 @@ export const COSMETICS: CosmeticDefinition[] = [
     description: "Earned by building a substantial Achievement Point total.",
   },
   {
+    id: "title-oathbound",
+    name: "Oathbound",
+    kind: "title",
+    description: "Earned by restoring the Slayer's Oath through its final campaign quest.",
+  },
+  {
     id: "badge-trawler-hand",
     name: "Trawler Hand",
     kind: "profile-badge",

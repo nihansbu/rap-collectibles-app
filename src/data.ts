@@ -9,6 +9,8 @@ export type { SpecializationId } from "./data/specializations";
 export { COSMETICS } from "./data/cosmetics";
 export { ACHIEVEMENTS } from "./data/achievements";
 export { SKILL_CAPES } from "./data/skillCapes";
+export { QUESTS, QUEST_CHAPTERS, QUEST_CAMPAIGNS } from "./data/quests";
+export type { QuestCampaignDefinition, QuestChapterDefinition, QuestDefinition, QuestRequirement, QuestReward } from "./data/questTypes";
 export type {
   CollectionSetDefinition,
   CollectionSetReward,

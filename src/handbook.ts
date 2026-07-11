@@ -40,7 +40,7 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Earn Real Life Activity Points, spend them on progression, and grow a permanent collection over time.",
-          "World contains repeatable Adventures, Collectibles contains your Codex and Skills, Account shows permanent bonuses and presentation rewards, and Log Activity turns real-life activities into RAP.",
+          "World contains repeatable Adventures and long-running Quests, Collectibles contains your Codex and Skills, Account shows permanent bonuses and presentation rewards, and Log Activity turns real-life activities into RAP.",
         ],
       },
     ],
@@ -54,7 +54,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "RAP means Real Life Activity Points. It is the shared currency for Skill training, direct Collectible unlocks, and repeatable Adventures.",
+          "RAP means Real Life Activity Points. It is the shared currency for Skill training, direct Collectible unlocks, repeatable Adventures, and the funded time of active Quests.",
           "The prototype also includes a temporary plus button that grants 10,000 RAP for testing.",
         ],
       },
@@ -200,6 +200,56 @@ export const handbookEntries: HandbookEntry[] = [
       },
     ],
     relatedEntryIds: ["skill-advantage", "activity-results", "drop-tables", "requirements"],
+  },
+  {
+    id: "quests",
+    title: "Quests and Campaigns",
+    summary: "One-time long-form World content organized into Chapters and Campaigns.",
+    category: "adventure",
+    sections: [
+      {
+        paragraphs: [
+          "Quests are expensive one-time background journeys. Campaigns contain two to seven Chapters, and every released normal Chapter contains a vertical path of nine to twenty-five Quests.",
+          "A Quest has deterministic requirements, duration, RAP cost, story, and rewards. It has no random drops, Bad Luck Protection, Objectives, or Content Mastery.",
+          "Quest Points are a permanent non-spendable score derived from completed Quests, Chapters, and Campaigns. They are entirely separate from Achievement Points.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["quest-funding", "quest-states", "requirements", "save-progress"],
+  },
+  {
+    id: "quest-funding",
+    title: "Quest Funding",
+    summary: "RAP continuously finances the active time of up to three Quests.",
+    category: "adventure",
+    sections: [
+      {
+        paragraphs: [
+          "A Quest displays its total RAP cost, total duration, and derived RAP per hour. Starting requires enough RAP to fund one combined hour across all active Quests.",
+          "Up to three Quests progress in parallel. Their hourly rates are added together, and all receive the same amount of funded time until RAP runs out.",
+          "An unfunded Quest remains active but waits for RAP. It resumes from the moment new RAP is added; paused time is never charged or granted retroactively. Quests cannot be cancelled or manually paused.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["quests", "quest-states", "rap", "save-progress"],
+  },
+  {
+    id: "quest-states",
+    title: "Quest States",
+    summary: "The consistent colors used across Campaign, Chapter, and Quest screens.",
+    category: "adventure",
+    sections: [
+      {
+        bullets: [
+          "Gray means structural requirements are missing.",
+          "Yellow means requirements are met; the detail page explains any remaining RAP needed to start.",
+          "Indigo means a Quest is active and funded.",
+          "Muted indigo means the Quest is active but waiting for RAP.",
+          "Green means the Quest, Chapter, or Campaign is permanently completed.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["quests", "quest-funding", "codex-states"],
   },
   {
     id: "skill-advantage",
@@ -435,14 +485,20 @@ const contextDefinitions: Record<string, HandbookContext> = {
   world: {
     id: "world",
     title: "World",
-    intro: "World contains independent Adventures and will later contain Minigames, Quests, and Bossing linked by account Skills, Specializations, Collectibles, and explicit requirements.",
-    entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results"],
+    intro: "World contains repeatable Adventures and one-time long-form Quests linked by account Skills, Specializations, Collectibles, and explicit requirements.",
+    entryIds: ["activities", "quests", "quest-funding", "content-mastery", "requirements", "activity-results"],
   },
   adventures: {
     id: "adventures",
     title: "Adventures",
     intro: "This page lists repeatable Adventures with compact icons, their Mastery rank, run count, availability, and active state.",
     entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results", "drop-tables", "bad-luck-protection"],
+  },
+  quests: {
+    id: "quests",
+    title: "Quests",
+    intro: "Quests are expensive, non-cancellable background journeys arranged into Campaigns, Chapter grids, and vertical Quest trees.",
+    entryIds: ["quests", "quest-funding", "quest-states", "requirements", "rap", "save-progress"],
   },
   bonuses: {
     id: "bonuses",

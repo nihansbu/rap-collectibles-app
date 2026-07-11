@@ -65,8 +65,10 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/economy.ts`: early manual activity RAP rates, activity log types, and collectible rarity cost bands.
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
-- `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system through v10, migrations, validation, revision conflict detection, Achievement and Skill Cape reconciliation, active progress normalization, and throttled backup rotation.
+- `src/pages/`: page-level UI components such as `MainMenuPage`, `QuestsPage`, and `HandbookPage`.
+- `src/quests.ts`: Quest requirements, states, Quest Points, fair parallel RAP funding, timestamp processing, completion, and rewards.
+- `src/progress.ts`: common ordered progress pipeline for active Skill training, Adventures, and Quests before RAP mutations or persistence.
+- `src/save.ts`: versioned local save/load system through v11, migrations, validation, revision conflict detection, Achievement, Skill Cape, and Quest reconciliation, active progress normalization, and throttled backup rotation.
 - `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
 - `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
 - `src/pages/AccountBonusesPage.tsx`: grouped Skill XP, Rolls, Adventure, and Resistance bonus overview.
@@ -94,9 +96,9 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 The first prototype is a mobile-only React app. Navigation is intentionally simple and page-to-page:
 
 - Home page title: `Menu`.
-- The main menu is a compact dashboard based on the approved icon-first mockup. Adventure, direct Collectibles categories, and manual Log Activity use the same unframed section and tile language.
+- The main menu is a compact dashboard based on the approved icon-first mockup. Sections are ordered Account, World, Collectibles, and Log Activity; Account orders Profile, Bonuses, Achievements, while World gives Adventures and Quests equal tiles.
 - The `Collectibles` page is the Codex overview. Main category tiles appear in order: Heroes, Classes, Races, Skills, Tools, Pets, Mounts, Sets.
-- `World` is the gameplay hub. Its first content type is `Adventures`; Minigames and Bossing are future siblings.
+- `World` is the gameplay hub. Implemented content types are repeatable `Adventures` and one-time long-running `Quests`; Minigames and Bossing are future siblings.
 - The `Handbook` is a player-facing contextual wiki for systems that should not clutter the main gameplay UI. Every topbar exposes it through a compact book icon.
 - `Achievements` is an Account dashboard destination; it tracks derived permanent goals and non-spendable AP outside the Codex inventory.
 - No bottom navigation in the first prototype.
@@ -115,7 +117,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Adventure-only collectible drops still appear in their normal Codex categories. Unowned Adventure drops render as red locked tiles with an indigo source strip. Owned Adventure drops render as indigo source-owned tiles. They cannot be bought directly.
 - Tools are standard Collectibles. Some are direct purchases and some are Adventure drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
-- Navigation uses deterministic hierarchy rather than replaying arbitrary browser history: details return to their list, Skill Specialization info returns to its Skill, Adventures return to Menu, and Sets/Skill Capes return to Vault. Handbook and Settings restore one saved origin.
+- Navigation uses deterministic hierarchy rather than replaying arbitrary browser history: Quest detail returns to its Chapter tree (or Campaign for the Finale), Chapter returns to Campaign, Campaign returns to Quests, and Quests returns to Menu. Existing Skill, Collectible, Adventure, and Vault parents remain deterministic; Handbook and Settings restore one saved origin.
 - Tapping any Collectible card opens the full-content detail view under the topbar. Eligible direct purchases are initiated from that detail view and still require confirmation; collection tiles have no Quick Buy path.
 - Tapping an Adventure card opens the compact Adventure detail view. The detail view shows the combined Adventure/Mastery icon, requirements, runtime, XP split, drops, and the Start Run action; tapping a Requirement or Drop opens a focused read-only Info Panel, while tapping the artwork preserves global image inspection.
 - Skill cards open the Skill detail view, where one contextual button starts a 72-hour window or stops active training without penalty.
@@ -132,7 +134,7 @@ Implemented early systems:
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
-- Save v10 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress. v10 adds Specialization XP and run-start eligibility while accepting v1-v9 saves and discarding obsolete shared Chaser Roll Units.
+- Save v11 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress. v11 adds active/completed Quest progress and Quest notification acknowledgements while accepting v1-v10 saves without retroactive Quest credit.
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
@@ -144,18 +146,21 @@ Implemented early systems:
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
 - Content Mastery is derived from saved undiscounted base RAP investment. Each activity has one unique track with configurable ratio thresholds for Level 0-50 and centrally capped passive modifiers. Mastery is earned only by that activity, only affects that activity, and is never an entry requirement.
 - Global Chaser items use one unique Collectible ID, fixed denominator, explicit eligible activity IDs, and account-wide ownership. Every source rolls independently; there are no Roll Units, Bad Luck Protection, or duplicate awards.
+- Quest definitions are typed data under `src/data/quests.ts` and `src/data/questTypes.ts`. `The Slayer's Oath` is the complete pilot with three nine-Quest Chapters and one Finale. `src/quests.ts` derives requirements, status, Quest Points, Chapter/Campaign progress, and deterministic rewards.
+- Up to three active Quests share funded wall-clock duration fairly at their combined RAP/hour rate. When RAP reaches zero, active entries remain waiting and their processing timestamp advances, so later RAP never backcharges paused time. New Quest starts require one combined funded hour across the resulting active set.
+- `src/progress.ts` is the single progress boundary used before RAP grants/spends and save processing. Existing Skill training is processed first, then Adventures, then Quests; fairness is guaranteed among simultaneous Quests.
 - Specializations are data-driven Level 1-120 sub-disciplines. All 30 Skills currently have exactly three broad tracks with provisional parent-Skill unlocks at Levels 30, 60, and 90. They auto-unlock, cannot use direct RAP training, and gain additional XP only from eligible World activities. Active runs snapshot eligible Specializations at start; only Maritime Fishing currently has an XP source.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
 - Skill Capes derive from canonical Skill XP: Level 99 grants the normal Cape and Level 120 grants the Master Cape. All 60 are data-driven and use visible Skill-specific emblems over shared Cape silhouettes.
 - Achievements are typed data under `src/data/achievements.ts`. Generic conditions cover RAP, Skill levels, total level, filtered collection counts/completion, Sets, Adventure runs, Mastery, and AP thresholds.
 - `reconcileAchievements` derives AP from valid completed IDs, iterates chained conditions until stable, grants Cosmetic or exceptional Collectible rewards once, and reconciles downstream Set/Mastery Cosmetics.
-- Save v10 retains completion timestamps, acknowledged Achievement IDs, owned Skill Capes, and acknowledged Cape IDs. Legacy saves backfill eligible Achievements and Capes while suppressing a burst of historical toasts; new completions use timed queues.
+- Save v11 retains completion timestamps, acknowledged Achievement IDs, owned Skill Capes, acknowledged Cape IDs, completed Quest timestamps, and acknowledged Quest IDs. Legacy saves backfill eligible Achievements and Capes while suppressing historical toasts; v1-v10 saves begin with no invented Quest progress.
 - Titles use the existing `CosmeticKind: "title"`, `unlockedCosmetics`, and `selectedCosmetics.titleId` fields. The Profile permits an unlocked Title or no Title.
 - All current Themes are reconciled into every new or migrated save, while Profile Badges remain progression-gated. Storm Weaver is no longer granted by Fishing Trawler Mastery or the Trawler's Wake Set.
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
-- Save v10 persists Specialization XP and active-run eligibility in addition to v9 Skill Cape and v8 Achievement/AP/Title data while migrating v1-v9 saves.
+- Save v11 persists Quest activity and completion in addition to v10 Specialization XP/run eligibility, v9 Skill Cape, and v8 Achievement/AP/Title data while migrating v1-v10 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
-- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 21 reusable entries across five categories, including Vault, Skill Capes, and Icon Inspect, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
+- Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It includes reusable Quest Campaign, Quest Funding, and Quest State entries alongside Vault, Skill Capes, Icon Inspect, and the existing system guides. It supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
 - Skill and Collectible detail pages use a shared 132px primary artwork block above their supporting information. Their list tiles let the surrounding card action run normally; secondary Requirements, Adventure Drops, Capes, and system artwork retain the global Inspect behavior.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
@@ -600,6 +605,14 @@ Candidate combined skill roster to finalize:
 - Why it works: broad domains such as `Fortification`, `Ancient Mysteries`, and `Abyssal Weaving` can support multiple independent Adventures, Minigames, Quests, or Bosses without creating content families. Existing saves normalize all new XP keys to zero automatically, so no save-version bump or retroactive progress is required.
 - Files involved: `src/data/specializations.ts`, `src/data/contentTypes.ts`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, `tests/content.test.ts`, `tests/save.test.ts`, `game_design.md`, `roadmap.md`, and `project_memory.md`.
 - Validation: `npm run check`, `npm run test:coverage` with 71.25% statement coverage, and in-app browser QA at 390px and 320px. QA confirmed 30 indicator groups and 90 dots, readable two-column/one-column layouts, the locked detail state, explicit empty-source messaging, no horizontal overflow, and no browser warnings or errors.
+
+2026-07-12: Quest Campaign foundation and `The Slayer's Oath` pilot.
+
+- Original problem: World needed a long-running background system with meaningful short- and mid-term goals, but the initial Quest mockup overloaded one screen and risked conflating Quests with Achievements, Adventures, or Mastery.
+- Successful solution: add typed Campaign, Chapter, Quest, requirement, and reward definitions; a three-level compact UI; a fair timestamp-based funding engine; derived permanent Quest Points; save v11 migration; contextual Handbook entries; notifications; and one complete three-Chapter pilot with a Campaign Finale and Title reward.
+- Why it works: Campaign tiles keep the overview sparse and scannable, Chapter tiles separate story arcs, and the three-lane tree exposes dependencies only where needed. All active Quests receive equal funded wall time at their combined hourly RAP rate. Processing advances timestamps even while unfunded, preventing retroactive charges or free progress after RAP returns. Completion timestamps and reward reconciliation make reloads idempotent.
+- Files involved: `src/data/questTypes.ts`, `src/data/quests.ts`, `src/quests.ts`, `src/progress.ts`, `src/pages/QuestsPage.tsx`, `src/ui/QuestToast.tsx`, `src/App.tsx`, `src/save.ts`, `src/handbook.ts`, `src/styles.css`, tests, and the persistent project documents.
+- Validation: `npm run check` passed with lint, 50 tests, production build, and 0 missing Collectible icons. `npm run test:coverage` passed with 69.48% statement and 76.07% line coverage. In-app browser QA at 390px and 320px covered overview, Campaign, Chapter tree, detail, active state, deterministic Back hierarchy, horizontal overflow, and clean browser logs. Production deployment is recorded with the completing commit.
 
 ## Known Issues
 

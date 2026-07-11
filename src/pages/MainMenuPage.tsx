@@ -1,4 +1,4 @@
-import { Archive, ChartNoAxesColumnIncreasing, Compass, Gem, Shield, Trophy, UserRound } from "lucide-react";
+import { Archive, ChartNoAxesColumnIncreasing, Compass, ScrollText, Trophy, UserRound } from "lucide-react";
 import type { CategoryId } from "../data";
 import { activityRap, type ActivityOption } from "../economy";
 import { formatNumber } from "../format";
@@ -18,10 +18,12 @@ export function MainMenuPage({
   categoryProgress,
   totalActivityRuns,
   activeActivityCount,
-  showFutureFeatures,
+  questPoints,
+  activeQuestCount,
   onLogActivity,
   onInspectActivity,
   onOpenActivities,
+  onOpenQuests,
   onOpenCategory,
   onOpenBonuses,
   onOpenVault,
@@ -34,10 +36,12 @@ export function MainMenuPage({
   categoryProgress: DashboardCategoryProgress[];
   totalActivityRuns: number;
   activeActivityCount: number;
-  showFutureFeatures: boolean;
+  questPoints: number;
+  activeQuestCount: number;
   onLogActivity: (activity: ActivityOption) => void;
   onInspectActivity: (activity: ActivityOption) => void;
   onOpenActivities: () => void;
+  onOpenQuests: () => void;
   onOpenCategory: (id: CategoryId) => void;
   onOpenBonuses: () => void;
   onOpenVault: () => void;
@@ -48,37 +52,28 @@ export function MainMenuPage({
 }) {
   return (
     <div className="dashboard-page">
-      <section className="dashboard-section" aria-label="World">
-        <DashboardHeading title="World" meta={`${formatNumber(totalActivityRuns)} runs`} />
-        <div className={`dashboard-nav-grid adventure-nav-grid ${showFutureFeatures ? "with-future" : ""}`}>
-          <button className="dashboard-nav-tile adventure-entry" onClick={onOpenActivities}>
-            <span className="dashboard-nav-icon">
-              <Compass size={22} strokeWidth={1.8} />
-            </span>
-            <strong>Adventures</strong>
-            <small>{activeActivityCount > 0 ? `${activeActivityCount} active` : "XP and rare drops"}</small>
-          </button>
-          {showFutureFeatures && (
-            <>
-              <button className="dashboard-nav-tile future-tile" disabled>
-                <span className="dashboard-nav-icon"><Shield size={22} strokeWidth={1.8} /></span>
-                <strong>Arena</strong><small>Future</small>
-              </button>
-              <button className="dashboard-nav-tile future-tile" disabled>
-                <span className="dashboard-nav-icon"><Gem size={22} strokeWidth={1.8} /></span>
-                <strong>Quests</strong><small>Future</small>
-              </button>
-            </>
-          )}
-        </div>
-      </section>
-
       <section className="dashboard-section" aria-label="Account">
         <DashboardHeading title="Account" />
         <div className="dashboard-nav-grid account-nav-grid">
-          <button className="dashboard-nav-tile" onClick={onOpenBonuses}><span className="dashboard-nav-icon"><ChartNoAxesColumnIncreasing size={22} /></span><strong>Bonuses</strong><small>Permanent power</small></button>
           <button className="dashboard-nav-tile" onClick={onOpenProfile}><span className="dashboard-nav-icon"><UserRound size={22} /></span><strong>Profile</strong><small>Themes and badges</small></button>
+          <button className="dashboard-nav-tile" onClick={onOpenBonuses}><span className="dashboard-nav-icon"><ChartNoAxesColumnIncreasing size={22} /></span><strong>Bonuses</strong><small>Permanent power</small></button>
           <button className="dashboard-nav-tile achievement-menu-tile" onClick={onOpenAchievements}><span className="dashboard-nav-icon"><Trophy size={22} /></span><strong>Achievements</strong><small>{formatNumber(achievementPoints)} AP</small></button>
+        </div>
+      </section>
+
+      <section className="dashboard-section" aria-label="World">
+        <DashboardHeading title="World" />
+        <div className="dashboard-nav-grid world-nav-grid">
+          <button className="dashboard-nav-tile adventure-entry" onClick={onOpenActivities}>
+            <span className="dashboard-nav-icon"><Compass size={22} strokeWidth={1.8} /></span>
+            <strong>Adventures</strong>
+            <small>{activeActivityCount > 0 ? `${activeActivityCount} active` : `${formatNumber(totalActivityRuns)} runs`}</small>
+          </button>
+          <button className="dashboard-nav-tile quest-entry" onClick={onOpenQuests}>
+            <span className="dashboard-nav-icon"><ScrollText size={22} strokeWidth={1.8} /></span>
+            <strong>Quests</strong>
+            <small>{activeQuestCount > 0 ? `${activeQuestCount} active` : `${formatNumber(questPoints)} QP`}</small>
+          </button>
         </div>
       </section>
 

@@ -37,6 +37,7 @@ Acceptance criteria:
 - [x] Add the first playable Skill Specialization pilot: Maritime Fishing unlocks from Fishing 30, uses the main Level 1-120 XP curve, gains additional XP from Fisher's Trawler, and has compact overview/detail UI.
 - [x] Populate every Skill with three broad provisional Specializations at parent-Skill Levels 30, 60, and 90, while leaving unconnected tracks visible but without XP sources.
 - [x] Make topbar and browser Back follow deterministic hierarchy, including Specialization-to-Skill, detail-to-list, Vault children-to-Vault, and utility origin restoration.
+- [x] Add the data-driven Quest/Campaign foundation with Account-first menu order, three-level Quest navigation, up to three fairly funded background Quests, permanent Quest Points, save v11 migration, completion notifications, Handbook coverage, and the complete `The Slayer's Oath` pilot.
 
 Acceptance criteria:
 
@@ -46,11 +47,12 @@ Acceptance criteria:
 - Direct Skill Training remains available until every Skill has a Level 1 gameplay source.
 - Achievement progress is derived from existing account state; completion rewards remain idempotent across reloads and save migration.
 - Vault progress is derived from Sets and Skill levels; all 60 Skill Capes have stable data IDs, Skill-specific icons, and save migration coverage.
+- Quest completion and rewards are deterministic and idempotent; parallel funding, zero-RAP waiting, fixed hierarchy, and 320px/390px mobile layouts are validated.
 
 ## Later: Content Expansion
 
-- Connect the provisional Specialization catalog to suitable Adventures, Minigames, Quests, and Bosses; revise names or unlock levels where actual content requires it.
-- Minigames, Quests, and Bossing as independent activities using shared account Skills, Specializations, Collectibles, and explicit prerequisites.
+- Connect the provisional Specialization catalog to suitable Adventures, further Quest Campaigns, Minigames, and Bosses; revise names or unlock levels where actual content requires it.
+- More Quest Campaigns and Chapter stories; Minigames and Bossing as independent activities using shared account Skills, Specializations, Collectibles, and explicit prerequisites.
 - Skill Mastery 1-100 after normal Level 120.
 - More Heroes, Sets, Profile rewards, Themes, Tile Styles, and unlock animations.
 - Expand the provisional Achievement catalog, balance AP values, add rare exceptional Collectible rewards, and introduce further AP-threshold Title Achievements.
@@ -70,6 +72,7 @@ Acceptance criteria:
 - Released content remains available. Themes and event-styled Sets do not create FOMO.
 - Cosmetics are earned through play or expansion content, not designed around microtransactions.
 - Achievement Points are permanent account score, never an expendable currency or RAP substitute.
+- Quest Points are permanent account score separate from AP and RAP. Quests have no cancellation, random drops, routes, or Content Mastery; at most three progress in parallel and wait without backcharging when RAP reaches zero.
 
 ## Provisional Balance Values
 
@@ -83,3 +86,4 @@ The following remain placeholders until balance reports and play data justify lo
 - Account and Mastery bonus percentages
 - Requirements and Specialization unlock levels
 - Achievement Point values and reward thresholds
+- Quest RAP costs, durations, Quest Point rewards, requirements, and Chapter/Campaign bonuses

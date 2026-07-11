@@ -20,7 +20,6 @@ import {
   GAMEPLAY_ACTIVITIES,
   getActivity,
   isActivityRunning,
-  processActiveActivityRuns,
   startActivityRun,
   type ActivityRunResult,
   type GameplayActivity,
@@ -46,7 +45,7 @@ import {
   sourceActivityFor,
   statusLabel,
 } from "./catalog";
-import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillCapeDefinition, type SkillId, type SpecializationId } from "./data";
+import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type QuestDefinition, type Requirement, skills, type SkillCapeDefinition, type SkillId, type SpecializationId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
@@ -59,6 +58,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { VaultPage } from "./pages/VaultPage";
 import { SkillCapesPage } from "./pages/SkillCapesPage";
+import { QuestCampaignOverviewPage, QuestCampaignPage, QuestChapterPage, QuestDetailPage } from "./pages/QuestsPage";
 import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
@@ -76,7 +76,6 @@ import {
   formatDuration,
   isSkillTraining,
   MAX_ACTIVE_TRAININGS,
-  processActiveTrainings,
   remainingTrainingMs,
   startSkillTraining,
   stopSkillTraining,
@@ -89,6 +88,9 @@ import { AchievementToast } from "./ui/AchievementToast";
 import { SkillCapeToast } from "./ui/SkillCapeToast";
 import { InspectableImage } from "./ui/IconInspect";
 import { getSpecialization, specializationsForSkill, specializationUnlocked } from "./specializations";
+import { processPlayerProgress } from "./progress";
+import { getQuest, questPoints, startQuest } from "./quests";
+import { QuestToast } from "./ui/QuestToast";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -110,6 +112,10 @@ type ContentPage =
   | { type: "skill-capes" }
   | { type: "profile" }
   | { type: "achievements" }
+  | { type: "quests" }
+  | { type: "quest-campaign"; campaignId: string }
+  | { type: "quest-chapter"; campaignId: string; chapterId: string }
+  | { type: "quest-detail"; campaignId: string; chapterId: string | null; questId: string }
   | { type: "adventures"; from?: "main" | "world" }
   | { type: "category"; id: CategoryId; from?: "main" | "collectibles" };
 type Page = ContentPage | {
@@ -139,6 +145,13 @@ function hierarchicalParent(current: NavigationSnapshot, settingsOrigin: Navigat
     return { page: current.page.origin, detailView: current.page.originDetail };
   }
   if (current.page.type === "settings") return settingsOrigin;
+  if (current.page.type === "quest-detail") {
+    return current.page.chapterId
+      ? { page: { type: "quest-chapter", campaignId: current.page.campaignId, chapterId: current.page.chapterId }, detailView: null }
+      : { page: { type: "quest-campaign", campaignId: current.page.campaignId }, detailView: null };
+  }
+  if (current.page.type === "quest-chapter") return { page: { type: "quest-campaign", campaignId: current.page.campaignId }, detailView: null };
+  if (current.page.type === "quest-campaign") return { page: { type: "quests" }, detailView: null };
   if (current.page.type === "sets" || current.page.type === "skill-capes") {
     return { page: { type: "vault" }, detailView: null };
   }
@@ -188,6 +201,7 @@ function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
   }
 
   if (page.type === "category") return createHandbookContext(`category:${page.id}`);
+  if (page.type === "quests" || page.type === "quest-campaign" || page.type === "quest-chapter" || page.type === "quest-detail") return createHandbookContext("quests");
   return createHandbookContext(page.type);
 }
 
@@ -206,6 +220,7 @@ export function App() {
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
   const [achievementQueue, setAchievementQueue] = useState<AchievementDefinition[]>([]);
   const [skillCapeQueue, setSkillCapeQueue] = useState<SkillCapeDefinition[]>([]);
+  const [questQueue, setQuestQueue] = useState<QuestDefinition[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [importValue, setImportValue] = useState("");
   const showDevTools = import.meta.env.DEV || new URLSearchParams(window.location.search).get("dev") === "1";
@@ -235,6 +250,14 @@ export function App() {
                   ? "Profile"
                   : page.type === "achievements"
                     ? "Achievements"
+                    : page.type === "quests"
+                      ? "Quests"
+                      : page.type === "quest-campaign"
+                        ? "Campaign"
+                        : page.type === "quest-chapter"
+                          ? "Chapter"
+                          : page.type === "quest-detail"
+                            ? "Quest Details"
         : page.type === "handbook"
           ? "Handbook"
           : page.type === "adventures"
@@ -284,14 +307,14 @@ export function App() {
     window.history.pushState({ ...window.history.state, idleLife: snapshot }, "");
   }, [detailView, page]);
   useEffect(() => {
-    if (player.activeTrainings.length === 0 && player.activeActivityRuns.length === 0) return;
+    if (player.activeTrainings.length === 0 && player.activeActivityRuns.length === 0 && player.activeQuests.length === 0) return;
 
     const intervalId = window.setInterval(() => {
-      setPlayer((current) => processActiveActivityRuns(processActiveTrainings(current)));
+      setPlayer((current) => processPlayerProgress(current));
     }, 5_000);
 
     return () => window.clearInterval(intervalId);
-  }, [player.activeActivityRuns.length, player.activeTrainings.length, setPlayer]);
+  }, [player.activeActivityRuns.length, player.activeQuests.length, player.activeTrainings.length, setPlayer]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -376,8 +399,31 @@ export function App() {
     return () => window.clearTimeout(timeoutId);
   }, [skillCapeQueue]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const notified = new Set(player.notifiedQuestIds);
+    const newlyCompleted = Object.keys(player.completedQuests)
+      .filter((id) => !notified.has(id))
+      .map(getQuest)
+      .filter((quest): quest is QuestDefinition => Boolean(quest));
+    if (newlyCompleted.length === 0) return;
+    setQuestQueue((current) => [...current, ...newlyCompleted.filter((quest) => !current.some((queued) => queued.id === quest.id))]);
+    setPlayer((current) => ({ ...current, notifiedQuestIds: [...new Set([...current.notifiedQuestIds, ...newlyCompleted.map((quest) => quest.id)])] }));
+  }, [player.completedQuests, player.notifiedQuestIds, setPlayer]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (questQueue.length === 0) return;
+    const timeoutId = window.setTimeout(() => setQuestQueue((current) => current.slice(1)), 5_200);
+    return () => window.clearTimeout(timeoutId);
+  }, [questQueue]);
+
   function grantRp() {
-    setPlayer((current) => ({ ...current, rp: current.rp + 10_000, lifetimeRap: current.lifetimeRap + 10_000 }));
+    const now = Date.now();
+    setPlayer((current) => {
+      const processed = processPlayerProgress(current, now);
+      return { ...processed, rp: processed.rp + 10_000, lifetimeRap: processed.lifetimeRap + 10_000 };
+    });
   }
 
   function logActivity(activity: ActivityOption) {
@@ -393,18 +439,21 @@ export function App() {
       loggedAt,
     };
 
-    setPlayer((current) => ({
-      ...current,
-      rp: current.rp + rap,
-      lifetimeRap: current.lifetimeRap + rap,
-      activityLog: [entry, ...current.activityLog].slice(0, 8),
-    }));
+    setPlayer((current) => {
+      const processed = processPlayerProgress(current, loggedAt);
+      return {
+        ...processed,
+        rp: processed.rp + rap,
+        lifetimeRap: processed.lifetimeRap + rap,
+        activityLog: [entry, ...processed.activityLog].slice(0, 8),
+      };
+    });
   }
 
   function toggleSkillTraining(skillId: SkillId) {
     setPlayer((current) => {
       const now = Date.now();
-      const processed = processActiveTrainings(current, now);
+      const processed = processPlayerProgress(current, now);
       return isSkillTraining(processed, skillId)
         ? stopSkillTraining(processed, skillId, now)
         : startSkillTraining(processed, skillId, now);
@@ -412,7 +461,13 @@ export function App() {
   }
 
   function runGameplayActivity(activityId: GameplayActivityId) {
-    setPlayer((current) => startActivityRun(current, activityId));
+    const now = Date.now();
+    setPlayer((current) => startActivityRun(processPlayerProgress(current, now), activityId, now));
+  }
+
+  function beginQuest(questId: string) {
+    const now = Date.now();
+    setPlayer((current) => startQuest(processPlayerProgress(current, now), questId, now));
   }
 
   function buyItem(item: Collectible) {
@@ -421,14 +476,16 @@ export function App() {
       return;
     }
 
+    const now = Date.now();
     setPlayer((current) => {
-      if (current.owned.includes(item.id) || !canUnlock(item, current)) return current;
-      const owned = [...current.owned, item.id];
+      const processed = processPlayerProgress(current, now);
+      if (processed.owned.includes(item.id) || !canUnlock(item, processed)) return processed;
+      const owned = [...processed.owned, item.id];
       return {
-        ...current,
-        rp: current.rp - item.cost,
+        ...processed,
+        rp: processed.rp - item.cost,
         owned,
-        unlockedCosmetics: reconcileUnlockedCosmetics(current.unlockedCosmetics, owned, current.contentMasteryPoints),
+        unlockedCosmetics: reconcileUnlockedCosmetics(processed.unlockedCosmetics, owned, processed.contentMasteryPoints),
       };
     });
     setUnlockNotice(item);
@@ -570,10 +627,12 @@ export function App() {
             categoryProgress={categoryProgress}
             totalActivityRuns={totalActivityRuns}
             activeActivityCount={player.activeActivityRuns.length}
-            showFutureFeatures={showDevTools}
+            questPoints={questPoints(player)}
+            activeQuestCount={player.activeQuests.length}
             onLogActivity={logActivity}
             onInspectActivity={(activity) => setDetailView({ type: "manual-activity", activity })}
             onOpenActivities={() => setPage({ type: "adventures", from: "main" })}
+            onOpenQuests={() => setPage({ type: "quests" })}
             onOpenBonuses={() => setPage({ type: "bonuses" })}
             onOpenVault={() => setPage({ type: "vault" })}
             onOpenProfile={() => setPage({ type: "profile" })}
@@ -626,10 +685,24 @@ export function App() {
           />
         ) : page.type === "achievements" ? (
           <AchievementsPage player={player} />
+        ) : page.type === "quests" ? (
+          <QuestCampaignOverviewPage player={player} onOpenCampaign={(campaignId) => setPage({ type: "quest-campaign", campaignId })} />
+        ) : page.type === "quest-campaign" ? (
+          <QuestCampaignPage
+            player={player}
+            campaignId={page.campaignId}
+            onOpenChapter={(chapterId) => setPage({ type: "quest-chapter", campaignId: page.campaignId, chapterId })}
+            onOpenFinale={(questId) => setPage({ type: "quest-detail", campaignId: page.campaignId, chapterId: null, questId })}
+          />
+        ) : page.type === "quest-chapter" ? (
+          <QuestChapterPage player={player} chapterId={page.chapterId} onOpenQuest={(questId) => setPage({ type: "quest-detail", campaignId: page.campaignId, chapterId: page.chapterId, questId })} />
+        ) : page.type === "quest-detail" ? (
+          <QuestDetailPage player={player} questId={page.questId} onStart={() => beginQuest(page.questId)} />
         ) : page.type === "world" ? (
           <WorldPage
             player={player}
             onOpenActivities={() => setPage({ type: "adventures", from: "world" })}
+            onOpenQuests={() => setPage({ type: "quests" })}
           />
         ) : page.type === "handbook" ? (
           <HandbookPage
@@ -667,6 +740,7 @@ export function App() {
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
       {achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} onClose={() => setAchievementQueue((current) => current.slice(1))} />}
       {skillCapeQueue[0] && <SkillCapeToast cape={skillCapeQueue[0]} onClose={() => setSkillCapeQueue((current) => current.slice(1))} />}
+      {questQueue[0] && <QuestToast quest={questQueue[0]} onClose={() => setQuestQueue((current) => current.slice(1))} />}
       {adventureInfoPanel && <AdventureInfoPanel details={adventureInfoPanel} onClose={closeAdventureInfo} />}
       {activityResultNotice && (
         <ActivityResultPanel
@@ -758,9 +832,11 @@ function CollectiblesOverviewPage({
 function WorldPage({
   player,
   onOpenActivities,
+  onOpenQuests,
 }: {
   player: PlayerState;
   onOpenActivities: () => void;
+  onOpenQuests: () => void;
 }) {
   const totalRuns = Object.values(player.activityRunCounts).reduce((total, runs) => total + runs, 0);
   const activeRuns = player.activeActivityRuns.length;
@@ -779,6 +855,12 @@ function WorldPage({
           <strong>{formatNumber(totalRuns)}</strong>
           <small>{activeRuns > 0 ? `${activeRuns} active` : "runs"}</small>
         </span>
+        <ChevronRight className="tile-chevron" size={18} />
+      </button>
+      <button className="category-tile quest-entry" onClick={onOpenQuests}>
+        <span className="tile-icon"><AppIcon category="skills" /></span>
+        <span className="tile-text"><strong>Quests</strong><small>Long-form campaigns funded over time</small></span>
+        <span className="tile-progress"><strong>{formatNumber(questPoints(player))} QP</strong><small>{player.activeQuests.length > 0 ? `${player.activeQuests.length} active` : "campaigns"}</small></span>
         <ChevronRight className="tile-chevron" size={18} />
       </button>
     </section>
