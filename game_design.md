@@ -103,7 +103,7 @@ Collectible and system icons are reusable transparent assets in a gritty, matte,
 
 New icons should remain readable at small sizes while introducing measured variety across the collection: distinct silhouettes, poses or orientations, materials, palettes, and one memorable prop or construction detail. Characters and races should not all be helmeted armored busts. Pets, mounts, tools, classes, and UI symbols should each retain their category identity without becoming visually interchangeable. Existing approved icons can remain in use, but future additions should follow this broader variation rule.
 
-Every raster image shown in the UI exposes an Inspect action that enlarges the artwork without changing the surrounding card action or progression state. Inspect views reuse the transparent asset and close through X, backdrop tap, or Escape.
+Secondary raster images shown in the UI expose an Inspect action that enlarges the artwork without changing the surrounding card action or progression state. Primary Skill and Collectible artwork is presented directly and prominently on its detail page instead of opening a separate image-preview dialog. Inspect views reuse the transparent asset and close through X, backdrop tap, or Escape.
 
 The RAP wallet uses a compact transparent activity sigil above the numeric RAP value in the TopBar. It is a UI symbol, not a second currency or a decorative tile.
 
@@ -493,7 +493,9 @@ Interaction decision:
 - Adventure tiles use tap to open the Adventure detail view. The detail view contains the Start Adventure action after the player reviews the compact requirements, rewards, and drops.
 - Manual Log Activity tiles use tap to log one hour and long press for details.
 - Skill tiles still open the Skill detail panel on tap because training requires choosing a duration.
+- Skill and Collectible tiles do not intercept their primary artwork with a separate image preview; tapping the tile performs its normal action or opens its detail view.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
+- Skill and Collectible detail panels place a larger primary artwork block above the supporting information. Secondary requirement, drop, Cape, and system artwork may still be inspected when useful.
 - Requirement rows should show a requirement icon plus current and needed progress, for example `Attack Level 1 / 20`.
 - Native browser text selection should never appear during normal app interaction.
 

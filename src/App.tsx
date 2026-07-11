@@ -68,7 +68,7 @@ import { AdventureInfoPanel, type AdventureInfoPanelDetails } from "./ui/Adventu
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
 import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
 import { getAchievement } from "./achievements";
-import { getSkillCape, getSkillCapesForSkill, isSkillCapeUnlocked, skillCapeSummary, skillCapeTierLabel } from "./skillCapes";
+import { getSkillCape, skillCapeSummary } from "./skillCapes";
 import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
 import { masteryProgress } from "./mastery";
 import { getSetsForCollectible } from "./sets";
@@ -498,10 +498,6 @@ export function App() {
             player={player}
             onClose={() => setDetailView(null)}
             onTrain={(hours) => trainSkill(detailView.skillId, hours)}
-            onOpenSkillCapes={() => {
-              setDetailView(null);
-              setPage({ type: "skill-capes" });
-            }}
           />
         ) : detailView?.type === "activity" ? (
           <ActivityDetailView
@@ -972,7 +968,7 @@ function CollectibleCard({
       {...longPress}
     >
       {collectionSet && <small className="set-strip" style={{ "--set-color": collectionSet.color } as CSSProperties} aria-label={`${collectionSet.name} Set`} />}
-      <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} label={item.name} inspectSubtitle={item.type} sourceType={item.source?.type} />
+      <TileVisual icon={item.icon} category={item.category} locked={status === "locked"} owned={owned} label={item.name} inspectSubtitle={item.type} inspectable={false} sourceType={item.source?.type} />
       <h2>{item.name}</h2>
       <span>{item.type}</span>
       {item.source?.type === "activity" && <small className="source-strip">Adventure Drop</small>}
@@ -1018,7 +1014,7 @@ function SkillsPage({
           const training = isSkillTraining(player, skill.id);
           return (
             <button type="button" className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
-              {skill.icon ? <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} label={skill.name} inspectSubtitle="Skill icon" /> : <TileVisual category={categoryForSkill(skill.id)} />}
+              {skill.icon ? <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} label={skill.name} inspectSubtitle="Skill icon" inspectable={false} /> : <TileVisual category={categoryForSkill(skill.id)} />}
               <h2 style={{ fontSize: skillNameFontSize(skill.name) }}>{skill.name}</h2>
               <span>Lv. {levelInfo.level}</span>
             </button>
@@ -1059,8 +1055,8 @@ function CollectibleDetailView({
       <button className="detail-close" onClick={onClose} aria-label="Close details">
         <X size={18} />
       </button>
-      <div className="sheet-icon">
-        {item.icon ? <InspectableImage src={item.icon} title={item.name} subtitle={item.type} /> : owned ? <Check size={32} /> : status === "ready" ? <Gem size={32} /> : <Lock size={32} />}
+      <div className="detail-artwork" aria-label={`${item.name} artwork`}>
+        {item.icon ? <img src={item.icon} alt={item.name} draggable="false" /> : owned ? <Check size={42} /> : status === "ready" ? <Gem size={42} /> : <Lock size={42} />}
       </div>
       <div className="detail-status-row">
         <span className={`status-pill ${sourceActivity && owned ? "activity" : status}`}>{sourceActivity && owned ? "Adventure Drop" : statusLabel[status]}</span>
@@ -1109,16 +1105,13 @@ function SkillDetailView({
   player,
   onClose,
   onTrain,
-  onOpenSkillCapes,
 }: {
   skillId: SkillId;
   player: PlayerState;
   onClose: () => void;
   onTrain: (hours: number) => void;
-  onOpenSkillCapes: () => void;
 }) {
   const skill = skills.find((candidate) => candidate.id === skillId)!;
-  const skillCapes = getSkillCapesForSkill(skillId);
   const xp = player.skillXp[skillId];
   const levelInfo = xpIntoLevel(xp);
   const nextLevel = Math.min(levelInfo.level + 1, MAX_LEVEL);
@@ -1138,8 +1131,8 @@ function SkillDetailView({
       <button className="detail-close" onClick={onClose} aria-label="Close details">
         <X size={18} />
       </button>
-      <div className="sheet-icon">
-        {skill.icon ? <InspectableImage src={skill.icon} title={skill.name} subtitle="Skill icon" /> : <Swords size={32} />}
+      <div className="detail-artwork" aria-label={`${skill.name} artwork`}>
+        {skill.icon ? <img src={skill.icon} alt={skill.name} draggable="false" /> : <Swords size={42} />}
       </div>
       <h2>{skill.name}</h2>
       <p>
@@ -1170,15 +1163,6 @@ function SkillDetailView({
           </span>
         </div>
       </div>
-      <section className="skill-cape-detail" aria-label={`${skill.name} Skill Capes`}>
-        <header><span><small>Vault</small><strong>Skill Capes</strong></span><button onClick={onOpenSkillCapes}>View all</button></header>
-        <div className="skill-cape-detail-grid">
-          {skillCapes.map((cape) => {
-            const unlocked = player.ownedSkillCapes.includes(cape.id) || isSkillCapeUnlocked(cape, player.skillXp);
-            return <span key={cape.id} className={unlocked ? "unlocked" : "locked"}><InspectableImage src={`./${cape.icon}`} title={cape.name} subtitle={`${skill.name} · ${skillCapeTierLabel(cape.tier)}`} /><small>{skillCapeTierLabel(cape.tier)}</small><strong>{unlocked ? "Unlocked" : `Reach ${cape.tier}`}</strong></span>;
-          })}
-        </div>
-      </section>
       <div className="training-actions">
         {TRAINING_DURATIONS.map((duration) => (
           <button
@@ -1191,7 +1175,7 @@ function SkillDetailView({
           </button>
         ))}
       </div>
-      {disabledReason && <p className="action-note">{disabledReason}</p>}
+      <p className="action-note">{disabledReason ?? `Maximum ${MAX_ACTIVE_TRAININGS} active skills`}</p>
     </section>
   );
 }

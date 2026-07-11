@@ -136,7 +136,7 @@ Implemented early systems:
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
-- Raster artwork is inspectable from its source image without triggering the surrounding card action. The global preview locks background scrolling, supports X/backdrop/Escape close, and works at 320px and 390px.
+- Secondary raster artwork is inspectable from its source image without triggering the surrounding card action. The global preview locks background scrolling, supports X/backdrop/Escape close, and works at 320px and 390px. Primary Skill and Collectible artwork is shown larger on the detail page and intentionally does not open a separate preview from the tile or detail hero.
 - On viewports up to 400px, dense Collectible and Skill grids use four columns to keep names legible; wider mobile layouts retain five.
 - Activity run counts and recent Activity results are persisted in save v5.
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
@@ -156,6 +156,7 @@ Implemented early systems:
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
 - Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 21 reusable entries across five categories, including Vault, Skill Capes, and Icon Inspect, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
+- Skill and Collectible detail pages use a shared 132px primary artwork block above their supporting information. Their list tiles let the surrounding card action run normally; secondary Requirements, Adventure Drops, Capes, and system artwork retain the global Inspect behavior.
 - Collectible catalog: implemented as modular static data under `src/data/`, exposed through `src/data.ts`, and queried through `src/catalog.ts`.
 - Purchase/unlock logic: implemented with RAP costs and requirements.
 - Codex collection overview: implemented as category progress tiles.
@@ -566,6 +567,14 @@ Candidate combined skill roster to finalize:
 - Why it works: Mastery is now clearly earned by completed runs and cannot block the content that grants it. The primary Adventure flow stays compact while deeper chance, status, and requirement information remains available on demand.
 - Files involved: `src/data/balance/mastery.ts`, `src/data/mastery.ts`, `src/mastery.ts`, `src/ui/MasteryProgress.tsx`, `src/ui/AdventureInfoPanel.tsx`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, `game_design.md`, `roadmap.md`.
 - Validation: `npm run check`, `npm run test:coverage`, `npm run build`, and in-app browser verification at 390px width covering Adventure overview, Fisher's Trawler detail, Requirement Info Panel, Drop Info Panel, and global image inspection.
+
+2026-07-11: Prominent Skill and Collectible detail artwork.
+
+- Original problem: Skill and Collectible tiles intercepted artwork taps with a standalone image-preview dialog, while the detail pages showed the primary image in a small 64px block. Skill details also repeated the Vault/Skill Capes section.
+- Successful solution: allow Skill and Collectible card artwork to bubble to the surrounding card action, replace the detail `sheet-icon` with a shared 132px primary artwork block, remove the Skill-detail Vault block, and keep the three-skill training limit visible. Secondary Requirements, Adventure Drops, Capes, and system artwork still use the global Inspect view.
+- Why it works: the player reaches the useful Skill or Collectible information immediately, while close inspection remains available for supporting artwork that benefits from it.
+- Files involved: `src/App.tsx`, `src/ui/icons.tsx`, `src/styles.css`, `src/handbook.ts`, `game_design.md`, `roadmap.md`.
+- Validation: `npm run check` passed (lint, 38 tests, production build, icon preparation), `npm run test:coverage` passed with 69.39% statement coverage, and in-app browser QA passed at 390px and 320px without horizontal overflow. Skill and Moon Elf detail artwork stayed non-inspectable and no separate preview dialog opened.
 
 ## Known Issues
 

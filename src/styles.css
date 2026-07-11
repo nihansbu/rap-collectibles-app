@@ -1524,6 +1524,10 @@ button,
   cursor: zoom-in;
 }
 
+.non-inspectable-art {
+  cursor: inherit !important;
+}
+
 @keyframes iconInspectIn {
   from { opacity: 0; transform: scale(.97) translateY(8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
@@ -1590,6 +1594,34 @@ button,
   height: 64px;
   margin-bottom: 12px;
   overflow: hidden;
+}
+
+.detail-artwork {
+  width: 132px;
+  height: 132px;
+  margin: 2px auto 16px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(244, 213, 123, 0.3);
+  border-radius: 14px;
+  color: var(--color-gold);
+  background:
+    radial-gradient(circle at 50% 32%, rgba(126, 166, 127, 0.26), transparent 58%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.025));
+}
+
+.detail-artwork img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  padding: 9px;
+  object-fit: contain;
+}
+
+.detail-artwork svg {
+  width: 46px;
+  height: 46px;
 }
 
 .detail-view p,

@@ -111,13 +111,13 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "icon-inspect",
     title: "Inspecting Icons",
-    summary: "Open any collectible, Skill, Cape, or system image at a larger size.",
+    summary: "Open secondary collectible, Cape, Adventure, or system artwork at a larger size.",
     category: "basics",
     sections: [
       {
         paragraphs: [
-          "Tap an image or icon to open its Inspect view. The preview enlarges the transparent artwork without changing the card's status or progression.",
-          "Close the preview with the X button, by tapping outside the panel, or with Escape on a keyboard. The underlying card action is not triggered when the image itself is inspected.",
+          "Primary Skill and Collectible artwork is shown larger at the top of its detail page, so those pages do not need a separate image-preview step. Secondary artwork such as Requirements, Adventure Drops, Capes, and system icons can still be inspected when you want a closer look.",
+          "Close an Inspect view with the X button, by tapping outside the panel, or with Escape on a keyboard. The underlying card action is not triggered when secondary artwork is inspected.",
         ],
       },
     ],
@@ -512,14 +512,14 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "collectible-detail": {
     id: "collectible-detail",
     title: "Collectible Details",
-    intro: "This detail page shows a Collectible's source, status, cost, requirements, and permanent Account Bonuses.",
+    intro: "This detail page shows the Collectible artwork prominently above its source, status, cost, requirements, and permanent Account Bonuses.",
     entryIds: ["collectibles", "requirements", "codex-states", "account-bonuses"],
   },
   "skill-detail": {
     id: "skill-detail",
     title: "Skill Details",
-    intro: "This detail page shows the Skill's current level, XP progress, training state, and available training durations.",
-    entryIds: ["skills", "icon-inspect", "skill-training", "rap", "requirements"],
+    intro: "This detail page shows the Skill artwork prominently above its current level, XP progress, training state, and available training durations.",
+    entryIds: ["skills", "skill-training", "rap", "requirements"],
   },
   "activity-detail": {
     id: "activity-detail",

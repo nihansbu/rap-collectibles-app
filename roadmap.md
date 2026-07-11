@@ -31,6 +31,7 @@ Acceptance criteria:
 - [x] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages, including all 99/120 Skill Cape definitions, assets, unlock reconciliation, and notifications.
 - [x] Add a global Inspect view for raster icons and images without changing surrounding card actions.
 - [x] Simplify Adventure overview/detail presentation and add shared focused Info Panels for Requirements and Drops.
+- [x] Present primary Skill and Collectible artwork on their detail pages, remove the Skill-detail Vault block, and eliminate the separate primary image-preview step.
 
 Acceptance criteria:
 

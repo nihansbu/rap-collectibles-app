@@ -60,6 +60,7 @@ export function TileVisual({
   sourceType,
   label = "Collectible icon",
   inspectSubtitle,
+  inspectable = true,
 }: {
   icon?: string;
   category: CategoryId;
@@ -68,10 +69,15 @@ export function TileVisual({
   sourceType?: Collectible["source"] extends infer Source ? Source extends { type: infer Type } ? Type : never : never;
   label?: string;
   inspectSubtitle?: string;
+  inspectable?: boolean;
 }) {
   return (
     <div className={`tile-art ${locked ? "locked" : ""} ${owned ? "owned" : ""} ${sourceType === "activity" ? "activity-source" : ""}`}>
-      {icon ? <InspectableImage src={icon} title={label} subtitle={inspectSubtitle} /> : <AppIcon category={category} />}
+      {icon
+        ? inspectable
+          ? <InspectableImage src={icon} title={label} subtitle={inspectSubtitle} />
+          : <img className="non-inspectable-art" src={icon} alt={label} draggable="false" />
+        : <AppIcon category={category} />}
       {locked && (
         <span className="tile-lock" aria-hidden="true">
           <Lock size={12} />
