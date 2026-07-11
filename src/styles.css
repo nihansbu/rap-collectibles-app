@@ -2761,3 +2761,526 @@ button,
     font-size: 10.5px;
   }
 }
+
+/* Adventure overview and detail presentation */
+.adventure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 8px;
+  padding: 8px 4px 24px;
+}
+
+.adventure-tile {
+  min-width: 0;
+  min-height: 176px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 5px;
+  padding: 4px 2px 8px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--color-text);
+  background: transparent;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.adventure-tile:active {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.adventure-tile .mastery-ring {
+  width: 112px;
+  height: 112px;
+  margin-bottom: 3px;
+}
+
+.adventure-tile-icon-core {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(174, 185, 173, 0.38);
+  border-radius: 50%;
+  color: #b9c2ff;
+  background:
+    radial-gradient(circle at 35% 22%, rgba(110, 138, 255, 0.24), transparent 48%),
+    #20293a;
+}
+
+.adventure-tile.playable .adventure-tile-icon-core {
+  border-color: var(--color-success);
+  color: #d9e0ff;
+}
+
+.adventure-tile.running .adventure-tile-icon-core {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-gold) 28%, transparent);
+}
+
+.adventure-tile.locked .adventure-tile-icon-core,
+.adventure-tile.unfunded .adventure-tile-icon-core {
+  border-color: rgba(174, 185, 173, 0.28);
+  color: #7c867f;
+  filter: grayscale(0.55);
+  opacity: 0.72;
+}
+
+.adventure-tile > strong {
+  max-width: 100%;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 820;
+  line-height: 1.1;
+}
+
+.adventure-tile > small {
+  max-width: 100%;
+  overflow: hidden;
+  color: #aeb9e9;
+  font-size: 10px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adventure-tile-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  color: var(--color-muted);
+}
+
+.adventure-tile-meta b {
+  color: var(--color-gold);
+  font-size: 11px;
+}
+
+.adventure-tile-meta small {
+  color: var(--color-muted);
+  font-size: 9px;
+}
+
+.mastery-ring {
+  --mastery-ring-percent: 0%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  padding: 5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    var(--color-gold) 0 calc(var(--mastery-ring-percent) / 2),
+    rgba(174, 185, 173, 0.28) calc(var(--mastery-ring-percent) / 2) calc(100% - var(--mastery-ring-percent) / 2),
+    var(--color-gold) calc(100% - var(--mastery-ring-percent) / 2) 100%
+  );
+}
+
+.mastery-ring::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--color-canvas);
+}
+
+.mastery-ring-core {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.activity-detail {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 156px);
+}
+
+.activity-detail .purchase-panel {
+  position: static;
+  box-shadow: none;
+}
+
+.activity-detail-hero {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  margin: 2px 28px 14px;
+  text-align: center;
+}
+
+.activity-detail-hero .mastery-ring {
+  width: 124px;
+  height: 124px;
+  margin-bottom: 3px;
+}
+
+.activity-detail-icon-core {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(110, 138, 255, 0.44);
+  border-radius: 50%;
+  color: #c4cbff;
+  background:
+    radial-gradient(circle at 35% 20%, rgba(110, 138, 255, 0.28), transparent 50%),
+    #20293a;
+}
+
+.activity-detail-icon-core.playable {
+  border-color: var(--color-success);
+}
+
+.activity-detail-icon-core.locked {
+  border-color: rgba(174, 185, 173, 0.3);
+  color: #7c867f;
+  filter: grayscale(0.55);
+  opacity: 0.72;
+}
+
+.activity-detail-hero h2 {
+  max-width: 100%;
+  margin: 0;
+  color: var(--color-text);
+  font-size: 22px;
+}
+
+.activity-mastery-label {
+  display: grid;
+  gap: 2px;
+}
+
+.activity-mastery-label strong {
+  color: var(--color-gold);
+  font-size: 12px;
+}
+
+.activity-mastery-label small {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
+.activity-requirements .activity-requirements-grid,
+.activity-requirements-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.activity-requirement-tile {
+  min-width: 0;
+  min-height: 74px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: 2px 7px;
+  padding: 8px;
+  border: 1px solid rgba(174, 185, 173, 0.2);
+  border-radius: 9px;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-requirement-tile.met {
+  border-color: color-mix(in srgb, var(--color-gold) 72%, transparent);
+  background: color-mix(in srgb, var(--color-gold) 7%, var(--color-panel));
+}
+
+.activity-requirement-tile.needed {
+  border-color: rgba(174, 185, 173, 0.18);
+  color: #8d9890;
+}
+
+.activity-requirement-art {
+  width: 32px;
+  height: 32px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  grid-row: 1 / -1;
+  border: 1px solid rgba(224, 202, 142, 0.2);
+  border-radius: 8px;
+  color: #bdc6ff;
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.activity-requirement-tile.met .activity-requirement-art {
+  border-color: color-mix(in srgb, var(--color-success) 44%, transparent);
+}
+
+.activity-requirement-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 2px;
+}
+
+.activity-requirement-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.activity-requirement-copy strong {
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 10px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-requirement-tile.needed .activity-requirement-copy strong {
+  color: #aeb9ad;
+}
+
+.activity-requirement-copy small {
+  color: var(--color-success);
+  font-size: 10px;
+  font-weight: 820;
+  line-height: 1.1;
+}
+
+.activity-requirement-tile.needed .activity-requirement-copy small {
+  color: #8d9890;
+}
+
+.activity-requirement-tile .requirement-state {
+  grid-column: 2;
+  justify-self: start;
+  color: var(--color-success);
+  font-size: 8px;
+}
+
+.activity-requirement-tile.needed .requirement-state {
+  color: #8d9890;
+}
+
+.activity-requirement-tile .requirement-badge {
+  right: -1px;
+  bottom: -1px;
+}
+
+.activity-drops {
+  margin-top: 18px;
+}
+
+.activity-drop-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.activity-drop-tile {
+  min-width: 0;
+  min-height: 112px;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  padding: 7px 4px 6px;
+  border: 1px solid rgba(174, 185, 173, 0.18);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: center;
+  cursor: pointer;
+}
+
+.activity-drop-tile.owned {
+  border-color: color-mix(in srgb, var(--color-success) 50%, transparent);
+  background: color-mix(in srgb, var(--color-success) 7%, var(--color-panel));
+}
+
+.activity-drop-tile.shared {
+  border-color: rgba(110, 138, 255, 0.34);
+  background: rgba(72, 89, 191, 0.08);
+}
+
+.activity-drop-tile .drop-item-icon,
+.activity-drop-tile .tile-art {
+  width: 52px;
+  height: 52px;
+}
+
+.activity-drop-tile .drop-copy {
+  width: 100%;
+  justify-items: center;
+  gap: 2px;
+}
+
+.activity-drop-tile .drop-copy strong {
+  width: 100%;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 9px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-drop-tile .drop-copy small {
+  color: var(--color-gold);
+  font-size: 8px;
+}
+
+.activity-drop-tile .drop-state {
+  color: var(--color-muted);
+  font-size: 8px;
+}
+
+.activity-drop-tile.owned .drop-state {
+  color: var(--color-success);
+}
+
+.activity-drop-tile.shared .drop-state {
+  color: #aeb9e9;
+}
+
+.adventure-info-backdrop {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(4, 8, 6, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.adventure-info-panel {
+  width: min(100%, 360px);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 22px 16px 16px;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 42%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 0, color-mix(in srgb, var(--color-gold) 12%, transparent), transparent 48%),
+    var(--color-panel);
+  text-align: center;
+  box-shadow: 0 20px 64px rgba(0, 0, 0, 0.52);
+}
+
+.adventure-info-panel .detail-close {
+  top: 10px;
+  right: 10px;
+}
+
+.adventure-info-art {
+  width: 142px;
+  height: 142px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 36%, transparent);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.045);
+  overflow: hidden;
+}
+
+.adventure-info-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 12px;
+}
+
+.adventure-info-panel h2 {
+  margin: 2px 0 0;
+  color: var(--color-text);
+  font-family: Georgia, serif;
+  font-size: 22px;
+  line-height: 1.08;
+}
+
+.adventure-info-panel > small {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.adventure-info-status {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--color-muted);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adventure-info-status.met,
+.adventure-info-status.owned {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 10%, transparent);
+}
+
+.adventure-info-status.needed {
+  color: #aeb9ad;
+}
+
+.adventure-info-status.shared {
+  color: #aeb9e9;
+  background: rgba(72, 89, 191, 0.12);
+}
+
+.adventure-info-value,
+.adventure-info-drop-data {
+  margin-top: 3px;
+}
+
+.adventure-info-value {
+  color: #aeb9ad;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.adventure-info-value.met {
+  color: var(--color-success);
+}
+
+.adventure-info-value.needed {
+  color: #aeb9ad;
+}
+
+.adventure-info-drop-data {
+  display: grid;
+  gap: 2px;
+}
+
+.adventure-info-drop-data strong {
+  color: var(--color-gold);
+  font-size: 19px;
+}
+
+.adventure-info-drop-data small {
+  color: var(--color-muted);
+  font-size: 10px;
+}
+
+.adventure-info-close {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 8px;
+}

@@ -15,10 +15,8 @@ import {
   activityDropChance,
   activityDropItem,
   activityRequirementsMet,
-  activitySkillAdvantage,
   canStartActivity,
   effectiveActivityRun,
-  formatDropChance,
   GAMEPLAY_ACTIVITIES,
   getActivity,
   isActivityRunning,
@@ -28,7 +26,7 @@ import {
   type GameplayActivity,
   type GameplayActivityId,
 } from "./activities";
-import { collectAccountBonuses, formatBonusLabel, skillXpBonusPercent } from "./bonuses";
+import { formatBonusLabel, skillXpBonusPercent } from "./bonuses";
 import {
   canUnlock,
   collectibleActionLabel,
@@ -65,13 +63,14 @@ import { TopBar } from "./ui/TopBar";
 import { ActivityResultPanel, ConfirmDialog, ImportDialog, UnlockNotice } from "./ui/dialogs";
 import { ActivityIcon, AppIcon, GameplayActivityIcon, TileVisual } from "./ui/icons";
 import { useLongPress } from "./ui/useLongPress";
-import { MasteryProgress } from "./ui/MasteryProgress";
+import { MasteryRing } from "./ui/MasteryProgress";
+import { AdventureInfoPanel, type AdventureInfoPanelDetails } from "./ui/AdventureInfoPanel";
 import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
 import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
 import { getAchievement } from "./achievements";
 import { getSkillCape, getSkillCapesForSkill, isSkillCapeUnlocked, skillCapeSummary, skillCapeTierLabel } from "./skillCapes";
 import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
-import { masteryEconomicModifiers } from "./mastery";
+import { masteryProgress } from "./mastery";
 import { getSetsForCollectible } from "./sets";
 import { usePlayerPersistence } from "./hooks/usePlayerPersistence";
 import {
@@ -177,6 +176,7 @@ export function App() {
   const [confirmItem, setConfirmItem] = useState<Collectible | null>(null);
   const [unlockNotice, setUnlockNotice] = useState<Collectible | null>(null);
   const [activityResultNotice, setActivityResultNotice] = useState<ActivityRunResult | null>(null);
+  const [adventureInfoPanel, setAdventureInfoPanel] = useState<AdventureInfoPanelDetails | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<Collectible[]>([]);
   const [achievementQueue, setAchievementQueue] = useState<AchievementDefinition[]>([]);
   const [skillCapeQueue, setSkillCapeQueue] = useState<SkillCapeDefinition[]>([]);
@@ -247,6 +247,7 @@ export function App() {
     return () => window.clearInterval(intervalId);
   }, [player.activeActivityRuns.length, player.activeTrainings.length, setPlayer]);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const latest = player.activityResults[0];
     if (!latest || latest.id === player.lastSeenActivityResultId || activityResultNotice?.id === latest.id) return;
@@ -254,13 +255,14 @@ export function App() {
     const droppedItem = latest.droppedCollectibleId ? getCollectibleById(latest.droppedCollectibleId) : null;
 
     // A completed background run is an external event that opens a one-time result dialog.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActivityResultNotice(latest);
     if (droppedItem) {
       setRecentUnlocks((current) => [droppedItem, ...current.filter((candidate) => candidate.id !== droppedItem.id)].slice(0, 3));
     }
   }, [activityResultNotice?.id, player.activityResults, player.lastSeenActivityResultId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!unlockNotice) return;
 
@@ -280,7 +282,6 @@ export function App() {
     if (newlyCompleted.length === 0) return;
 
     // Completion reconciliation is account state; this effect only queues its one-time presentation.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAchievementQueue((current) => [
       ...current,
       ...newlyCompleted.filter((achievement) => !current.some((queued) => queued.id === achievement.id)),
@@ -290,7 +291,9 @@ export function App() {
       notifiedAchievementIds: [...new Set([...current.notifiedAchievementIds, ...newlyCompleted.map((achievement) => achievement.id)])],
     }));
   }, [player.completedAchievements, player.notifiedAchievementIds, setPlayer]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (achievementQueue.length === 0) return;
     const timeoutId = window.setTimeout(() => {
@@ -308,7 +311,6 @@ export function App() {
     if (newlyUnlocked.length === 0) return;
 
     // Skill Cape entitlements are persisted separately from their one-time notification presentation.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSkillCapeQueue((current) => [
       ...current,
       ...newlyUnlocked.filter((cape) => !current.some((queued) => queued.id === cape.id)),
@@ -318,6 +320,7 @@ export function App() {
       notifiedSkillCapeIds: [...new Set([...current.notifiedSkillCapeIds, ...newlyUnlocked.map((cape) => cape.id)])],
     }));
   }, [player.notifiedSkillCapeIds, player.ownedSkillCapes, setPlayer]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (skillCapeQueue.length === 0) return;
@@ -392,16 +395,6 @@ export function App() {
     }
 
     setDetailView({ type: "collectible", item });
-  }
-
-  function handleGameplayActivityPrimaryAction(activityId: GameplayActivityId) {
-    const activity = getActivity(activityId);
-    if (activity && canStartActivity(activity, player)) {
-      runGameplayActivity(activityId);
-      return;
-    }
-
-    setDetailView({ type: "activity", activityId });
   }
 
   function openHandbook() {
@@ -516,6 +509,7 @@ export function App() {
             player={player}
             onClose={() => setDetailView(null)}
             onRun={() => runGameplayActivity(detailView.activityId)}
+            onOpenInfo={(details) => setAdventureInfoPanel(details)}
           />
         ) : detailView?.type === "manual-activity" ? (
           <ManualActivityDetailView
@@ -605,7 +599,6 @@ export function App() {
           <AdventuresPage
             player={player}
             onOpenActivity={(activityId) => setDetailView({ type: "activity", activityId })}
-            onRunActivity={handleGameplayActivityPrimaryAction}
           />
         ) : page.id === "skills" ? (
           <SkillsPage player={player} skillFilter={skillFilter} onFilter={setSkillFilter} onOpenSkill={(skillId) => setDetailView({ type: "skill", skillId })} />
@@ -631,6 +624,7 @@ export function App() {
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
       {achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} onClose={() => setAchievementQueue((current) => current.slice(1))} />}
       {skillCapeQueue[0] && <SkillCapeToast cape={skillCapeQueue[0]} onClose={() => setSkillCapeQueue((current) => current.slice(1))} />}
+      {adventureInfoPanel && <AdventureInfoPanel details={adventureInfoPanel} onClose={() => setAdventureInfoPanel(null)} />}
       {activityResultNotice && (
         <ActivityResultPanel
           result={activityResultNotice}
@@ -785,78 +779,39 @@ function ManualActivityDetailView({
   );
 }
 
-function AdventuresPage({
-  player,
-  onOpenActivity,
-  onRunActivity,
-}: {
-  player: PlayerState;
-  onOpenActivity: (activityId: GameplayActivityId) => void;
-  onRunActivity: (activityId: GameplayActivityId) => void;
-}) {
+function AdventuresPage({ player, onOpenActivity }: { player: PlayerState; onOpenActivity: (activityId: GameplayActivityId) => void }) {
   return (
-    <section className="activity-card-list">
+    <section className="adventure-grid" aria-label="Adventures">
       {GAMEPLAY_ACTIVITIES.map((activity) => (
-        <ActivityCard
-          key={activity.id}
-          activity={activity}
-          player={player}
-          onOpenActivity={onOpenActivity}
-          onRunActivity={onRunActivity}
-        />
+        <ActivityCard key={activity.id} activity={activity} player={player} onOpenActivity={onOpenActivity} />
       ))}
     </section>
   );
 }
 
-function ActivityCard({
-  activity,
-  player,
-  onOpenActivity,
-  onRunActivity,
-}: {
-  activity: GameplayActivity;
-  player: PlayerState;
-  onOpenActivity: (activityId: GameplayActivityId) => void;
-  onRunActivity: (activityId: GameplayActivityId) => void;
-}) {
+function ActivityCard({ activity, player, onOpenActivity }: { activity: GameplayActivity; player: PlayerState; onOpenActivity: (activityId: GameplayActivityId) => void }) {
   const running = isActivityRunning(player, activity.id);
   const requirementsReady = activityRequirementsMet(activity, player);
+  const playable = canStartActivity(activity, player);
   const runCount = player.activityRunCounts[activity.id] ?? 0;
-  const effective = effectiveActivityRun(activity, player);
   const masteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
-  const bestDrop = activity.drops.length > 0
-    ? activity.drops.reduce((best, drop) => (drop.chance > best.chance ? drop : best), activity.drops[0])
-    : null;
-  const longPress = useLongPress({
-    onPress: () => onRunActivity(activity.id),
-    onLongPress: () => onOpenActivity(activity.id),
-  });
+  const mastery = masteryProgress(activity.masteryTrackId, masteryPoints);
+  const primarySkill = activity.xpRewards[0]?.skillId;
+  const state = running ? "running" : playable ? "playable" : requirementsReady ? "unfunded" : "locked";
 
   return (
     <button
       type="button"
-      className={`activity-card ${running ? "running" : ""} ${requirementsReady ? "ready" : "locked"}`}
-      aria-label={`${activity.name}. ${running ? "Running" : requirementsReady ? "Ready" : "Locked"}. Press to run; hold or open the context menu for details.`}
-      {...longPress}
+      className={`adventure-tile ${state}`}
+      aria-label={`${activity.name}. ${playable ? "Playable" : requirementsReady ? "Requirements met" : "Locked"}. Mastery ${mastery.level} of 50.`}
+      onClick={() => onOpenActivity(activity.id)}
     >
-      <span className="activity-card-icon">
-        <GameplayActivityIcon activity={activity} />
-      </span>
-      <span className="activity-card-copy">
-        <strong>{activity.name}</strong>
-        <small>{activity.type}</small>
-      </span>
-      <span className="activity-card-stats">
-        <strong>{formatNumber(effective.cost)} RAP</strong>
-        <small>{runCount} Runs</small>
-      </span>
-      <MasteryProgress trackId={activity.masteryTrackId} points={masteryPoints} compact />
-      {bestDrop && (
-        <span className="source-strip activity-source-strip">
-          Rare drop {formatDropChance(bestDrop, runCount)}
-        </span>
-      )}
+      <MasteryRing trackId={activity.masteryTrackId} points={masteryPoints}>
+        <span className="adventure-tile-icon-core"><GameplayActivityIcon activity={activity} /></span>
+      </MasteryRing>
+      <strong>{activity.name}</strong>
+      <small>{primarySkill ? skillName(primarySkill) : activity.type}</small>
+      <span className="adventure-tile-meta"><b>M{mastery.level}</b><small>{formatNumber(runCount)} runs</small></span>
     </button>
   );
 }
@@ -1246,11 +1201,13 @@ function ActivityDetailView({
   player,
   onClose,
   onRun,
+  onOpenInfo,
 }: {
   activityId: GameplayActivityId;
   player: PlayerState;
   onClose: () => void;
   onRun: () => void;
+  onOpenInfo: (details: AdventureInfoPanelDetails) => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -1265,11 +1222,7 @@ function ActivityDetailView({
   const runCount = player.activityRunCounts[activityId] ?? 0;
   const effective = effectiveActivityRun(activity, player);
   const masteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
-  const advantage = activitySkillAdvantage(activity, player);
-  const activeBonuses = collectAccountBonuses(player.owned).filter((bonus) => {
-    if (bonus.type === "skill-xp") return activity.xpRewards.some((reward) => reward.skillId === bonus.skillId);
-    return bonus.type !== "resistance";
-  });
+  const mastery = masteryProgress(activity.masteryTrackId, masteryPoints);
   const canRun = canStartActivity(activity, player);
   const runProgress = activeRun
     ? Math.min(100, Math.max(3, ((now - activeRun.startedAt) / (activeRun.endsAt - activeRun.startedAt)) * 100))
@@ -1287,47 +1240,26 @@ function ActivityDetailView({
       <button className="detail-close" onClick={onClose} aria-label="Close details">
         <X size={18} />
       </button>
-      <div className="sheet-icon activity-sheet-icon">
-        <GameplayActivityIcon activity={activity} />
+      <div className="activity-detail-hero">
+        <MasteryRing trackId={activity.masteryTrackId} points={masteryPoints}>
+          <span className={`activity-detail-icon-core ${requirementsReady ? "playable" : "locked"}`}><GameplayActivityIcon activity={activity} /></span>
+        </MasteryRing>
+        <h2>{activity.name}</h2>
+        <div className="activity-mastery-label">
+          <strong>Mastery Level {mastery.level} / 50</strong>
+          <small>{mastery.isMaxed ? "Mastered" : `${formatNumber(mastery.points)} / ${formatNumber(mastery.nextLevelPoints)} RAP`}</small>
+        </div>
       </div>
       <div className="detail-status-row">
         <span className={`status-pill ${requirementsReady ? "ready" : "locked"}`}>{requirementsReady ? "Ready" : "Locked"}</span>
         <span>{formatNumber(effective.cost)} RAP</span>
         <span>{formatDuration(effective.runtimeMs)}</span>
+        <span>{formatNumber(runCount)} Runs</span>
       </div>
-      <h2>{activity.name}</h2>
       <p>{activity.description}</p>
       <div className="sheet-meta">
         <span>{activity.type}</span>
-        <span>{formatNumber(runCount)} Runs</span>
-        <span>100% XP efficiency</span>
-      </div>
-      <MasteryProgress trackId={activity.masteryTrackId} points={masteryPoints} />
-      <div className="activity-bonus-panel">
-        <h3>Bonuses</h3>
-        <div className="bonus-row">
-          <span>Skill Advantage</span>
-          <strong>
-            +{advantage.xpBonusPercent.toFixed(1)}% XP, -{advantage.costReductionPercent.toFixed(1)}% RAP, -{advantage.runtimeReductionPercent.toFixed(1)}% runtime
-          </strong>
-        </div>
-        <div className="bonus-row">
-          <span>Content Mastery</span>
-          <strong>{formatMasteryModifiers(effective.mastery)}</strong>
-        </div>
-        {activeBonuses.length === 0 ? (
-          <div className="bonus-row muted">
-            <span>Account Bonuses</span>
-            <strong>None active</strong>
-          </div>
-        ) : (
-          activeBonuses.map((bonus) => (
-            <div key={`${bonus.collectibleId}-${bonus.type}`} className="bonus-row">
-              <span>{bonus.collectibleName}</span>
-              <strong>{formatBonusLabel(bonus)}</strong>
-            </div>
-          ))
-        )}
+        <span>{activity.xpRewards.map((reward) => skillName(reward.skillId)).join(" · ")}</span>
       </div>
       {activeRun && (
         <div className="active-training-panel" aria-label={`${activity.name} run status`}>
@@ -1342,7 +1274,7 @@ function ActivityDetailView({
           </div>
         </div>
       )}
-      <ActivityRequirementList requirements={activity.requirements} player={player} />
+      <ActivityRequirementList requirements={activity.requirements} player={player} onOpenInfo={onOpenInfo} />
       <div className="reward-list">
         <h3>XP Rewards</h3>
         {activity.xpRewards.map((reward) => (
@@ -1352,7 +1284,7 @@ function ActivityDetailView({
           </div>
         ))}
       </div>
-      <ActivityDropTable activity={activity} player={player} runCount={runCount} />
+      <ActivityDropTable activity={activity} player={player} runCount={runCount} onOpenInfo={onOpenInfo} />
       <div className="purchase-panel">
         <div>
           <strong>Run Adventure</strong>
@@ -1367,19 +1299,17 @@ function ActivityDetailView({
   );
 }
 
-function formatMasteryModifiers(modifiers: ReturnType<typeof masteryEconomicModifiers>) {
-  const values = [
-    modifiers.xpBonusPercent > 0 ? `+${modifiers.xpBonusPercent}% XP` : null,
-    modifiers.costReductionPercent > 0 ? `-${modifiers.costReductionPercent}% RAP` : null,
-    modifiers.runtimeReductionPercent > 0 ? `-${modifiers.runtimeReductionPercent}% runtime` : null,
-    modifiers.additionalRollChancePercent > 0 ? `+${modifiers.additionalRollChancePercent}% roll` : null,
-  ].filter(Boolean);
-  return values.join(", ") || "No passive bonus yet";
-}
-
-function ActivityRequirementList({ requirements, player }: { requirements: Requirement[]; player: PlayerState }) {
+function ActivityRequirementList({
+  requirements,
+  player,
+  onOpenInfo,
+}: {
+  requirements: Requirement[];
+  player: PlayerState;
+  onOpenInfo: (details: AdventureInfoPanelDetails) => void;
+}) {
   return (
-    <div className="requirement-list">
+    <div className="requirement-list activity-requirements">
       <h3>Requirements</h3>
       {requirements.length === 0 ? (
         <div className="requirement-row met">
@@ -1393,30 +1323,47 @@ function ActivityRequirementList({ requirements, player }: { requirements: Requi
           <span className="requirement-state">Met</span>
         </div>
       ) : (
-        requirements.map((requirement) => {
+        <div className="activity-requirements-grid">
+          {requirements.map((requirement) => {
           const state = getRequirementState(requirement, player);
           const key = requirement.type === "skill" ? `${requirement.skillId}-${requirement.level}` : requirement.collectibleId;
           const skill = requirement.type === "skill" ? skills.find((candidate) => candidate.id === requirement.skillId) : null;
           const currentLevel = requirement.type === "skill" ? levelFromXp(player.skillXp[requirement.skillId]) : 0;
           const label = requirement.type === "skill" ? skillName(requirement.skillId) : requirement.label;
-          const detail = requirement.type === "skill" ? `Level ${currentLevel} / ${requirement.level}` : state.current;
+          const detail = requirement.type === "skill" ? `${currentLevel} / ${requirement.level}` : state.current;
 
+          const requiredCollectible = requirement.type === "collectible" ? getCollectibleById(requirement.collectibleId) : null;
+          const icon = skill?.icon ?? requiredCollectible?.icon;
           return (
-            <div key={key} className={`requirement-row ${state.met ? "met" : ""}`}>
-              <span className="requirement-icon">
-                {skill?.icon ? <InspectableImage src={skill.icon} title={skill.name} subtitle="Skill requirement" /> : <Swords size={15} />}
+            <button
+              key={key}
+              type="button"
+              className={`activity-requirement-tile ${state.met ? "met" : "needed"}`}
+              onClick={() => onOpenInfo({
+                kind: "requirement",
+                title: label,
+                icon,
+                subtitle: requirement.type === "skill" ? "Skill Requirement" : "Collectible Requirement",
+                value: detail,
+                met: state.met,
+              })}
+              aria-label={`${label}. ${detail}. ${state.met ? "Met" : "Needed"}`}
+            >
+              <span className="activity-requirement-art">
+                {icon ? <InspectableImage src={icon} title={label} subtitle="Requirement" /> : <Swords size={17} />}
                 <span className="requirement-badge" aria-hidden="true">
                   {state.met ? <Check size={9} /> : <Lock size={9} />}
                 </span>
               </span>
-              <span className="requirement-copy">
+              <span className="activity-requirement-copy">
                 <strong>{label}</strong>
                 <small>{detail}</small>
               </span>
               <span className="requirement-state">{state.met ? "Met" : "Needed"}</span>
-            </div>
+            </button>
           );
-        })
+          })}
+        </div>
       )}
     </div>
   );
@@ -1426,10 +1373,12 @@ function ActivityDropTable({
   activity,
   player,
   runCount,
+  onOpenInfo,
 }: {
   activity: GameplayActivity;
   player: PlayerState;
   runCount: number;
+  onOpenInfo: (details: AdventureInfoPanelDetails) => void;
 }) {
   const sharedPools = activity.sharedDropPoolIds.flatMap((poolId) => {
     const pool = getSharedDropPool(poolId);
@@ -1437,30 +1386,44 @@ function ActivityDropTable({
   });
   const hasDrops = activity.drops.length > 0 || sharedPools.some((pool) => pool.entries.length > 0);
   return (
-    <div className="drop-table">
-      <h3>Drop Table</h3>
+    <div className="drop-table activity-drops">
+      <h3>Drops</h3>
       {!hasDrops ? (
         <p>No collectible drops yet.</p>
       ) : (
-        <>
+        <div className="activity-drop-grid">
         {activity.drops.map((drop) => {
           const item = activityDropItem(drop);
           const chance = activityDropChance(drop, runCount);
           const owned = item ? player.owned.includes(item.id) : false;
           const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
+          const chanceLabel = chance.numerator === 1 ? `1 / ${chance.denominator}` : `${chance.numerator} / ${chance.denominator}`;
 
           return (
-            <div key={drop.collectibleId} className={`drop-row ${owned ? "owned" : ""}`}>
+            <button
+              key={drop.collectibleId}
+              type="button"
+              className={`activity-drop-tile ${owned ? "owned" : "unowned"}`}
+              onClick={() => onOpenInfo({
+                kind: "drop",
+                title: item?.name ?? drop.collectibleId,
+                icon: item?.icon,
+                subtitle: item ? `${item.rarity} ${categoryName}` : "Collectible Drop",
+                chance: chanceLabel,
+                baseChance: `1 / ${drop.chance}`,
+                state: owned ? "owned" : "unowned",
+              })}
+              aria-label={`${item?.name ?? drop.collectibleId}. ${chanceLabel}. ${owned ? "Owned" : "Not collected"}`}
+            >
               <span className="drop-item-icon">
                 {item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Adventure drop" sourceType={item.source?.type} /> : <Dice5 size={20} />}
               </span>
               <span className="drop-copy">
                 <strong>{item?.name ?? drop.collectibleId}</strong>
-                <small>{item ? `${item.rarity} ${categoryName}` : "Collectible Drop"}</small>
-                <small>Base 1 / {drop.chance} - Current {formatDropChance(drop, runCount)}</small>
+                <small>{chanceLabel}</small>
               </span>
               <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Unowned"}</span>
-            </div>
+            </button>
           );
         })}
         {sharedPools.flatMap((pool) => pool.entries.map((entry) => {
@@ -1469,19 +1432,33 @@ function ActivityDropTable({
           const accumulatedUnits = player.sharedDropPoolRollUnits[pool.id] ?? 0;
           const chance = sharedDropEntryChance(entry.denominator, accumulatedUnits, rollUnitsForBaseRap(activity.cost));
           const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
+          const chanceLabel = `${chance.multiplier} / ${formatNumber(entry.denominator)}`;
           return (
-            <div key={`${pool.id}-${entry.collectibleId}`} className={`drop-row shared ${owned ? "owned" : ""}`}>
+            <button
+              key={`${pool.id}-${entry.collectibleId}`}
+              type="button"
+              className={`activity-drop-tile ${owned ? "owned" : "shared"}`}
+              onClick={() => onOpenInfo({
+                kind: "drop",
+                title: item?.name ?? entry.collectibleId,
+                icon: item?.icon,
+                subtitle: `${pool.name} · ${item ? `${item.rarity} ${categoryName}` : "Shared Chaser"}${chance.isProtected ? " · Protected" : ""}`,
+                chance: chanceLabel,
+                baseChance: `1 / ${formatNumber(entry.denominator)}`,
+                state: owned ? "owned" : "shared",
+              })}
+              aria-label={`${item?.name ?? entry.collectibleId}. ${chanceLabel}. ${owned ? "Owned" : "Shared drop"}`}
+            >
               <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Shared drop" sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
               <span className="drop-copy">
                 <strong>{item?.name ?? entry.collectibleId}</strong>
-                <small>{pool.name} · {item ? `${item.rarity} ${categoryName}` : "Shared Chaser"}</small>
-                <small>Base 1 / {formatNumber(entry.denominator)} · Current {chance.multiplier} / {formatNumber(entry.denominator)} · {formatNumber(accumulatedUnits)} Roll Units</small>
+                <small>{chanceLabel}</small>
               </span>
               <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Shared"}</span>
-            </div>
+            </button>
           );
         }))}
-        </>
+        </div>
       )}
     </div>
   );

@@ -6,9 +6,9 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     name: "Fishing Trawler Mastery",
     contentKind: "adventure",
     targetRap: 5_000_000,
-    passiveBonuses: [{ type: "content-xp", percentPerLevel: 0.5 }],
+    passiveBonuses: [{ type: "content-xp", percentPerLevel: 0.1 }],
     milestones: [
-      { level: 4, label: "Trawler Hand Badge", reward: { type: "cosmetic", cosmeticId: "badge-trawler-hand" } },
+      { level: 8, label: "Trawler Hand Badge", reward: { type: "cosmetic", cosmeticId: "badge-trawler-hand" } },
     ],
   },
   {
@@ -16,7 +16,7 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     name: "Haunted Burial Mastery",
     contentKind: "adventure",
     targetRap: 2_500_000,
-    passiveBonuses: [{ type: "runtime-reduction", percentPerLevel: 0.4 }],
+    passiveBonuses: [{ type: "runtime-reduction", percentPerLevel: 0.08 }],
     milestones: [],
   },
   {
@@ -24,7 +24,7 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     name: "Ember Kiln Mastery",
     contentKind: "adventure",
     targetRap: 2_500_000,
-    passiveBonuses: [{ type: "rap-cost-reduction", percentPerLevel: 0.4 }],
+    passiveBonuses: [{ type: "rap-cost-reduction", percentPerLevel: 0.08 }],
     milestones: [],
   },
   {
@@ -32,7 +32,7 @@ export const CONTENT_MASTERY_TRACKS: ContentMasteryTrack[] = [
     name: "Deep Mine Survey Mastery",
     contentKind: "adventure",
     targetRap: 2_500_000,
-    passiveBonuses: [{ type: "content-xp", percentPerLevel: 0.5 }],
+    passiveBonuses: [{ type: "content-xp", percentPerLevel: 0.1 }],
     milestones: [],
   },
 ];

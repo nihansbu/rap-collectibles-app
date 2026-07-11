@@ -349,11 +349,13 @@ Bad Luck Protection:
 
 ## Content Mastery
 
-Content Mastery is a reusable Level 0-10 progression layer for Adventures and future Minigames and Bosses.
+Content Mastery is a reusable Level 0-50 progression layer for Adventures and future Minigames and Bosses.
 
 - Every completed run grants Mastery Points equal to its undiscounted base RAP cost.
 - Cost reductions never reduce Mastery earned.
-- Each track defines a configurable target RAP; universal ratio thresholds derive Levels 1-10.
+- Mastery is progress earned from completed runs, never an entry requirement for the Adventure that grants it.
+- Each track defines a configurable target RAP; universal ratio thresholds derive Levels 1-50.
+- The Adventure overview and detail page show the rank with a circular ring: neutral at Level 0 and fully gold at Level 50.
 - Passive economic bonuses remain modest so new content does not feel punitive.
 - Milestones can unlock Cosmetics, content routes, Collectibles, or simple Account Bonuses.
 - Multiple routes in one content family may share one Mastery track.
@@ -488,7 +490,7 @@ Interaction decision:
 - The detail panel fills the content area under the topbar.
 - Direct-purchase Collectible tiles use tap as the buy action, but still show a confirmation dialog before RAP is spent.
 - Collectible tiles with no valid direct action, such as owned entries, unavailable entries, or Adventure-only drops, open the detail panel on tap.
-- Adventure tiles use tap to start a run when the Adventure is available and long press for details.
+- Adventure tiles use tap to open the Adventure detail view. The detail view contains the Start Adventure action after the player reviews the compact requirements, rewards, and drops.
 - Manual Log Activity tiles use tap to log one hour and long press for details.
 - Skill tiles still open the Skill detail panel on tap because training requires choosing a duration.
 - Collectible detail panels show status, cost, type, rarity, requirements, and a dedicated unlock/purchase section.
@@ -543,7 +545,7 @@ The first version should prioritize clarity and fast collection feedback over de
 - Skill-based unlock trees.
 - Better Codex presentation with category completion.
 - More Adventures, Content Mastery tracks, Shared Chaser Pools, and deeper Bad Luck Protection tuning.
-- Generic Content Mastery Level 0-10 for Adventures, Minigames, and Bosses.
+- Generic Content Mastery Level 0-50 for Adventures, Minigames, and Bosses.
 - Shared Chaser Drop Pools across eligible content.
 - Cross-category Collection Sets without time-limited availability.
 - Account Bonus overview, Heroes, Profile Badges, curated Themes, and earned Cosmetics.

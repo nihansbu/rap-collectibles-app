@@ -48,6 +48,10 @@ export function masteryProgress(trackId: string, points: number): MasteryProgres
   return { level, points: safePoints, currentLevelPoints, nextLevelPoints, progress, isMaxed };
 }
 
+export function masteryRingPercent(trackId: string, points: number) {
+  return (masteryProgress(trackId, points).level / CONTENT_MASTERY_MAX_LEVEL) * 100;
+}
+
 export function masteryPassivePercent(trackId: string, points: number, type: ContentMasteryPassive["type"]) {
   const track = getMasteryTrack(trackId);
   if (!track) return 0;

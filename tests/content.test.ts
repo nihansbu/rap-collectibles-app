@@ -94,7 +94,7 @@ describe("content catalog", () => {
       }
       for (const milestone of track.milestones) {
         expect(milestone.level).toBeGreaterThanOrEqual(1);
-        expect(milestone.level).toBeLessThanOrEqual(10);
+        expect(milestone.level).toBeLessThanOrEqual(50);
         if (milestone.reward.type === "cosmetic") expect(cosmeticIds.has(milestone.reward.cosmeticId)).toBe(true);
         if (milestone.reward.type === "collectible") expect(collectibleIds.has(milestone.reward.collectibleId)).toBe(true);
         if (milestone.reward.type === "account-bonus") expect(milestone.reward.bonus.percent).toBeGreaterThan(0);

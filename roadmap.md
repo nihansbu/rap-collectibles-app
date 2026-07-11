@@ -6,7 +6,7 @@ This file tracks implementation order, dependencies, and acceptance criteria. De
 
 - [x] Rename the gameplay hub to `World` and repeatable gameplay runs to `Adventures`; keep real-life earning under `Activity Log`.
 - [x] Centralize placeholder economy, XP, Mastery, modifier, and drop values in typed balance data.
-- [x] Add generic Content Mastery tracks from Level 0 to 10, progressed by base RAP cost rather than discounted cost.
+- [x] Add generic Content Mastery tracks from Level 0 to 50, progressed by base RAP cost rather than discounted cost.
 - [x] Make Adventure XP shares total 100% and validate that invariant at build time.
 - [x] Add reusable shared Chaser Drop Pools measured in normalized RAP Roll Units.
 - [x] Add a balance report for RAP-per-hour, Mastery time, expected drops, and bonus stacking.
@@ -20,7 +20,7 @@ Acceptance criteria:
 
 ## Next: Player-Facing Progression
 
-- [x] Show Mastery Level, progress, passive effect, and milestone rewards on Adventure cards/details.
+- [x] Show compact Mastery rank/ring on Adventure overview and detail views, with passive effect and milestone data available in the system.
 - [x] Add an Account Bonuses page grouped into Skill XP, Rolls & Luck, Adventure modifiers, and future resistance groups.
 - [x] Add cross-category Collection Sets and a dedicated Codex Sets view.
 - [x] Rename the player-facing `Characters` category to `Heroes`.
@@ -30,6 +30,7 @@ Acceptance criteria:
 - [x] Add the account-wide Achievement foundation with non-spendable AP, multi-stage series, title rewards, completion notifications, and a dedicated overview.
 - [x] Introduce the `Vault` parent area under `Collectibles` with `Sets` and `Skill Capes` as the first subpages, including all 99/120 Skill Cape definitions, assets, unlock reconciliation, and notifications.
 - [x] Add a global Inspect view for raster icons and images without changing surrounding card actions.
+- [x] Simplify Adventure overview/detail presentation and add shared focused Info Panels for Requirements and Drops.
 
 Acceptance criteria:
 
@@ -54,7 +55,7 @@ Acceptance criteria:
 ## Locked Rules
 
 - RAP is the shared currency and Content Mastery uses undiscounted base RAP as progress.
-- Content Mastery has Levels 0-10; Skill Mastery is a separate future system after Level 120.
+- Content Mastery has Levels 0-50; Skill Mastery is a separate future system after Level 120.
 - Adventure XP shares total 100% before bonuses.
 - Progression is account-based; Heroes do not have separate levels, inventories, or saves.
 - Released content remains available. Themes and event-styled Sets do not create FOMO.

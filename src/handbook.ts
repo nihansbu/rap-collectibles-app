@@ -277,13 +277,13 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "content-mastery",
     title: "Content Mastery",
-    summary: "Permanent Level 0-10 progress for Adventures and future World content.",
+    summary: "Permanent Level 0-50 progress for Adventures and future World content.",
     category: "progression",
     sections: [
       {
         paragraphs: [
-          "Every completed Adventure adds its undiscounted base RAP cost to the linked Mastery track. Cost reductions never reduce Mastery earned.",
-          "Each track has ten levels, modest passive bonuses, and selected milestone rewards. Mastery targets and rewards are configured per content family.",
+          "Every completed Adventure adds its undiscounted base RAP cost to the linked Mastery track. Cost reductions never reduce Mastery earned, and Mastery never blocks access to an Adventure.",
+          "Each track has fifty levels. The Adventure overview and detail page show the current rank with a circular ring that fills from neutral at Level 0 to complete gold at Level 50. Targets, passive bonuses, and milestone rewards are configured per content family.",
         ],
       },
     ],
@@ -422,7 +422,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
   adventures: {
     id: "adventures",
     title: "Adventures",
-    intro: "This page lists repeatable Adventures, their effective RAP cost, Mastery, run count, availability, and active state.",
+    intro: "This page lists repeatable Adventures with compact icons, their Mastery rank, run count, availability, and active state.",
     entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results", "drop-tables", "bad-luck-protection"],
   },
   bonuses: {
@@ -524,7 +524,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "activity-detail": {
     id: "activity-detail",
     title: "Adventure Details",
-    intro: "This detail page shows the Adventure's requirements, Mastery, Skill Advantage, effective cost, runtime, XP split, and complete Drop Table.",
+    intro: "This detail page shows the Adventure icon and Mastery rank, compact requirements, cost, runtime, XP rewards, drops, and the run action. Tap a requirement or drop for its focused Info Panel.",
     entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "drop-tables", "bad-luck-protection", "additional-rolls", "activity-results"],
   },
   "manual-activity-detail": {

@@ -45,7 +45,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/App.tsx`: app composition, navigation state, and player-state actions. New page UI belongs in `src/pages/`; persistence belongs in hooks/domain modules.
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
-- `src/mastery.ts`: generic Content Mastery Level 0-10 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
+- `src/mastery.ts`: generic Content Mastery Level 0-50 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
 - `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
 - `src/cosmetics.ts`: default Theme availability plus derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
 - `src/achievements.ts`: pure Achievement progress evaluation, tag/category filtering, AP derivation, chained completion reconciliation, and idempotent reward grants.
@@ -117,7 +117,7 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - Direct main-menu entries remember their origin: backing out of a category or Activities page opened from the main dashboard returns to the main dashboard, not to the older intermediate overview page.
 - Tapping a direct-purchase Collectible card is the primary buy action and opens the purchase confirmation when the item is affordable and requirements are met. Long-pressing opens the full-content detail view under the topbar.
 - Tapping an unavailable, owned, or Activity-drop Collectible falls back to the detail view because there is no valid buy action.
-- Tapping an Adventure card starts the run when requirements and RAP are sufficient. Long-pressing opens the full-content Adventure detail view with requirements, runtime, XP split, Mastery, Drop Table, Bad Luck Protection state, and a Start Run action.
+- Tapping an Adventure card opens the compact Adventure detail view. The detail view shows the combined Adventure/Mastery icon, requirements, runtime, XP split, drops, and the Start Run action; tapping a Requirement or Drop opens a focused read-only Info Panel, while tapping the artwork preserves global image inspection.
 - Skill cards still open the Skill detail view because training requires choosing a duration.
 - The Adventure Drop Table keeps Bad Luck Protection compact. Detailed rule explanations belong in the Handbook.
 - Katalogdaten are modularized by domain/category. `src/data.ts` remains the stable import facade so existing systems can keep importing from `./data`.
@@ -142,7 +142,7 @@ Implemented early systems:
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
 - Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
-- Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-10 and centrally capped passive modifiers.
+- Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-50 and centrally capped passive modifiers. Mastery is earned by completed runs and is never an Adventure entry requirement; the UI renders the rank as a neutral-to-gold circular ring.
 - Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
 - Skill Capes derive from canonical Skill XP: Level 99 grants the normal Cape and Level 120 grants the Master Cape. All 60 are data-driven and use visible Skill-specific emblems over shared Cape silhouettes.
@@ -558,6 +558,14 @@ Candidate combined skill roster to finalize:
 - Why it works: the service worker's activation handler removes cache versions other than the current name, online requests refresh cached assets, and cloning no longer races the browser's body consumption. A stale zero-byte response therefore cannot continue to win while online.
 - Files involved: `public/assets/icons/skill-capes/skill-cape-sailing-99.webp`, `public/sw.js`, `index.html`.
 - Validation: direct deployed fetch returned HTTP 200, `image/webp`, 14,464 bytes; live Playwright navigation found `naturalWidth: 256` and no broken images before the v3 cache strategy update.
+
+2026-07-11: Simplified Adventure progression and focused information panels.
+
+- Original problem: Adventure screens repeated too much information, treated Mastery as if it could be a requirement, and separated the Adventure and Mastery visuals unnecessarily.
+- Successful solution: move Content Mastery to a Level 0-50 progress model, render it as a neutral-to-gold ring around the Adventure icon, show the rank on the compact Adventure overview, and combine the Adventure/Mastery presentation on the detail page. Requirements and Drops now use compact tiles; selecting their text opens one shared read-only Info Panel, while selecting artwork preserves global image inspection.
+- Why it works: Mastery is now clearly earned by completed runs and cannot block the content that grants it. The primary Adventure flow stays compact while deeper chance, status, and requirement information remains available on demand.
+- Files involved: `src/data/balance/mastery.ts`, `src/data/mastery.ts`, `src/mastery.ts`, `src/ui/MasteryProgress.tsx`, `src/ui/AdventureInfoPanel.tsx`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, `game_design.md`, `roadmap.md`.
+- Validation: `npm run check`, `npm run test:coverage`, `npm run build`, and in-app browser verification at 390px width covering Adventure overview, Fisher's Trawler detail, Requirement Info Panel, Drop Info Panel, and global image inspection.
 
 ## Known Issues
 
