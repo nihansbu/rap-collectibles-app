@@ -30,15 +30,23 @@ export type ContentMasteryTrack = {
   milestones: ContentMasteryMilestone[];
 };
 
-export type SharedDropPoolEntry = {
-  collectibleId: string;
-  denominator: number;
-};
-
-export type SharedDropPool = {
+export type ChaserItemDefinition = {
   id: string;
   name: string;
-  entries: SharedDropPoolEntry[];
+  collectibleId: string;
+  denominator: number;
+  eligibleActivityIds: string[];
+};
+
+export type SpecializationId = "maritime-fishing";
+
+export type SpecializationDefinition = {
+  id: SpecializationId;
+  parentSkillId: SkillId;
+  name: string;
+  description: string;
+  unlockLevel: number;
+  icon: string;
 };
 
 export type AdventureXpReward = {
@@ -48,7 +56,6 @@ export type AdventureXpReward = {
 
 export type AdventureDefinitionBase = {
   id: string;
-  familyId: string;
   masteryTrackId: string;
   name: string;
   description: string;
@@ -57,16 +64,6 @@ export type AdventureDefinitionBase = {
   runtimeMs: number;
   requirements: Requirement[];
   xpRewards: AdventureXpReward[];
-  sharedDropPoolIds: string[];
-};
-
-export type ContentFamily = {
-  id: string;
-  name: string;
-  contentKind: ContentKind;
-  description: string;
-  masteryTrackId: string;
-  contentIds: string[];
 };
 
 export type CosmeticKind = "profile-badge" | "theme" | "title" | "portrait" | "tile-style" | "unlock-animation";

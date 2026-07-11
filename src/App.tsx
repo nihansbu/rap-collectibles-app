@@ -46,7 +46,7 @@ import {
   sourceActivityFor,
   statusLabel,
 } from "./catalog";
-import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillCapeDefinition, type SkillId } from "./data";
+import { categories, COLLECTION_SETS, type AchievementDefinition, type CategoryId, type Collectible, type Requirement, skills, type SkillCapeDefinition, type SkillId, type SpecializationId } from "./data";
 import { ACTIVITY_OPTIONS, activityRap, type ActivityLogEntry, type ActivityOption } from "./economy";
 import { completionPercent, formatNumber } from "./format";
 import { createHandbookContext, type HandbookContext } from "./handbook";
@@ -68,7 +68,7 @@ import { exportPlayerState, importPlayerState, type PlayerState } from "./save";
 import { getCosmetic, reconcileUnlockedCosmetics } from "./cosmetics";
 import { getAchievement } from "./achievements";
 import { getSkillCape, skillCapeSummary } from "./skillCapes";
-import { getSharedDropPool, sharedDropEntryChance, rollUnitsForBaseRap } from "./dropPools";
+import { chasersForActivity } from "./chasers";
 import { masteryProgress } from "./mastery";
 import { getSetsForCollectible } from "./sets";
 import { usePlayerPersistence } from "./hooks/usePlayerPersistence";
@@ -88,6 +88,7 @@ import { MAX_LEVEL, levelFromXp, xpIntoLevel } from "./xp";
 import { AchievementToast } from "./ui/AchievementToast";
 import { SkillCapeToast } from "./ui/SkillCapeToast";
 import { InspectableImage } from "./ui/IconInspect";
+import { getSpecialization, specializationsForSkill, specializationUnlocked } from "./specializations";
 
 type Filter = "all" | "owned" | "unlockable" | "locked";
 type SkillFilter = "all" | "trained" | "trainable" | "maxed";
@@ -95,6 +96,7 @@ type SortMode = "default" | "cost-asc" | "cost-desc" | "requirements-asc" | "req
 type DetailView =
   | { type: "collectible"; item: Collectible }
   | { type: "skill"; skillId: SkillId }
+  | { type: "specialization"; specializationId: SpecializationId; parentSkillId: SkillId }
   | { type: "activity"; activityId: GameplayActivityId }
   | { type: "manual-activity"; activity: ActivityOption };
 type ContentPage =
@@ -128,6 +130,22 @@ type CategoryProgress = {
 
 type NavigationSnapshot = { page: Page; detailView: DetailView | null };
 
+function hierarchicalParent(current: NavigationSnapshot, settingsOrigin: NavigationSnapshot): NavigationSnapshot | null {
+  if (current.detailView?.type === "specialization") {
+    return { page: current.page, detailView: { type: "skill", skillId: current.detailView.parentSkillId } };
+  }
+  if (current.detailView) return { page: current.page, detailView: null };
+  if (current.page.type === "handbook") {
+    return { page: current.page.origin, detailView: current.page.originDetail };
+  }
+  if (current.page.type === "settings") return settingsOrigin;
+  if (current.page.type === "sets" || current.page.type === "skill-capes") {
+    return { page: { type: "vault" }, detailView: null };
+  }
+  if (current.page.type === "main") return null;
+  return { page: { type: "main" }, detailView: null };
+}
+
 function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
   if (detailView?.type === "collectible") {
     return createHandbookContext("collectible-detail", {
@@ -141,6 +159,14 @@ function handbookContextFor(page: ContentPage, detailView: DetailView | null) {
     return createHandbookContext("skill-detail", {
       title: name,
       intro: `This page shows ${name} progression, XP toward the next level, current training state, and the timed training sessions available.`,
+    });
+  }
+
+  if (detailView?.type === "specialization") {
+    const specialization = getSpecialization(detailView.specializationId);
+    return createHandbookContext("skill-detail", {
+      title: specialization?.name ?? "Specialization",
+      intro: "Specializations are unlocked by parent Skill level and gain their own XP from eligible World activities.",
     });
   }
 
@@ -185,6 +211,9 @@ export function App() {
   const showDevTools = import.meta.env.DEV || new URLSearchParams(window.location.search).get("dev") === "1";
   const navigationReadyRef = useRef(false);
   const restoringHistoryRef = useRef(false);
+  const currentNavigationRef = useRef<NavigationSnapshot>({ page: { type: "main" }, detailView: null });
+  const settingsOriginRef = useRef<NavigationSnapshot>({ page: { type: "main" }, detailView: null });
+  const adventureInfoPanelRef = useRef<AdventureInfoPanelDetails | null>(null);
 
   const title = page.type === "main"
     ? "Menu"
@@ -213,8 +242,13 @@ export function App() {
             : categories.find((category) => category.id === page.id)?.name ?? "";
 
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      const snapshot = (event.state as { idleLife?: NavigationSnapshot } | null)?.idleLife;
+    const handlePopState = () => {
+      if (adventureInfoPanelRef.current) {
+        adventureInfoPanelRef.current = null;
+        setAdventureInfoPanel(null);
+        return;
+      }
+      const snapshot = hierarchicalParent(currentNavigationRef.current, settingsOriginRef.current);
       if (!snapshot) return;
       restoringHistoryRef.current = true;
       setPage(snapshot.page);
@@ -224,8 +258,20 @@ export function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  function openAdventureInfo(details: AdventureInfoPanelDetails) {
+    adventureInfoPanelRef.current = details;
+    setAdventureInfoPanel(details);
+    window.history.pushState({ ...window.history.state, idleLifeInfoPanel: true }, "");
+  }
+
+  function closeAdventureInfo() {
+    if (!adventureInfoPanelRef.current) return;
+    window.history.back();
+  }
+
   useEffect(() => {
     const snapshot: NavigationSnapshot = { page, detailView };
+    currentNavigationRef.current = snapshot;
     if (!navigationReadyRef.current) {
       window.history.replaceState({ ...window.history.state, idleLife: snapshot }, "");
       navigationReadyRef.current = true;
@@ -470,6 +516,7 @@ export function App() {
         onGrantRp={grantRp}
         onOpenHandbook={openHandbook}
         onOpenSettings={() => {
+          settingsOriginRef.current = { page, detailView };
           setDetailView(null);
           setPage({ type: "settings" });
         }}
@@ -492,6 +539,13 @@ export function App() {
             player={player}
             onClose={() => setDetailView(null)}
             onToggleTraining={() => toggleSkillTraining(detailView.skillId)}
+            onOpenSpecialization={(specializationId) => setDetailView({ type: "specialization", specializationId, parentSkillId: detailView.skillId })}
+          />
+        ) : detailView?.type === "specialization" ? (
+          <SpecializationDetailView
+            specializationId={detailView.specializationId}
+            player={player}
+            onClose={() => setDetailView({ type: "skill", skillId: detailView.parentSkillId })}
           />
         ) : detailView?.type === "activity" ? (
           <ActivityDetailView
@@ -499,7 +553,7 @@ export function App() {
             player={player}
             onClose={() => setDetailView(null)}
             onRun={() => runGameplayActivity(detailView.activityId)}
-            onOpenInfo={(details) => setAdventureInfoPanel(details)}
+            onOpenInfo={openAdventureInfo}
           />
         ) : detailView?.type === "manual-activity" ? (
           <ManualActivityDetailView
@@ -613,7 +667,7 @@ export function App() {
       {unlockNotice && <UnlockNotice item={unlockNotice} onClose={() => setUnlockNotice(null)} />}
       {achievementQueue[0] && <AchievementToast achievement={achievementQueue[0]} onClose={() => setAchievementQueue((current) => current.slice(1))} />}
       {skillCapeQueue[0] && <SkillCapeToast cape={skillCapeQueue[0]} onClose={() => setSkillCapeQueue((current) => current.slice(1))} />}
-      {adventureInfoPanel && <AdventureInfoPanel details={adventureInfoPanel} onClose={() => setAdventureInfoPanel(null)} />}
+      {adventureInfoPanel && <AdventureInfoPanel details={adventureInfoPanel} onClose={closeAdventureInfo} />}
       {activityResultNotice && (
         <ActivityResultPanel
           result={activityResultNotice}
@@ -996,10 +1050,19 @@ function SkillsPage({
           const xp = player.skillXp[skill.id];
           const levelInfo = xpIntoLevel(xp);
           const training = isSkillTraining(player, skill.id);
+          const skillSpecializations = specializationsForSkill(skill.id);
+          const unlockedSpecializations = skillSpecializations.filter((specialization) => specializationUnlocked(specialization.id, player.skillXp)).length;
           return (
             <button type="button" className={`icon-tile skill-tile ${training ? "training" : ""}`} key={skill.id} onClick={() => onOpenSkill(skill.id)}>
               {skill.icon ? <TileVisual icon={skill.icon} category={categoryForSkill(skill.id)} label={skill.name} inspectSubtitle="Skill icon" inspectable={false} /> : <TileVisual category={categoryForSkill(skill.id)} />}
               <h2 style={{ fontSize: skillNameFontSize(skill.name) }}>{skill.name}</h2>
+              {skillSpecializations.length > 0 && (
+                <span className="specialization-dots" aria-label={`${unlockedSpecializations} of ${skillSpecializations.length} specializations unlocked`}>
+                  {skillSpecializations.map((specialization) => (
+                    <i key={specialization.id} className={specializationUnlocked(specialization.id, player.skillXp) ? "unlocked" : ""} />
+                  ))}
+                </span>
+              )}
               <span>Lv. {levelInfo.level}</span>
             </button>
           );
@@ -1089,11 +1152,13 @@ function SkillDetailView({
   player,
   onClose,
   onToggleTraining,
+  onOpenSpecialization,
 }: {
   skillId: SkillId;
   player: PlayerState;
   onClose: () => void;
   onToggleTraining: () => void;
+  onOpenSpecialization: (specializationId: SpecializationId) => void;
 }) {
   const skill = skills.find((candidate) => candidate.id === skillId)!;
   const xp = player.skillXp[skillId];
@@ -1109,6 +1174,7 @@ function SkillDetailView({
       : !canStartNewTraining
         ? "Maximum 3 active skills"
         : null;
+  const skillSpecializations = specializationsForSkill(skillId);
 
   return (
     <section className={`detail-view ${activeTraining ? "training" : ""}`} aria-label={`${skill.name} details`}>
@@ -1161,6 +1227,83 @@ function SkillDetailView({
           ? "Stopping is free and keeps all XP already earned."
           : disabledReason ?? `Runs for up to ${TRAINING_WINDOW_HOURS} hours - Maximum ${MAX_ACTIVE_TRAININGS} active skills`}
       </p>
+      {skillSpecializations.length > 0 && (
+        <section className="specialization-section" aria-label={`${skill.name} specializations`}>
+          <div className="specialization-heading">
+            <h3>Specializations</h3>
+            <span>World-trained</span>
+          </div>
+          <div className="specialization-grid">
+            {skillSpecializations.map((specialization) => {
+              const unlocked = specializationUnlocked(specialization.id, player.skillXp);
+              const specializationLevel = levelFromXp(player.specializationXp[specialization.id] ?? 0);
+              return (
+                <button
+                  key={specialization.id}
+                  type="button"
+                  className={`specialization-tile ${unlocked ? "unlocked" : "locked"}`}
+                  onClick={() => onOpenSpecialization(specialization.id)}
+                >
+                  <img src={specialization.icon} alt="" />
+                  <span>
+                    <strong>{specialization.name}</strong>
+                    <small>{unlocked ? `Lv. ${specializationLevel}` : `Unlocks at ${skill.name} ${specialization.unlockLevel}`}</small>
+                  </span>
+                  {unlocked ? <ChevronRight size={16} /> : <Lock size={14} />}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </section>
+  );
+}
+
+function SpecializationDetailView({
+  specializationId,
+  player,
+  onClose,
+}: {
+  specializationId: SpecializationId;
+  player: PlayerState;
+  onClose: () => void;
+}) {
+  const specialization = getSpecialization(specializationId)!;
+  const parentSkill = skills.find((skill) => skill.id === specialization.parentSkillId)!;
+  const unlocked = specializationUnlocked(specializationId, player.skillXp);
+  const xp = player.specializationXp[specializationId] ?? 0;
+  const levelInfo = xpIntoLevel(xp);
+  const sources = GAMEPLAY_ACTIVITIES.filter((activity) => activity.specializationXpRewards.some((reward) => reward.specializationId === specializationId));
+
+  return (
+    <section className={`detail-view specialization-detail ${unlocked ? "unlocked" : "locked"}`} aria-label={`${specialization.name} details`}>
+      <button className="detail-close" onClick={onClose} aria-label="Close specialization details"><X size={18} /></button>
+      <div className="detail-artwork"><img src={specialization.icon} alt={specialization.name} draggable="false" /></div>
+      <div className="detail-status-row">
+        <span className={`status-pill ${unlocked ? "ready" : "locked"}`}>{unlocked ? "Unlocked" : "Locked"}</span>
+        <span>{parentSkill.name} Specialization</span>
+      </div>
+      <h2>{specialization.name}</h2>
+      <p>{specialization.description}</p>
+      <div className="skill-detail-track">
+        <div className="xp-track" aria-label={`${specialization.name} XP progress`}><span style={{ width: `${Math.max(3, levelInfo.progress * 100)}%` }} /></div>
+        <div className="skill-detail-stats">
+          <span>Level {levelInfo.level} · {formatNumber(xp)} XP</span>
+          <span>{levelInfo.level >= MAX_LEVEL ? "Maximum level" : `${formatNumber(levelInfo.next - xp)} XP to Level ${levelInfo.level + 1}`}</span>
+        </div>
+      </div>
+      <div className="specialization-info-list">
+        <div><span>Unlock condition</span><strong>{parentSkill.name} Level {specialization.unlockLevel}</strong></div>
+        <div><span>Training</span><strong>Eligible World activities</strong></div>
+      </div>
+      <div className="specialization-sources">
+        <h3>XP Sources</h3>
+        {sources.map((activity) => {
+          const reward = activity.specializationXpRewards.find((entry) => entry.specializationId === specializationId)!;
+          return <div key={activity.id}><span>{activity.name}</span><strong>+{Math.round(reward.share * 100)}% base XP</strong></div>;
+        })}
+      </div>
     </section>
   );
 }
@@ -1245,13 +1388,28 @@ function ActivityDetailView({
       )}
       <ActivityRequirementList requirements={activity.requirements} player={player} onOpenInfo={onOpenInfo} />
       <div className="reward-list">
-        <h3>XP Rewards</h3>
+        <h3>Core XP</h3>
         {activity.xpRewards.map((reward) => (
           <div key={reward.skillId} className="reward-row">
             <span>{skillName(reward.skillId)}</span>
             <strong>{Math.round(reward.share * 100)}%{skillXpBonusPercent(player.owned, reward.skillId) > 0 ? ` +${skillXpBonusPercent(player.owned, reward.skillId)}%` : ""}</strong>
           </div>
         ))}
+        {activity.specializationXpRewards.length > 0 && (
+          <>
+            <h3 className="reward-subheading">Specialization XP</h3>
+            {activity.specializationXpRewards.map((reward) => {
+              const specialization = getSpecialization(reward.specializationId)!;
+              const unlocked = specializationUnlocked(reward.specializationId, player.skillXp);
+              return (
+                <div key={reward.specializationId} className={`reward-row specialization-reward ${unlocked ? "" : "locked"}`}>
+                  <span>{specialization.name} <small>({skillName(specialization.parentSkillId)})</small></span>
+                  <strong>{unlocked ? `+${Math.round(reward.share * 100)}%` : `Unlocks at ${skillName(specialization.parentSkillId)} ${specialization.unlockLevel}`}</strong>
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
       <ActivityDropTable activity={activity} player={player} runCount={runCount} onOpenInfo={onOpenInfo} />
       <div className="purchase-panel">
@@ -1349,11 +1507,8 @@ function ActivityDropTable({
   runCount: number;
   onOpenInfo: (details: AdventureInfoPanelDetails) => void;
 }) {
-  const sharedPools = activity.sharedDropPoolIds.flatMap((poolId) => {
-    const pool = getSharedDropPool(poolId);
-    return pool ? [pool] : [];
-  });
-  const hasDrops = activity.drops.length > 0 || sharedPools.some((pool) => pool.entries.length > 0);
+  const chasers = chasersForActivity(activity.id);
+  const hasDrops = activity.drops.length > 0 || chasers.length > 0;
   return (
     <div className="drop-table activity-drops">
       <h3>Drops</h3>
@@ -1395,38 +1550,36 @@ function ActivityDropTable({
             </button>
           );
         })}
-        {sharedPools.flatMap((pool) => pool.entries.map((entry) => {
-          const item = getCollectibleById(entry.collectibleId);
+        {chasers.map((chaser) => {
+          const item = getCollectibleById(chaser.collectibleId);
           const owned = item ? player.owned.includes(item.id) : false;
-          const accumulatedUnits = player.sharedDropPoolRollUnits[pool.id] ?? 0;
-          const chance = sharedDropEntryChance(entry.denominator, accumulatedUnits, rollUnitsForBaseRap(activity.cost));
           const categoryName = item ? categories.find((category) => category.id === item.category)?.name ?? item.category : "Collectible";
-          const chanceLabel = `${chance.multiplier} / ${formatNumber(entry.denominator)}`;
+          const chanceLabel = `1 / ${formatNumber(chaser.denominator)}`;
           return (
             <button
-              key={`${pool.id}-${entry.collectibleId}`}
+              key={chaser.id}
               type="button"
-              className={`activity-drop-tile ${owned ? "owned" : "shared"}`}
+              className={`activity-drop-tile ${owned ? "owned" : "chaser"}`}
               onClick={() => onOpenInfo({
                 kind: "drop",
-                title: item?.name ?? entry.collectibleId,
+                title: item?.name ?? chaser.collectibleId,
                 icon: item?.icon,
-                subtitle: `${pool.name} · ${item ? `${item.rarity} ${categoryName}` : "Shared Chaser"}${chance.isProtected ? " · Protected" : ""}`,
+                subtitle: `Global Chaser · ${item ? `${item.rarity} ${categoryName}` : "Collectible"}`,
                 chance: chanceLabel,
-                baseChance: `1 / ${formatNumber(entry.denominator)}`,
-                state: owned ? "owned" : "shared",
+                baseChance: chanceLabel,
+                state: owned ? "owned" : "unowned",
               })}
-              aria-label={`${item?.name ?? entry.collectibleId}. ${chanceLabel}. ${owned ? "Owned" : "Shared drop"}`}
+              aria-label={`${item?.name ?? chaser.collectibleId}. ${chanceLabel}. ${owned ? "Owned" : "Global Chaser"}`}
             >
-              <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Shared drop" sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
+              <span className="drop-item-icon">{item ? <TileVisual icon={item.icon} category={item.category} owned={owned} label={item.name} inspectSubtitle="Global Chaser" sourceType={item.source?.type} /> : <Dice5 size={20} />}</span>
               <span className="drop-copy">
-                <strong>{item?.name ?? entry.collectibleId}</strong>
+                <strong>{item?.name ?? chaser.collectibleId}</strong>
                 <small>{chanceLabel}</small>
               </span>
-              <span className="drop-state">{owned ? "Owned" : chance.isProtected ? "Protected" : "Shared"}</span>
+              <span className="drop-state">{owned ? "Owned" : "Chaser"}</span>
             </button>
           );
-        }))}
+        })}
         </div>
       )}
     </div>

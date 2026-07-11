@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { sharedDropEntryChance, rollUnitsForBaseRap } from "../src/dropPools";
 import { masteryEconomicModifiers, masteryProgress, masteryRewardsBetween, masteryThreshold } from "../src/mastery";
 import { CONTENT_MASTERY_TRACKS } from "../src/data";
+import { rollChaserItem } from "../src/chasers";
 
 describe("Content Mastery", () => {
   const track = CONTENT_MASTERY_TRACKS.find((candidate) => candidate.id === "mastery-fishers-trawler")!;
@@ -19,14 +19,15 @@ describe("Content Mastery", () => {
   });
 });
 
-describe("shared Chaser Roll Units", () => {
-  it("normalizes runs by undiscounted base RAP", () => {
-    expect(rollUnitsForBaseRap(10_000)).toBe(1);
-    expect(rollUnitsForBaseRap(50_000)).toBe(5);
+describe("global Chaser items", () => {
+  const chaser = { id: "test", name: "Test", collectibleId: "item", denominator: 100, eligibleActivityIds: ["a"] };
+
+  it("uses one fixed independent chance without protection state", () => {
+    expect(rollChaserItem(chaser, [], () => 0.009)).toBe("item");
+    expect(rollChaserItem(chaser, [], () => 0.01)).toBeUndefined();
   });
 
-  it("activates protection from accumulated Roll Units", () => {
-    expect(sharedDropEntryChance(500, 999).multiplier).toBe(1);
-    expect(sharedDropEntryChance(500, 1_000)).toMatchObject({ multiplier: 3, isProtected: true, protectedAt: 1_000 });
+  it("never awards an already owned global collectible twice", () => {
+    expect(rollChaserItem(chaser, ["item"], () => 0)).toBeUndefined();
   });
 });

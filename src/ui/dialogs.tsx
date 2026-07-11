@@ -6,6 +6,7 @@ import { categories, type Collectible } from "../data";
 import { formatNumber } from "../format";
 import { formatDuration } from "../training";
 import { TileVisual } from "./icons";
+import { getSpecialization } from "../specializations";
 
 function useDialogFocus(onClose: () => void) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -96,9 +97,20 @@ export function ActivityResultPanel({ result, onClose }: { result: ActivityRunRe
           </div>
           <div className="result-row">
             <span>Current Mastery</span>
-            <strong>Level {result.masteryLevel} / 10</strong>
+            <strong>Level {result.masteryLevel} / 50</strong>
           </div>
         </div>
+        {result.specializationXp.length > 0 && (
+          <div className="result-section">
+            <h3>Specialization XP</h3>
+            {result.specializationXp.map((entry) => (
+              <div key={entry.specializationId} className="result-row">
+                <span>{getSpecialization(entry.specializationId)?.name ?? entry.specializationId}</span>
+                <strong>+{formatNumber(entry.amount)} XP{entry.bonusPercent > 0 ? ` (+${entry.bonusPercent.toFixed(1)}%)` : ""}</strong>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="result-section">
           <h3>XP</h3>
           {result.xp.length === 0 ? (

@@ -6,11 +6,11 @@ import {
   categories,
   collectibles,
   COLLECTION_SETS,
-  CONTENT_FAMILIES,
+  CHASER_ITEMS,
   CONTENT_MASTERY_TRACKS,
   COSMETICS,
   ACHIEVEMENTS,
-  SHARED_DROP_POOLS,
+  SPECIALIZATIONS,
   SKILL_CAPES,
   skills,
 } from "../src/data";
@@ -22,8 +22,8 @@ describe("content catalog", () => {
   const activityIds = new Set<string>(GAMEPLAY_ACTIVITIES.map((activity) => activity.id));
   const masteryIds = new Set(CONTENT_MASTERY_TRACKS.map((track) => track.id));
   const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
-  const dropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
-  const familyIds = new Set(CONTENT_FAMILIES.map((family) => family.id));
+  const chaserIds = new Set(CHASER_ITEMS.map((chaser) => chaser.id));
+  const specializationIds = new Set(SPECIALIZATIONS.map((specialization) => specialization.id));
   const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
   const skillCapeIds = new Set(SKILL_CAPES.map((cape) => cape.id));
 
@@ -33,8 +33,8 @@ describe("content catalog", () => {
     expect(activityIds.size).toBe(GAMEPLAY_ACTIVITIES.length);
     expect(masteryIds.size).toBe(CONTENT_MASTERY_TRACKS.length);
     expect(cosmeticIds.size).toBe(COSMETICS.length);
-    expect(dropPoolIds.size).toBe(SHARED_DROP_POOLS.length);
-    expect(familyIds.size).toBe(CONTENT_FAMILIES.length);
+    expect(chaserIds.size).toBe(CHASER_ITEMS.length);
+    expect(specializationIds.size).toBe(SPECIALIZATIONS.length);
     expect(achievementIds.size).toBe(ACHIEVEMENTS.length);
     expect(skillCapeIds.size).toBe(SKILL_CAPES.length);
     expect(SKILL_CAPES).toHaveLength(skills.length * 2);
@@ -69,13 +69,18 @@ describe("content catalog", () => {
   });
 
   it("keeps Adventure rewards internally consistent", () => {
+    const usedMasteryIds = new Set<string>();
     for (const activity of GAMEPLAY_ACTIVITIES) {
       const share = activity.xpRewards.reduce((total, reward) => total + reward.share, 0);
       expect(Math.abs(share - 1), `${activity.id} XP share must total 100%`).toBeLessThan(XP_SHARE_EPSILON);
       expect(masteryIds.has(activity.masteryTrackId), `${activity.id} Mastery track`).toBe(true);
-      expect(familyIds.has(activity.familyId), `${activity.id} family`).toBe(true);
-      for (const poolId of activity.sharedDropPoolIds) expect(dropPoolIds.has(poolId), `${activity.id} shared pool`).toBe(true);
+      expect(usedMasteryIds.has(activity.masteryTrackId), `${activity.id} must have local Mastery`).toBe(false);
+      usedMasteryIds.add(activity.masteryTrackId);
       for (const reward of activity.xpRewards) expect(skillIds.has(reward.skillId)).toBe(true);
+      for (const reward of activity.specializationXpRewards) {
+        expect(specializationIds.has(reward.specializationId)).toBe(true);
+        expect(reward.share).toBeGreaterThan(0);
+      }
       for (const drop of activity.drops) {
         expect(collectibleIds.has(drop.collectibleId), `${drop.collectibleId} must exist`).toBe(true);
         expect(drop.chance).toBeGreaterThanOrEqual(1);
@@ -85,7 +90,7 @@ describe("content catalog", () => {
     }
   });
 
-  it("resolves Mastery, shared pool, Set, and Cosmetic references", () => {
+  it("resolves Mastery, Chaser, Specialization, Set, and Cosmetic references", () => {
     for (const track of CONTENT_MASTERY_TRACKS) {
       expect(track.targetRap).toBeGreaterThan(0);
       for (const passive of track.passiveBonuses) {
@@ -100,15 +105,16 @@ describe("content catalog", () => {
         if (milestone.reward.type === "account-bonus") expect(milestone.reward.bonus.percent).toBeGreaterThan(0);
       }
     }
-    for (const family of CONTENT_FAMILIES) {
-      expect(masteryIds.has(family.masteryTrackId)).toBe(true);
-      for (const contentId of family.contentIds) expect(activityIds.has(contentId)).toBe(true);
+    for (const chaser of CHASER_ITEMS) {
+      expect(collectibleIds.has(chaser.collectibleId)).toBe(true);
+      expect(chaser.denominator).toBeGreaterThan(1);
+      for (const activityId of chaser.eligibleActivityIds) expect(activityIds.has(activityId)).toBe(true);
     }
-    for (const pool of SHARED_DROP_POOLS) {
-      for (const entry of pool.entries) {
-        expect(collectibleIds.has(entry.collectibleId)).toBe(true);
-        expect(entry.denominator).toBeGreaterThan(1);
-      }
+    for (const specialization of SPECIALIZATIONS) {
+      expect(skillIds.has(specialization.parentSkillId)).toBe(true);
+      expect(specialization.unlockLevel).toBeGreaterThanOrEqual(1);
+      expect(specialization.unlockLevel).toBeLessThanOrEqual(120);
+      expect(existsSync(resolve("public", specialization.icon)), `${specialization.id} icon is missing`).toBe(true);
     }
     for (const set of COLLECTION_SETS) {
       expect(new Set(set.collectibleIds).size).toBe(set.collectibleIds.length);

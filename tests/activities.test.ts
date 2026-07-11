@@ -28,7 +28,7 @@ describe("gameplay Activities", () => {
     expect(activityDropChance(drop, 1_000)).toMatchObject({ numerator: 3, denominator: 500, isProtected: true });
   });
 
-  it("awards Mastery and shared Roll Units from base RAP rather than discounted cost", () => {
+  it("awards local Mastery and eligible specialization XP from base RAP", () => {
     const player = createInitialPlayerState();
     player.rp = 20_000;
     player.skillXp.fishing = xpForLevel(120);
@@ -37,7 +37,22 @@ describe("gameplay Activities", () => {
 
     const completed = processActiveActivityRuns(running, 10_000);
     expect(completed.contentMasteryPoints["mastery-fishers-trawler"]).toBe(10_000);
-    expect(completed.sharedDropPoolRollUnits["fishing-chaser-pool"]).toBe(1);
+    expect(completed.specializationXp["maritime-fishing"]).toBeGreaterThan(0);
+    expect(completed.activityResults[0].specializationXp).toEqual([
+      expect.objectContaining({ specializationId: "maritime-fishing" }),
+    ]);
     expect(completed.activityResults[0]).toMatchObject({ masteryPointsGained: 10_000, masteryTrackId: "mastery-fishers-trawler" });
+  });
+
+  it("does not award retroactive specialization XP when it was locked at run start", () => {
+    const player = createInitialPlayerState();
+    player.rp = 10_000;
+    player.skillXp.fishing = xpForLevel(40);
+    const running = startActivityRun(player, "fishers-trawler", 1_000, 42);
+    running.activeActivityRuns[0].eligibleSpecializationIds = [];
+
+    const completed = processActiveActivityRuns(running, 10_000);
+    expect(completed.specializationXp["maritime-fishing"]).toBe(0);
+    expect(completed.activityResults[0].specializationXp).toEqual([]);
   });
 });

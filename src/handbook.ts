@@ -154,6 +154,22 @@ export const handbookEntries: HandbookEntry[] = [
     relatedEntryIds: ["skill-training", "requirements", "skill-advantage"],
   },
   {
+    id: "skill-specializations",
+    title: "Skill Specializations",
+    summary: "World-trained Level 1-120 progression linked to a parent Skill.",
+    category: "progression",
+    sections: [
+      {
+        paragraphs: [
+          "A specialization unlocks automatically when its parent Skill reaches the listed level. It has its own XP and Level 1-120 progression, but it cannot be trained with RAP directly.",
+          "Eligible World activities award specialization XP in addition to their core Skill XP. Eligibility is fixed when a run starts, and locked specializations receive no retroactive XP.",
+          "Maritime Fishing is the first playable specialization. Fisher's Trawler awards it 25% additional base XP while its normal Fishing and Cooking split remains 100%.",
+        ],
+      },
+    ],
+    relatedEntryIds: ["skills", "activities", "content-mastery"],
+  },
+  {
     id: "skill-training",
     title: "Skill Training",
     summary: "Spend RAP over time to train up to three Skills at once.",
@@ -177,7 +193,8 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "An Adventure has a RAP cost, runtime, requirements, XP rewards, Content Mastery, and an optional Drop Table. A started run is saved by timestamp and can finish after a reload.",
-          "Adventure XP shares total 100% before bonuses. Current short runtimes make the complete loop practical to test.",
+          "Core Adventure XP shares total 100% before bonuses. Eligible activities may also grant clearly separated specialization XP on top of that core total.",
+          "Each Adventure is an independent activity with fixed requirements, rewards, drops, run count, and Mastery. Adventures do not contain routes or share progression families.",
         ],
       },
     ],
@@ -216,13 +233,13 @@ export const handbookEntries: HandbookEntry[] = [
   {
     id: "drop-tables",
     title: "Drop Tables",
-    summary: "How Adventure-exclusive and shared Chaser Collectibles are rolled and awarded.",
+    summary: "How local Adventure drops and global Chaser Collectibles are rolled and awarded.",
     category: "rewards",
     sections: [
       {
         paragraphs: [
           "Every unowned Collectible in an Adventure's Drop Table is rolled when the Adventure finishes. If several rolls succeed, the rarest successful item is awarded.",
-          "Shared Chaser Pools can appear in multiple Adventures, Minigames, or Bosses. Their progress uses normalized Roll Units based on undiscounted base RAP.",
+          "A global Chaser item can appear in multiple independent activities. It always keeps the same fixed chance and global owned state, has no Roll Units or Bad Luck Protection, and cannot be awarded twice.",
           "Owned drops are skipped, so a completed source collection no longer competes with unfinished drops.",
         ],
       },
@@ -239,6 +256,7 @@ export const handbookEntries: HandbookEntry[] = [
         paragraphs: [
           "When completed runs reach twice a drop's base denominator, that drop's chance is tripled until it is obtained.",
           "For example, a 1 / 500 drop becomes 3 / 500 at 1,000 completed runs.",
+          "Bad Luck Protection only applies to an Adventure's normal local drops. Global Chaser items always retain their fixed chance.",
         ],
       },
     ],
@@ -283,7 +301,7 @@ export const handbookEntries: HandbookEntry[] = [
       {
         paragraphs: [
           "Every completed Adventure adds its undiscounted base RAP cost to the linked Mastery track. Cost reductions never reduce Mastery earned, and Mastery never blocks access to an Adventure.",
-          "Each track has fifty levels. The Adventure overview and detail page show the current rank with a circular ring that fills from neutral at Level 0 to complete gold at Level 50. Targets, passive bonuses, and milestone rewards are configured per content family.",
+          "Each activity owns exactly one fifty-level Mastery track. Only that activity advances it, and its numerical bonuses only affect that activity. The circular ring fills from neutral at Level 0 to complete gold at Level 50.",
         ],
       },
     ],
@@ -390,7 +408,7 @@ export const handbookEntries: HandbookEntry[] = [
     sections: [
       {
         paragraphs: [
-          "The app saves progress automatically in this browser. RAP, Skills, Collectibles, Adventure runs, Mastery, results, Achievements, Titles, Cosmetics, and manual logs are restored on reload.",
+          "The app saves progress automatically in this browser. RAP, Skills, Specializations, Collectibles, Adventure runs, Mastery, results, Achievements, Titles, Cosmetics, and manual logs are restored on reload.",
           "Settings shows the latest local save state and provides JSON export and import. Export a backup before clearing site data or changing devices.",
           "A newer save from another open tab takes priority, preventing an older tab from silently overwriting progress. Cross-device cloud saves are planned for a later account system.",
         ],
@@ -416,7 +434,7 @@ const contextDefinitions: Record<string, HandbookContext> = {
   world: {
     id: "world",
     title: "World",
-    intro: "World contains Adventures and will later contain Minigames and Bossing built on shared Requirements, Mastery, rewards, and Drop Pools.",
+    intro: "World contains independent Adventures and will later contain Minigames, Quests, and Bossing linked by account Skills, Specializations, Collectibles, and explicit requirements.",
     entryIds: ["activities", "content-mastery", "requirements", "skill-advantage", "activity-results"],
   },
   adventures: {
@@ -488,8 +506,8 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "category:skills": {
     id: "category:skills",
     title: "Skills",
-    intro: "The Skills grid shows all Skill levels at once. Open a Skill to inspect XP progress and begin a timed training session.",
-    entryIds: ["skills", "icon-inspect", "skill-training", "rap", "requirements"],
+    intro: "The Skills grid shows all Skill levels and compact specialization unlock dots. Open a Skill to inspect both progression layers.",
+    entryIds: ["skills", "skill-specializations", "icon-inspect", "skill-training", "rap", "requirements"],
   },
   "category:tools": {
     id: "category:tools",
@@ -518,8 +536,8 @@ const contextDefinitions: Record<string, HandbookContext> = {
   "skill-detail": {
     id: "skill-detail",
     title: "Skill Details",
-    intro: "This detail page shows the Skill artwork above its current level, XP progress, and one Start or Stop action for its 72-hour training window.",
-    entryIds: ["skills", "skill-training", "rap", "requirements"],
+    intro: "This detail page shows the Skill artwork, XP progress, one Start or Stop action, and its World-trained specializations.",
+    entryIds: ["skills", "skill-specializations", "skill-training", "rap", "requirements"],
   },
   "activity-detail": {
     id: "activity-detail",

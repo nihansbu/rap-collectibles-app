@@ -1,18 +1,24 @@
 import { accountBonusPercent, additionalRollChancePercent, skillXpBonusPercent } from "./bonuses";
-import { collectibles, type Requirement, type SkillId } from "./data";
+import { collectibles, type Requirement, type SkillId, type SpecializationId } from "./data";
 import { PROTOTYPE_ADVENTURE_RUNTIME_MS } from "./data/balance/economy";
 import { MAX_SKILL_ADVANTAGE_PERCENT } from "./data/balance/modifiers";
-import { getSharedDropPool, rollSharedDropPool, rollUnitsForBaseRap } from "./dropPools";
+import { chasersForActivity, rollChaserItem } from "./chasers";
 import { masteryAccountBonusPercent, masteryEconomicModifiers, masteryProgress, masteryRewardsBetween } from "./mastery";
 import { reconcileUnlockedCosmetics } from "./cosmetics";
 import { setAccountBonusPercent } from "./sets";
 import { trainingXpPerRap } from "./training";
 import { levelFromXp, xpTable, MAX_LEVEL } from "./xp";
+import { specializationUnlocked } from "./specializations";
 
 export type GameplayActivityId = "fishers-trawler" | "haunted-burial" | "ember-kiln" | "deep-mine-survey";
 
 export type ActivityXpReward = {
   skillId: SkillId;
+  share: number;
+};
+
+export type ActivitySpecializationXpReward = {
+  specializationId: SpecializationId;
   share: number;
 };
 
@@ -23,7 +29,6 @@ export type ActivityDrop = {
 
 export type GameplayActivity = {
   id: GameplayActivityId;
-  familyId: string;
   masteryTrackId: string;
   name: string;
   description: string;
@@ -32,8 +37,8 @@ export type GameplayActivity = {
   runtimeMs: number;
   requirements: Requirement[];
   xpRewards: ActivityXpReward[];
+  specializationXpRewards: ActivitySpecializationXpReward[];
   drops: ActivityDrop[];
-  sharedDropPoolIds: string[];
 };
 
 export type ActivitySkillAdvantage = {
@@ -55,6 +60,7 @@ export type ActiveActivityRun = {
   skillAdvantagePercent: number;
   masteryTrackId: string;
   masteryLevel: number;
+  eligibleSpecializationIds: SpecializationId[];
   rollSeed: number;
 };
 
@@ -78,6 +84,7 @@ export type ActivityRunResult = {
   additionalRollChancePercent: number;
   additionalRollTriggered: boolean;
   xp: Array<{ skillId: SkillId; amount: number; bonusPercent: number }>;
+  specializationXp: Array<{ specializationId: SpecializationId; amount: number; bonusPercent: number }>;
   rolls: ActivityRollResult[];
   droppedCollectibleId?: string;
   masteryTrackId: string;
@@ -89,11 +96,11 @@ export type ActivityPlayerState = {
   rp: number;
   owned: string[];
   skillXp: Record<SkillId, number>;
+  specializationXp: Record<SpecializationId, number>;
   activeActivityRuns: ActiveActivityRun[];
   activityRunCounts: Record<string, number>;
   activityResults: ActivityRunResult[];
   contentMasteryPoints: Record<string, number>;
-  sharedDropPoolRollUnits: Record<string, number>;
   unlockedCosmetics: string[];
 };
 
@@ -103,7 +110,6 @@ const RUN_TIME_MS = PROTOTYPE_ADVENTURE_RUNTIME_MS;
 export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
   {
     id: "fishers-trawler",
-    familyId: "family-fishing-trawler",
     masteryTrackId: "mastery-fishers-trawler",
     name: "Fisher's Trawler",
     description: "Crew a battered trawler through rough water for Fishing XP and rare sea-bound companions.",
@@ -115,16 +121,15 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
       { skillId: "fishing", share: 0.75 },
       { skillId: "cooking", share: 0.25 },
     ],
+    specializationXpRewards: [{ specializationId: "maritime-fishing", share: 0.25 }],
     drops: [
       { collectibleId: "pet-trawler-gull", chance: 500 },
       { collectibleId: "tool-dragon-harpoon", chance: 750 },
       { collectibleId: "mount-brine-ray", chance: 2_500 },
     ],
-    sharedDropPoolIds: ["fishing-chaser-pool"],
   },
   {
     id: "haunted-burial",
-    familyId: "family-haunted-burial",
     masteryTrackId: "mastery-haunted-burial",
     name: "Haunted Burial",
     description: "Settle old graves and recover solemn keepsakes from the dusk fields.",
@@ -136,12 +141,11 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
       { skillId: "prayer", share: 0.75 },
       { skillId: "necromancy", share: 0.25 },
     ],
+    specializationXpRewards: [],
     drops: [],
-    sharedDropPoolIds: [],
   },
   {
     id: "ember-kiln",
-    familyId: "family-ember-kiln",
     masteryTrackId: "mastery-ember-kiln",
     name: "Ember Kiln",
     description: "Work a volatile kiln where careful heat turns ore and ash into useful craft.",
@@ -154,12 +158,11 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
       { skillId: "smithing", share: 0.35 },
       { skillId: "crafting", share: 0.2 },
     ],
+    specializationXpRewards: [],
     drops: [],
-    sharedDropPoolIds: [],
   },
   {
     id: "deep-mine-survey",
-    familyId: "family-deep-mine-survey",
     masteryTrackId: "mastery-deep-mine-survey",
     name: "Deep Mine Survey",
     description: "Chart unstable tunnels for mining crews and mark the safest routes back out.",
@@ -171,8 +174,8 @@ export const GAMEPLAY_ACTIVITIES: GameplayActivity[] = [
       { skillId: "mining", share: 0.75 },
       { skillId: "dungeoneering", share: 0.25 },
     ],
+    specializationXpRewards: [],
     drops: [],
-    sharedDropPoolIds: [],
   },
 ];
 
@@ -272,6 +275,9 @@ export function startActivityRun<T extends ActivityPlayerState>(
     skillAdvantagePercent: effective.advantage.percent,
     masteryTrackId: activity.masteryTrackId,
     masteryLevel: masteryProgress(activity.masteryTrackId, current.contentMasteryPoints[activity.masteryTrackId] ?? 0).level,
+    eligibleSpecializationIds: activity.specializationXpRewards
+      .map((reward) => reward.specializationId)
+      .filter((specializationId) => specializationUnlocked(specializationId, current.skillXp)),
     rollSeed: normalizeSeed(rollSeed),
   };
 
@@ -292,10 +298,10 @@ export function processActiveActivityRuns<T extends ActivityPlayerState>(
     ...player,
     owned: [...player.owned],
     skillXp: { ...player.skillXp },
+    specializationXp: { ...player.specializationXp },
     activityRunCounts: { ...player.activityRunCounts },
     activityResults: [...player.activityResults],
     contentMasteryPoints: { ...player.contentMasteryPoints },
-    sharedDropPoolRollUnits: { ...player.sharedDropPoolRollUnits },
     unlockedCosmetics: [...player.unlockedCosmetics],
     activeActivityRuns: [] as ActiveActivityRun[],
   };
@@ -352,18 +358,16 @@ function completeActivityRun<T extends ActivityPlayerState>(
   const additionalRoll = additionalRollTriggered
     ? rollActivityDrop(activity, player.owned, completedRuns, random)
     : undefined;
-  const rollUnits = rollUnitsForBaseRap(run.baseCost);
-  const sharedRolls = activity.sharedDropPoolIds.map((poolId) => {
-    const pool = getSharedDropPool(poolId);
-    const accumulatedUnits = player.sharedDropPoolRollUnits[poolId] ?? 0;
-    const drop = pool ? rollSharedDropPool(pool, player.owned, accumulatedUnits, rollUnits, random) : undefined;
-    return { poolId, poolName: pool?.name ?? poolId, drop, accumulatedUnits };
-  });
+  const chaserRolls = chasersForActivity(activity.id).map((chaser) => ({
+    chaser,
+    drop: rollChaserItem(chaser, player.owned, random),
+  }));
   const droppedCollectibleId = selectRarestDrop(
     activity,
-    [primaryRoll, additionalRoll, ...sharedRolls.map((roll) => roll.drop)].filter((id): id is string => !!id),
+    [primaryRoll, additionalRoll, ...chaserRolls.map((roll) => roll.drop)].filter((id): id is string => !!id),
   );
   const xp = awardActivityXp(player, activity, run, skillAdvantagePercent);
+  const specializationXp = awardSpecializationXp(player, activity, run, skillAdvantagePercent);
   const owned = droppedCollectibleId && !player.owned.includes(droppedCollectibleId)
     ? [...player.owned, droppedCollectibleId]
     : player.owned;
@@ -372,8 +376,8 @@ function completeActivityRun<T extends ActivityPlayerState>(
     { label: "Roll 1", triggered: true, droppedCollectibleId: primaryRoll },
     { label: "Additional Roll", triggered: additionalRollTriggered, droppedCollectibleId: additionalRoll },
   ];
-  for (const sharedRoll of sharedRolls) {
-    rolls.push({ label: sharedRoll.poolName, triggered: true, droppedCollectibleId: sharedRoll.drop });
+  for (const chaserRoll of chaserRolls) {
+    rolls.push({ label: "Global Chaser", triggered: true, droppedCollectibleId: chaserRoll.drop });
   }
 
   const previousMasteryPoints = player.contentMasteryPoints[activity.masteryTrackId] ?? 0;
@@ -385,10 +389,6 @@ function completeActivityRun<T extends ActivityPlayerState>(
     ...player.unlockedCosmetics,
     ...masteryRewards.flatMap((milestone) => milestone.reward.type === "cosmetic" ? [milestone.reward.cosmeticId] : []),
   ])];
-  const sharedDropPoolRollUnits = { ...player.sharedDropPoolRollUnits };
-  for (const sharedRoll of sharedRolls) {
-    sharedDropPoolRollUnits[sharedRoll.poolId] = sharedRoll.accumulatedUnits + rollUnits;
-  }
   const newMasteryLevel = masteryProgress(activity.masteryTrackId, nextMasteryPoints).level;
   const nextContentMasteryPoints = { ...player.contentMasteryPoints, [activity.masteryTrackId]: nextMasteryPoints };
   const unlockedCosmetics = reconcileUnlockedCosmetics(masteryUnlockedCosmetics, ownedWithMasteryRewards, nextContentMasteryPoints);
@@ -407,6 +407,7 @@ function completeActivityRun<T extends ActivityPlayerState>(
     additionalRollChancePercent: additionalChance,
     additionalRollTriggered,
     xp,
+    specializationXp,
     rolls,
     droppedCollectibleId,
     masteryTrackId: activity.masteryTrackId,
@@ -421,7 +422,6 @@ function completeActivityRun<T extends ActivityPlayerState>(
     activityRunCounts: { ...player.activityRunCounts, [activity.id]: completedRuns },
     activityResults: [result, ...player.activityResults].slice(0, MAX_ACTIVITY_RESULTS),
     contentMasteryPoints: nextContentMasteryPoints,
-    sharedDropPoolRollUnits,
     unlockedCosmetics,
   };
 }
@@ -456,6 +456,36 @@ function awardActivityXp(
     if (amount <= 0) continue;
     player.skillXp[reward.skillId] = currentXp + amount;
     gained.push({ skillId: reward.skillId, amount, bonusPercent });
+  }
+
+  return gained;
+}
+
+function awardSpecializationXp(
+  player: ActivityPlayerState,
+  activity: GameplayActivity,
+  run: ActiveActivityRun,
+  skillAdvantagePercent: number,
+) {
+  const gained: Array<{ specializationId: SpecializationId; amount: number; bonusPercent: number }> = [];
+  const masteryBonus = masteryEconomicModifiers(activity.masteryTrackId, player.contentMasteryPoints[activity.masteryTrackId] ?? 0).xpBonusPercent;
+  const adventureBonus = accountBonusPercent(player.owned, "adventure-xp")
+    + setAccountBonusPercent(player.owned, "adventure-xp")
+    + masteryAccountBonusPercent(player.contentMasteryPoints, "adventure-xp");
+
+  for (const reward of activity.specializationXpRewards) {
+    if (!run.eligibleSpecializationIds.includes(reward.specializationId)) continue;
+    const currentXp = player.specializationXp[reward.specializationId] ?? 0;
+    const level = levelFromXp(currentXp);
+    const bonusMultiplier = (1 + adventureBonus / 100) * (1 + masteryBonus / 100) * (1 + skillAdvantagePercent / 100);
+    const bonusPercent = (bonusMultiplier - 1) * 100;
+    const amount = Math.min(
+      xpTable[MAX_LEVEL] - currentXp,
+      run.baseCost * trainingXpPerRap(level) * reward.share * bonusMultiplier,
+    );
+    if (amount <= 0) continue;
+    player.specializationXp[reward.specializationId] = currentXp + amount;
+    gained.push({ specializationId: reward.specializationId, amount, bonusPercent });
   }
 
   return gained;
@@ -499,10 +529,8 @@ function roundPercent(value: number) {
 function dropDenominator(activity: GameplayActivity, collectibleId: string) {
   const directChance = activity.drops.find((drop) => drop.collectibleId === collectibleId)?.chance;
   if (directChance) return directChance;
-  for (const poolId of activity.sharedDropPoolIds) {
-    const chance = getSharedDropPool(poolId)?.entries.find((entry) => entry.collectibleId === collectibleId)?.denominator;
-    if (chance) return chance;
-  }
+  const chaserChance = chasersForActivity(activity.id).find((chaser) => chaser.collectibleId === collectibleId)?.denominator;
+  if (chaserChance) return chaserChance;
   return 0;
 }
 

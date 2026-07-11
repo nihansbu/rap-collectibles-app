@@ -46,7 +46,8 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/activities.ts`: repeatable Adventure activity definitions, active run processing, XP reward splitting, drop rolls, and Bad Luck Protection helpers.
 - `src/bonuses.ts`: account-wide bonus collection and formatting helpers for owned Collectibles.
 - `src/mastery.ts`: generic Content Mastery Level 0-50 progression, configurable thresholds, passive modifiers, milestone rewards, and derived content unlocks.
-- `src/dropPools.ts`: normalized RAP Roll Units, shared Chaser Pool probability, and shared Bad Luck Protection helpers.
+- `src/chasers.ts`: fixed-chance global Chaser lookup and duplicate-safe rolling; Chasers have no Roll Units or Bad Luck Protection.
+- `src/specializations.ts`: Specialization lookup, parent-Skill unlock checks, and empty XP-state construction.
 - `src/cosmetics.ts`: default Theme availability plus derived Cosmetic entitlements from Mastery and cross-category Collection Sets.
 - `src/achievements.ts`: pure Achievement progress evaluation, tag/category filtering, AP derivation, chained completion reconciliation, and idempotent reward grants.
 - `src/skillCapes.ts`: Skill Cape lookup, Level 99/120 entitlement derivation, idempotent reconciliation, tier labels, and Vault progress summaries.
@@ -65,7 +66,7 @@ The app is not intended to be a full game at the beginning. There is no combat, 
 - `src/format.ts`: shared number, percent, and timestamp formatting helpers.
 - `src/handbook.ts`: scalable Handbook article registry, categories, page-context definitions, related-entry links, and contextual selectors.
 - `src/pages/`: page-level UI components such as `MainMenuPage` and `HandbookPage`.
-- `src/save.ts`: versioned local save/load system through v9, migrations, validation, revision conflict detection, Achievement and Skill Cape reconciliation, active progress normalization, and throttled backup rotation.
+- `src/save.ts`: versioned local save/load system through v10, migrations, validation, revision conflict detection, Achievement and Skill Cape reconciliation, active progress normalization, and throttled backup rotation.
 - `src/hooks/usePlayerPersistence.ts`: debounced autosave, visibility flush, cross-tab synchronization, conflict handling, and save status.
 - `src/pages/SettingsPage.tsx`: local-save status plus manual save, export, and import entry points.
 - `src/pages/AccountBonusesPage.tsx`: grouped Skill XP, Rolls, Adventure, and Resistance bonus overview.
@@ -110,11 +111,11 @@ The first prototype is a mobile-only React app. Navigation is intentionally simp
 - The main menu shows quick manual activity logging. Manual Activity tiles use tap to log one hour and long-press to open the Activity info/detail view.
 - The Collectibles page shows category progress bars, completion percentages, and recent unlocks.
 - Manual activity logging is the first tracking placeholder. A one-hour activity tap grants RAP using fixed rates from `src/economy.ts` and writes a recent activity entry into the save file.
-- Adventures are separate from the real-life Activity Log. Adventures live under `World`, cost RAP, run for a short timestamped duration in the prototype, award a 100% Skill share split, Content Mastery, and exclusive or shared drops.
+- Adventures are separate from the real-life Activity Log. Adventures live under `World`, cost RAP, run for a short timestamped duration, award a 100% core Skill split plus optional additional Specialization XP, local Content Mastery, local drops, and eligible global Chasers.
 - Adventure-only collectible drops still appear in their normal Codex categories. Unowned Adventure drops render as red locked tiles with an indigo source strip. Owned Adventure drops render as indigo source-owned tiles. They cannot be bought directly.
 - Tools are standard Collectibles. Some are direct purchases and some are Adventure drops. Tools can grant account-wide bonuses without introducing inventory or equipment slots.
 - Skills have their own page but live under Collectibles as a category tile.
-- Direct main-menu entries remember their origin: backing out of a category or Activities page opened from the main dashboard returns to the main dashboard, not to the older intermediate overview page.
+- Navigation uses deterministic hierarchy rather than replaying arbitrary browser history: details return to their list, Skill Specialization info returns to its Skill, Adventures return to Menu, and Sets/Skill Capes return to Vault. Handbook and Settings restore one saved origin.
 - Tapping any Collectible card opens the full-content detail view under the topbar. Eligible direct purchases are initiated from that detail view and still require confirmation; collection tiles have no Quick Buy path.
 - Tapping an Adventure card opens the compact Adventure detail view. The detail view shows the combined Adventure/Mastery icon, requirements, runtime, XP split, drops, and the Start Run action; tapping a Requirement or Drop opens a focused read-only Info Panel, while tapping the artwork preserves global image inspection.
 - Skill cards open the Skill detail view, where one contextual button starts a 72-hour window or stops active training without penalty.
@@ -131,7 +132,7 @@ Implemented early systems:
 - Training jobs are persisted in the save file and processed from timestamps on reload, so elapsed offline/closed-app time is applied deterministically.
 - Active Adventure runs use a persisted seed, so completion rewards are deterministic across reloads and tabs.
 - Offline skill training is event-driven rather than simulated one second at a time and remains valid after long absences.
-- Save v9 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress. v9 adds owned Skill Capes and acknowledged Cape notifications while accepting v1-v8 saves.
+- Save v10 stores a monotonic revision. Stale tabs cannot silently overwrite a newer revision; storage events adopt newer progress. v10 adds Specialization XP and run-start eligibility while accepting v1-v9 saves and discarding obsolete shared Chaser Roll Units.
 - Autosave is debounced, backups rotate at most every five minutes, and Settings exposes local status plus portable JSON backup tools.
 - Browser history is synchronized with page/detail navigation, so browser and device Back return through the in-app path.
 - Interactive cards use native button semantics. Dialogs trap/restore focus, close with Escape, and the UI honors reduced-motion preferences.
@@ -141,17 +142,18 @@ Implemented early systems:
 - Activity saves migrate to v5 for richer Activity run/result data while still accepting v1-v4 saves.
 - Activity results now include RAP spent, runtime, Skill Advantage, Additional Roll state, roll rows, XP awarded, XP bonus percentages, and optional dropped Collectible ID.
 - Account Bonuses are derived from owned Collectibles at runtime. The first implemented bonus types are skill-specific XP, all-skill XP, and Additional Roll chance.
-- Content Mastery is derived from saved undiscounted base RAP investment. Each track uses configurable ratio thresholds for Level 0-50 and centrally capped passive modifiers. Mastery is earned by completed runs and is never an Adventure entry requirement; the UI renders the rank as a neutral-to-gold circular ring.
-- Shared Chaser Pools normalize progress at 10,000 base RAP per Roll Unit and retain Bad Luck Protection when a player changes eligible content.
+- Content Mastery is derived from saved undiscounted base RAP investment. Each activity has one unique track with configurable ratio thresholds for Level 0-50 and centrally capped passive modifiers. Mastery is earned only by that activity, only affects that activity, and is never an entry requirement.
+- Global Chaser items use one unique Collectible ID, fixed denominator, explicit eligible activity IDs, and account-wide ownership. Every source rolls independently; there are no Roll Units, Bad Luck Protection, or duplicate awards.
+- Specializations are data-driven Level 1-120 sub-disciplines. They auto-unlock from parent Skill level, cannot use direct RAP training, and gain additional XP from eligible World activities. Active runs snapshot eligible Specializations at start.
 - Collection Sets derive progress from owned IDs and can unlock Cosmetics without creating another inventory.
 - Skill Capes derive from canonical Skill XP: Level 99 grants the normal Cape and Level 120 grants the Master Cape. All 60 are data-driven and use visible Skill-specific emblems over shared Cape silhouettes.
 - Achievements are typed data under `src/data/achievements.ts`. Generic conditions cover RAP, Skill levels, total level, filtered collection counts/completion, Sets, Adventure runs, Mastery, and AP thresholds.
 - `reconcileAchievements` derives AP from valid completed IDs, iterates chained conditions until stable, grants Cosmetic or exceptional Collectible rewards once, and reconciles downstream Set/Mastery Cosmetics.
-- Save v9 stores completion timestamps, acknowledged Achievement IDs, owned Skill Capes, and acknowledged Cape IDs. Legacy saves backfill eligible Achievements and Capes while suppressing a burst of historical toasts; new completions use timed queues.
+- Save v10 retains completion timestamps, acknowledged Achievement IDs, owned Skill Capes, and acknowledged Cape IDs. Legacy saves backfill eligible Achievements and Capes while suppressing a burst of historical toasts; new completions use timed queues.
 - Titles use the existing `CosmeticKind: "title"`, `unlockedCosmetics`, and `selectedCosmetics.titleId` fields. The Profile permits an unlocked Title or no Title.
 - All current Themes are reconciled into every new or migrated save, while Profile Badges remain progression-gated. Storm Weaver is no longer granted by Fishing Trawler Mastery or the Trawler's Wake Set.
 - The player-facing Characters label is now `Heroes`; Heroes remain account Collectibles without separate progression.
-- Save v9 persists Skill Capes and Cape notification acknowledgement in addition to the v8 Achievement/AP/Title data while migrating v1-v8 saves.
+- Save v10 persists Specialization XP and active-run eligibility in addition to v9 Skill Cape and v8 Achievement/AP/Title data while migrating v1-v9 saves.
 - Skill Advantage is calculated from Activity skill requirements and grants up to +15% Activity XP, -15% RAP cost, and -15% runtime as the player approaches Level 120 above the requirement.
 - Handbook content is data-driven in `src/handbook.ts` and rendered by `src/pages/HandbookPage.tsx`. It currently contains 21 reusable entries across five categories, including Vault, Skill Capes, and Icon Inspect, and supports search, category filters, related topics, contextual page introductions, and direct return to the originating page/detail view. The schema is intended to scale past 200 entries without changing page components.
 - Skill progression: implemented as XP per skill using tiered XP/hour rates while spending 10,000 RAP/hour per active skill.
@@ -171,9 +173,9 @@ Likely entities:
 - Player profile: current RAP, lifetime RAP, owned collectible IDs, skill levels.
 - Achievement state: completion timestamp by stable Achievement ID, derived AP total, acknowledged notification IDs, and rewards stored through existing Cosmetic/Collectible entitlements.
 - Activity log entry: activity ID, display name, hours, RAP granted, and timestamp.
-- Adventure content: ID, family, Mastery track, RAP cost, runtime, requirements, 100% XP reward split, direct Drop Table, optional Shared Chaser Pools, and Bad Luck Protection state.
-- Active Adventure run: content ID, startedAt, endsAt, prepaid effective RAP cost, undiscounted base RAP, effective runtime, base runtime, Skill Advantage, Mastery track, and deterministic seed.
-- Adventure result: completed content, run count, RAP spent, runtime, Skill Advantage, Mastery gain/level, Additional Roll state, roll rows, XP awarded, XP bonus percentages, Shared Pool rolls, and optional dropped Collectible ID.
+- Adventure content: stable ID, unique local Mastery track, RAP cost, runtime, requirements, 100% core Skill XP split, optional additional Specialization XP rewards, direct Drop Table, and local Bad Luck Protection state.
+- Active Adventure run: content ID, timestamps, prepaid effective RAP cost, undiscounted base RAP, effective/base runtime, Skill Advantage, local Mastery track, run-start eligible Specialization IDs, and deterministic seed.
+- Adventure result: completed content, run count, RAP spent, runtime, Skill Advantage, Mastery gain/level, Additional Roll state, local and global Chaser roll rows, core Skill XP, Specialization XP, and optional dropped Collectible ID.
 - Skill: ID, display name, source game(s), XP, derived level, max level 120.
 - Collectible: ID, name, category, rarity, RAP cost, requirements, unlock state, optional source such as an Adventure drop, and optional Account Bonuses.
 - Account Bonuses: data-defined Collectible, Mastery, and Set rewards. Supported types include Skill XP, all-Skill XP, Additional Roll, Adventure XP/runtime/cost, and future Resistances.
@@ -582,6 +584,14 @@ Candidate combined skill roster to finalize:
 - Why it works: purchase intent always passes through the full item context and confirmation, while idempotent ownership checks prevent stale or duplicate unlock attempts. Timestamp processing still charges only elapsed training time, so stopping needs no refund or penalty.
 - Files involved: `src/App.tsx`, `src/catalog.ts`, `src/training.ts`, `src/save.ts`, `src/styles.css`, `src/handbook.ts`, `tests/catalog.test.ts`, `tests/training.test.ts`, `tests/save.test.ts`, `game_design.md`, `roadmap.md`.
 - Validation: `npm run check` passed with lint, 40 tests, production build, and icon preparation. `npm run test:coverage` passed with 71.42% statement coverage. In-app browser QA at 390px confirmed detail-first purchase, exact 14,000 RAP deduction, disabled `Unlocked` state after ownership, one 72-hour Start/Stop action, free stop with XP retained, and no console warnings or errors. The 320px Skill detail had no horizontal overflow.
+
+2026-07-11: World-trained Skill Specializations, atomic Activities, and global Chasers.
+
+- Original problem: route/family layers and shared Roll Units made Adventures harder to understand, while Skills needed meaningful long-term progression shared across otherwise self-contained World activities. Browser history could also replay detail pages and create A-to-B-to-A loops.
+- Successful solution: add data-driven Skill Specializations with their own Level 1-120 XP, automatic parent-Skill unlocks, and run-start eligibility snapshots. `Maritime Fishing` is the first pilot and receives an additional 25% XP from Fisher's Trawler. Adventures are atomic and keep their own Level 0-50 Mastery. Global Chasers now use one Collectible ID, a fixed denominator, explicit eligible activity IDs, account-wide ownership, and no Bad Luck Protection. Navigation resolves a deterministic hierarchical parent and gives temporary Adventure info panels one history entry.
+- Why it works: Specializations provide a reusable progression bridge without coupling content into families; a run-start snapshot prevents retroactive XP when a parent Skill unlocks mid-run. Global ownership makes a Chaser immediately owned in every eligible source, while independent fixed rolls preserve each activity's identity. Deterministic parents keep both the app Back button and browser Back predictable.
+- Files involved: `src/data/specializations.ts`, `src/specializations.ts`, `src/data/chaserItems.ts`, `src/chasers.ts`, `src/activities.ts`, `src/save.ts`, `src/App.tsx`, `src/styles.css`, `src/handbook.ts`, tests, and the persistent project documents.
+- Validation: `npm run check` passed with lint, 41 tests, production build, and icon preparation. `npm run test:coverage` passed with 71.25% statement coverage. In-app browser QA at 390px and 320px covered Specialization unlock/detail UI, hierarchical Back, Fisher's Trawler XP sections, Requirement info history, the fixed 1/25,000 Storm Harpoon Chaser, responsive one-column Specialization layout, horizontal overflow, and browser warnings/errors.
 
 ## Known Issues
 

@@ -8,9 +8,10 @@ This file tracks implementation order, dependencies, and acceptance criteria. De
 - [x] Centralize placeholder economy, XP, Mastery, modifier, and drop values in typed balance data.
 - [x] Add generic Content Mastery tracks from Level 0 to 50, progressed by base RAP cost rather than discounted cost.
 - [x] Make Adventure XP shares total 100% and validate that invariant at build time.
-- [x] Add reusable shared Chaser Drop Pools measured in normalized RAP Roll Units.
+- [x] Replace shared Chaser Roll Units with globally unique fixed-chance Chaser items, shared ownership, explicit eligible activities, and no Bad Luck Protection.
 - [x] Add a balance report for RAP-per-hour, Mastery time, expected drops, and bonus stacking.
-- [x] Add save migration for Mastery, shared Roll Units, and Cosmetic entitlements.
+- [x] Add save v10 migration for local Mastery, Specialization XP/run-start eligibility, removal of shared Roll Units, and Cosmetic entitlements.
+- [x] Remove content families/routes and enforce one unique local Mastery track per repeatable activity.
 
 Acceptance criteria:
 
@@ -33,6 +34,8 @@ Acceptance criteria:
 - [x] Simplify Adventure overview/detail presentation and add shared focused Info Panels for Requirements and Drops.
 - [x] Present primary Skill and Collectible artwork on their detail pages, remove the Skill-detail Vault block, and eliminate the separate primary image-preview step.
 - [x] Route every Collectible purchase through its detail panel, remove tile Quick Buy, prevent owned items from reopening purchase confirmation, and simplify Skill training to one 72-hour Start/Stop action.
+- [x] Add the first playable Skill Specialization pilot: Maritime Fishing unlocks from Fishing 30, uses the main Level 1-120 XP curve, gains additional XP from Fisher's Trawler, and has compact overview/detail UI.
+- [x] Make topbar and browser Back follow deterministic hierarchy, including Specialization-to-Skill, detail-to-list, Vault children-to-Vault, and utility origin restoration.
 
 Acceptance criteria:
 
@@ -45,8 +48,8 @@ Acceptance criteria:
 
 ## Later: Content Expansion
 
-- Fishing Trawler Family Routes: Standard, Deep-Sea, Storm, and Abyssal.
-- Minigames and Bossing using the same Requirements, Rewards, Mastery, and Drop Pool systems.
+- Add 3-5 broad, content-supported Specializations per Skill only as playable XP sources become available.
+- Minigames, Quests, and Bossing as independent activities using shared account Skills, Specializations, Collectibles, and explicit prerequisites.
 - Skill Mastery 1-100 after normal Level 120.
 - More Heroes, Sets, Profile rewards, Themes, Tile Styles, and unlock animations.
 - Expand the provisional Achievement catalog, balance AP values, add rare exceptional Collectible rewards, and introduce further AP-threshold Title Achievements.
@@ -59,6 +62,9 @@ Acceptance criteria:
 - RAP is the shared currency and Content Mastery uses undiscounted base RAP as progress.
 - Content Mastery has Levels 0-50; Skill Mastery is a separate future system after Level 120.
 - Adventure XP shares total 100% before bonuses.
+- Specialization XP is explicitly additional to the 100% core Adventure Skill split and is only awarded when unlocked at run start.
+- Every repeatable activity has its own Mastery track; routes and shared content families are out of scope.
+- Global Chaser ownership is shared across eligible activities, but chance is fixed per completion with no Roll Units or Bad Luck Protection.
 - Progression is account-based; Heroes do not have separate levels, inventories, or saves.
 - Released content remains available. Themes and event-styled Sets do not create FOMO.
 - Cosmetics are earned through play or expansion content, not designed around microtransactions.
@@ -74,5 +80,5 @@ The following remain placeholders until balance reports and play data justify lo
 - XP rates and Skill Advantage caps
 - Drop denominators and Bad Luck Protection thresholds
 - Account and Mastery bonus percentages
-- Requirements and route unlock levels
+- Requirements and Specialization unlock levels
 - Achievement Point values and reward thresholds

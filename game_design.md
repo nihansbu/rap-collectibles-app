@@ -312,6 +312,8 @@ Adventure design rules:
 - Active Adventure runs and completed run counts are save data.
 - Adventure runs are timestamped and process correctly after reload.
 - Completed runs show an Adventure Result panel with RAP spent, XP gained, Mastery, rolls, and any dropped Collectible.
+- Each Adventure is atomic: fixed requirements, cost, runtime, XP, drops, run count, and local Mastery. There are no route selectors or shared content families.
+- Similar future content is added as another independent activity. Account Skills, Specializations, Collectibles, and explicit quest prerequisites provide the cross-content structure.
 
 Adventure XP:
 
@@ -330,7 +332,7 @@ Skill Advantage:
 
 Adventure Drop Tables:
 
-- Adventures can contain multiple possible Collectible drops and reference reusable Shared Chaser Pools.
+- Adventures can contain multiple local Collectible drops and may be an eligible source for a global Chaser item.
 - Every unowned drop in the table is rolled on completion.
 - A run can award at most one collectible.
 - If multiple rolls or drops succeed in one run, the player receives the item with the lower drop chance, meaning the rarer item.
@@ -345,7 +347,8 @@ Bad Luck Protection:
 - Bad Luck Protection should be implemented and explained in the Handbook.
 - Once completed runs reach twice the base drop denominator, the chance is tripled.
 - Example: a `1 / 500` drop becomes `3 / 500` at 1,000 completed runs.
-- Adventure Drop Tables should keep this compact: show base chance, current effective chance, Shared Pool source, Roll Units, and a `Protected` state only when protection is active.
+- Adventure Drop Tables should keep this compact: local drops show their current chance and `Protected` only when active; global Chasers show their fixed chance and `Chaser` or `Owned`.
+- Bad Luck Protection does not apply to global Chaser items.
 
 ## Content Mastery
 
@@ -357,19 +360,20 @@ Content Mastery is a reusable Level 0-50 progression layer for Adventures and fu
 - Each track defines a configurable target RAP; universal ratio thresholds derive Levels 1-50.
 - The Adventure overview and detail page show the rank with a circular ring: neutral at Level 0 and fully gold at Level 50.
 - Passive economic bonuses remain modest so new content does not feel punitive.
-- Milestones can unlock Cosmetics, content routes, Collectibles, or simple Account Bonuses.
-- Multiple routes in one content family may share one Mastery track.
+- Milestones can unlock Cosmetics, Collectibles, or simple Account Bonuses.
+- Every repeatable activity owns exactly one Mastery track. No route, family, or sibling activity shares it.
+- Mastery bonuses only affect the activity that owns the track.
 - Mastery Level is derived from raw saved points so balance values remain data-driven.
 
 Current provisional threshold ratios are 2%, 5%, 10%, 16%, 24%, 34%, 46%, 60%, 80%, and 100% of the configured track target.
 
-## Shared Chaser Pools
+## Global Chaser Items
 
-- A Shared Chaser Pool can be referenced by multiple Adventures, Minigames, or Bosses.
-- Progress uses Roll Units normalized by base RAP: currently 10,000 base RAP equals one Roll Unit.
-- More expensive eligible content contributes proportionally without forcing one specific Adventure.
-- Bad Luck Protection for shared drops uses accumulated Roll Units rather than one content's run count.
-- Specific route drops remain in their normal Drop Table; only explicit Chaser items use Shared Pools.
+- A Chaser is one globally unique Collectible definition with a fixed denominator and an explicit list of eligible activities.
+- Multiple independent Adventures, Minigames, or Bosses may reference the same Chaser without becoming a content family.
+- Every eligible completion rolls the same fixed chance independently. Chasers have no Roll Units and no Bad Luck Protection.
+- Ownership is account-wide. Once obtained from any source, every eligible Drop Table displays `Owned` and no source can award a duplicate.
+- Local Adventure drops retain their own run-based Bad Luck Protection.
 
 ## Collection Sets And Cosmetics
 
@@ -398,8 +402,9 @@ Current Adventures:
   - Runtime: 3 seconds in the prototype
   - Requirement: Fishing 40
   - XP split: Fishing 75%, Cooking 25%
+  - Additional Specialization XP: Maritime Fishing 25% when unlocked
   - Direct drops: `Trawler Gull` at 1 / 500, `Dragon Harpoon` at 1 / 750, and `Brine Ray` at 1 / 2,500
-  - Shared Fishing Chaser Pool: `Storm Harpoon` at 1 / 25,000 Roll Units
+  - Global Chaser: `Storm Harpoon` at a fixed 1 / 25,000; currently eligible here
   - Content Mastery target: provisional 5,000,000 base RAP
 - `Haunted Burial`
 - `Ember Kiln`
@@ -423,6 +428,10 @@ Design rules:
 - Active training should be visible through an animated gold state on the Skill tile and status copy in the Skill detail panel.
 - Training jobs continue through reloads/closed-app time by processing saved timestamps.
 - Direct Skill Training is transitional. It remains available until every Skill has at least one Level 1 gameplay acquisition source.
+- Specializations are broad sub-disciplines linked to one parent Skill. They unlock automatically from parent Skill levels and have their own Level 1-120 XP using the same curve.
+- Specializations cannot be trained with the 72-hour RAP action. They gain additional XP from eligible World activities and are intended to progress more slowly than parent Skills.
+- Specialization eligibility is captured when a run starts. Locked tracks receive no XP and no retroactive credit.
+- The first playable pilot is `Maritime Fishing`, unlocked at Fishing 30 and trained by Fisher's Trawler.
 - XP/hour should be conservative because later real-world activity can generate roughly 20,000 to 50,000 RAP/hour. Current XP rates per active skill are:
   - Level 1-9: 4,000 XP/hour
   - Level 10-29: 6,000 XP/hour
@@ -449,7 +458,7 @@ Progress persistence decision:
 - The app is intended for very long-term play over hundreds or thousands of hours, so save-game safety is a core design requirement, not a later polish item.
 - Local persistence is acceptable for the current prototype.
 - Save export/import is no longer exposed on the main dashboard. A future Settings or account area can restore backup controls without competing with primary gameplay navigation.
-- Save v9 includes current RAP, lifetime RAP, owned collectibles, skill XP, active skill training jobs, active Adventure runs, run counts, recent results, recent manual Activity Log entries, Content Mastery, Shared Chaser Pool Roll Units, Cosmetic selections, Achievement completions, notification acknowledgements, AP, selected Title, owned Skill Capes, and Cape notification acknowledgements. Saves v1-v8 migrate forward.
+- Save v10 includes current RAP, lifetime RAP, owned collectibles, Skill and Specialization XP, active Skill training jobs, active Adventure runs with run-start Specialization eligibility, run counts, recent results, recent manual Activity Log entries, local Content Mastery, Cosmetic selections, Achievement completions, notification acknowledgements, AP, selected Title, owned Skill Capes, and Cape notification acknowledgements. Saves v1-v9 migrate forward without retroactive Specialization XP; legacy shared Chaser Roll Units are discarded.
 - Local autosave continues in the background without a status panel on the main menu.
 - Cloud sync is a future priority before the app is treated as durable across devices.
 
@@ -547,9 +556,9 @@ The first version should prioritize clarity and fast collection feedback over de
 - Items.
 - Skill-based unlock trees.
 - Better Codex presentation with category completion.
-- More Adventures, Content Mastery tracks, Shared Chaser Pools, and deeper Bad Luck Protection tuning.
+- More independent Adventures, local Content Mastery tracks, global Chaser sources, and deeper local Bad Luck Protection tuning.
 - Generic Content Mastery Level 0-50 for Adventures, Minigames, and Bosses.
-- Shared Chaser Drop Pools across eligible content.
+- Globally unique fixed-chance Chaser items across explicit eligible content.
 - Cross-category Collection Sets without time-limited availability.
 - Account Bonus overview, Heroes, Profile Badges, curated Themes, and earned Cosmetics.
 - Expanded Achievement series, AP-threshold rewards, and rare exceptional Collectible rewards.

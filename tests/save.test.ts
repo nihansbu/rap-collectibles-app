@@ -51,6 +51,7 @@ describe("save system", () => {
     expect(imported?.selectedCosmetics.titleId).toBeNull();
     expect(imported?.ownedSkillCapes).toEqual([]);
     expect(imported?.notifiedSkillCapeIds).toEqual([]);
+    expect(imported?.specializationXp["maritime-fishing"]).toBe(0);
     expect(Object.keys(imported?.skillXp ?? {})).toHaveLength(30);
   });
 
@@ -84,7 +85,7 @@ describe("save system", () => {
     player.contentMasteryPoints["mastery-fishers-trawler"] = 250_000;
 
     const exported = exportPlayerState(player);
-    expect(JSON.parse(exported).version).toBe(9);
+    expect(JSON.parse(exported).version).toBe(10);
     expect(importPlayerState(exported)).toEqual(player);
   });
 

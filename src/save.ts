@@ -6,19 +6,21 @@ import {
   type ActiveActivityRun,
   type ActivityRunResult,
 } from "./activities";
-import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SHARED_DROP_POOLS, SKILL_CAPES, skills, type SkillId } from "./data";
+import { ACHIEVEMENTS, collectibles, COSMETICS, CONTENT_MASTERY_TRACKS, SKILL_CAPES, SPECIALIZATIONS, skills, type SkillId, type SpecializationId } from "./data";
 import { reconcileAchievements } from "./achievements";
 import { reconcileUnlockedSkillCapes } from "./skillCapes";
 import { ACTIVITY_OPTIONS, type ActivityId, type ActivityLogEntry } from "./economy";
 import { defaultUnlockedCosmetics, reconcileUnlockedCosmetics } from "./cosmetics";
 import { type ActiveTraining, MAX_ACTIVE_TRAININGS, processActiveTrainings, TRAINING_WINDOW_HOURS } from "./training";
 import { MAX_LEVEL, xpTable } from "./xp";
+import { createEmptySpecializationXp } from "./specializations";
 
 export type PlayerState = {
   rp: number;
   lifetimeRap: number;
   owned: string[];
   skillXp: Record<SkillId, number>;
+  specializationXp: Record<SpecializationId, number>;
   activeTrainings: ActiveTraining[];
   activityLog: ActivityLogEntry[];
   activeActivityRuns: ActiveActivityRun[];
@@ -26,7 +28,6 @@ export type PlayerState = {
   activityResults: ActivityRunResult[];
   lastSeenActivityResultId: string | null;
   contentMasteryPoints: Record<string, number>;
-  sharedDropPoolRollUnits: Record<string, number>;
   unlockedCosmetics: string[];
   selectedCosmetics: { themeId: string | null; profileBadgeId: string | null; titleId: string | null };
   completedAchievements: Record<string, number>;
@@ -80,6 +81,10 @@ type SavePlayerV8 = SavePlayerV7 & {
 type SavePlayerV9 = SavePlayerV8 & {
   ownedSkillCapes?: string[];
   notifiedSkillCapeIds?: string[];
+};
+
+type SavePlayerV10 = SavePlayerV9 & {
+  specializationXp?: Partial<Record<SpecializationId, number>>;
 };
 
 type SaveFileV1 = {
@@ -140,6 +145,13 @@ type SaveFileV9 = {
   player: SavePlayerV9;
 };
 
+type SaveFileV10 = {
+  version: 10;
+  revision: number;
+  savedAt: string;
+  player: SavePlayerV10;
+};
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export type SaveSnapshot = {
@@ -152,13 +164,17 @@ export type SaveWriteResult =
   | { ok: true; revision: number; savedAt: string }
   | { ok: false; reason: "unavailable" | "conflict" | "write-failed"; snapshot?: SaveSnapshot };
 
-export const CURRENT_SAVE_VERSION = 9;
-export const SAVE_KEY = "rap-collectibles.save.v9";
-const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v9";
-const BACKUP_KEYS = ["rap-collectibles.save.backup.v9.1", "rap-collectibles.save.backup.v9.2"];
-const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v9.timestamp";
+export const CURRENT_SAVE_VERSION = 10;
+export const SAVE_KEY = "rap-collectibles.save.v10";
+const LAST_KNOWN_GOOD_KEY = "rap-collectibles.save.lastKnownGood.v10";
+const BACKUP_KEYS = ["rap-collectibles.save.backup.v10.1", "rap-collectibles.save.backup.v10.2"];
+const BACKUP_TIMESTAMP_KEY = "rap-collectibles.save.backup.v10.timestamp";
 const BACKUP_INTERVAL_MS = 5 * 60 * 1000;
 const LEGACY_KEYS = [
+  "rap-collectibles.save.v9",
+  "rap-collectibles.save.lastKnownGood.v9",
+  "rap-collectibles.save.backup.v9.1",
+  "rap-collectibles.save.backup.v9.2",
   "rap-collectibles.save.v8",
   "rap-collectibles.save.lastKnownGood.v8",
   "rap-collectibles.save.backup.v8.1",
@@ -200,7 +216,7 @@ const skillIds = new Set(skills.map((skill) => skill.id));
 const activityIds = new Set(ACTIVITY_OPTIONS.map((activity) => activity.id));
 const gameplayActivityIds = new Set(GAMEPLAY_ACTIVITIES.map((activity) => activity.id));
 const masteryTrackIds = new Set(CONTENT_MASTERY_TRACKS.map((track) => track.id));
-const sharedDropPoolIds = new Set(SHARED_DROP_POOLS.map((pool) => pool.id));
+const specializationIds = new Set(SPECIALIZATIONS.map((specialization) => specialization.id));
 const cosmeticIds = new Set(COSMETICS.map((cosmetic) => cosmetic.id));
 const achievementIds = new Set(ACHIEVEMENTS.map((achievement) => achievement.id));
 const skillCapeIds = new Set(SKILL_CAPES.map((cape) => cape.id));
@@ -211,6 +227,7 @@ export function createInitialPlayerState(): PlayerState {
     lifetimeRap: 0,
     owned: [],
     skillXp: createEmptySkillXp(),
+    specializationXp: createEmptySpecializationXp(),
     activeTrainings: [],
     activityLog: [],
     activeActivityRuns: [],
@@ -218,7 +235,6 @@ export function createInitialPlayerState(): PlayerState {
     activityResults: [],
     lastSeenActivityResultId: null,
     contentMasteryPoints: Object.fromEntries(CONTENT_MASTERY_TRACKS.map((track) => [track.id, 0])),
-    sharedDropPoolRollUnits: Object.fromEntries(SHARED_DROP_POOLS.map((pool) => [pool.id, 0])),
     unlockedCosmetics: defaultUnlockedCosmetics(),
     selectedCosmetics: { themeId: null, profileBadgeId: null, titleId: null },
     completedAchievements: {},
@@ -308,7 +324,7 @@ function getStorage(): StorageLike | null {
 }
 
 function serializeSave(player: PlayerState, revision: number, savedAt: string): string {
-  const saveFile: SaveFileV9 = {
+  const saveFile: SaveFileV10 = {
     version: CURRENT_SAVE_VERSION,
     revision,
     savedAt,
@@ -332,17 +348,17 @@ export function parseSaveSnapshot(rawSave: string): SaveSnapshot | null {
   }
 }
 
-function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 | SaveFileV9 {
+function isSaveFile(value: unknown): value is SaveFileV1 | SaveFileV2 | SaveFileV3 | SaveFileV4 | SaveFileV5 | SaveFileV6 | SaveFileV7 | SaveFileV8 | SaveFileV9 | SaveFileV10 {
   if (!value || typeof value !== "object") return false;
 
   const candidate = value as { version?: unknown; player?: unknown };
-  if (![1, 2, 3, 4, 5, 6, 7, 8, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
+  if (![1, 2, 3, 4, 5, 6, 7, 8, 9, CURRENT_SAVE_VERSION].includes(candidate.version as number)) return false;
   if (!candidate.player || typeof candidate.player !== "object") return false;
 
   return true;
 }
 
-function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8 | SavePlayerV9): PlayerState {
+function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3 | SavePlayerV4 | SavePlayerV5 | SavePlayerV6 | SavePlayerV7 | SavePlayerV8 | SavePlayerV9 | SavePlayerV10): PlayerState {
   const sourceSkillXp = player.skillXp && typeof player.skillXp === "object" ? player.skillXp : {};
 
   const skillXp = Object.fromEntries(
@@ -351,6 +367,15 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
       return [skill.id, sanitizeNumber(rawXp, 0, xpTable[MAX_LEVEL])];
     }),
   ) as Record<SkillId, number>;
+  const sourceSpecializationXp = "specializationXp" in player && player.specializationXp && typeof player.specializationXp === "object"
+    ? player.specializationXp
+    : {};
+  const specializationXp = Object.fromEntries(
+    SPECIALIZATIONS.map((specialization) => [
+      specialization.id,
+      sanitizeNumber(sourceSpecializationXp[specialization.id], 0, xpTable[MAX_LEVEL]),
+    ]),
+  ) as Record<SpecializationId, number>;
 
   const owned = Array.isArray(player.owned)
     ? [...new Set(player.owned)].filter((id): id is string => typeof id === "string" && collectibleIds.has(id))
@@ -378,6 +403,7 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     lifetimeRap: sanitizeNumber("lifetimeRap" in player ? player.lifetimeRap : player.rp, 0, MAX_RAP),
     owned,
     skillXp,
+    specializationXp,
     activeTrainings: normalizeActiveTrainings("activeTrainings" in player ? player.activeTrainings : undefined),
     activityLog: normalizeActivityLog("activityLog" in player ? player.activityLog : undefined),
     activeActivityRuns: normalizeActiveActivityRuns("activeActivityRuns" in player ? player.activeActivityRuns : undefined),
@@ -385,7 +411,6 @@ function normalizePlayerState(player: SavePlayerV1 | SavePlayerV2 | SavePlayerV3
     activityResults,
     lastSeenActivityResultId,
     contentMasteryPoints,
-    sharedDropPoolRollUnits: normalizeIdNumberRecord("sharedDropPoolRollUnits" in player ? player.sharedDropPoolRollUnits : undefined, sharedDropPoolIds),
     unlockedCosmetics,
     selectedCosmetics: { themeId: null, profileBadgeId: null, titleId: null },
     completedAchievements,
@@ -562,7 +587,10 @@ function normalizeActiveActivityRuns(value: unknown): ActiveActivityRun[] {
       masteryTrackId: typeof candidate.masteryTrackId === "string" && masteryTrackIds.has(candidate.masteryTrackId)
         ? candidate.masteryTrackId
         : activity.masteryTrackId,
-      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 10),
+      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 50),
+      eligibleSpecializationIds: Array.isArray(candidate.eligibleSpecializationIds)
+        ? [...new Set(candidate.eligibleSpecializationIds)].filter((id): id is SpecializationId => specializationIds.has(id))
+        : [],
       rollSeed: Number.isFinite(candidate.rollSeed)
         ? sanitizeInteger(candidate.rollSeed, 1, 0xffff_ffff)
         : seedFromString(candidate.id),
@@ -607,6 +635,15 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
         amount: sanitizeNumber(entry.amount, 0, xpTable[MAX_LEVEL]),
         bonusPercent: sanitizeNumber(entry.bonusPercent, 0, 10_000),
       }));
+    const specializationXp = Array.isArray(candidate.specializationXp)
+      ? candidate.specializationXp
+        .filter((entry) => specializationIds.has(entry.specializationId) && Number.isFinite(entry.amount) && entry.amount >= 0)
+        .map((entry) => ({
+          specializationId: entry.specializationId,
+          amount: sanitizeNumber(entry.amount, 0, xpTable[MAX_LEVEL]),
+          bonusPercent: sanitizeNumber(entry.bonusPercent, 0, 10_000),
+        }))
+      : [];
     const activity = getActivity(candidate.activityId);
     const rolls = Array.isArray(candidate.rolls)
       ? candidate.rolls
@@ -640,13 +677,14 @@ function normalizeActivityResults(value: unknown): ActivityRunResult[] {
       additionalRollChancePercent: sanitizeNumber(candidate.additionalRollChancePercent, 0, 100),
       additionalRollTriggered: Boolean(candidate.additionalRollTriggered),
       xp,
+      specializationXp,
       rolls,
       droppedCollectibleId: candidate.droppedCollectibleId,
       masteryTrackId: typeof candidate.masteryTrackId === "string" && masteryTrackIds.has(candidate.masteryTrackId)
         ? candidate.masteryTrackId
         : activity?.masteryTrackId ?? "",
       masteryPointsGained: sanitizeNumber(candidate.masteryPointsGained, 0, MAX_RAP),
-      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 10),
+      masteryLevel: sanitizeInteger(candidate.masteryLevel, 0, 50),
     });
 
     if (normalized.length >= 6) break;

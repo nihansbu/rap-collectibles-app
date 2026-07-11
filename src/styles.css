@@ -3330,3 +3330,100 @@ button,
   min-height: 40px;
   margin-top: 8px;
 }
+/* Skill specializations */
+.specialization-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  min-height: 7px;
+}
+
+.specialization-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-text, #f4f0df) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text, #f4f0df) 28%, transparent);
+}
+
+.specialization-dots i.unlocked {
+  background: var(--color-gold);
+  border-color: var(--color-gold);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--color-gold) 55%, transparent);
+}
+
+.specialization-section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--color-gold) 20%, transparent);
+}
+
+.specialization-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.specialization-heading h3,
+.specialization-sources h3 {
+  margin: 0;
+}
+
+.specialization-heading span {
+  color: var(--color-muted);
+  font-size: .78rem;
+}
+
+.specialization-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.specialization-tile {
+  min-width: 0;
+  min-height: 72px;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 24%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-panel) 86%, black);
+  color: inherit;
+}
+
+.specialization-tile.locked { opacity: .58; }
+.specialization-tile img { width: 42px; height: 42px; object-fit: contain; }
+.specialization-tile span { min-width: 0; display: grid; gap: 4px; }
+.specialization-tile strong { line-height: 1.1; }
+.specialization-tile small { color: var(--color-muted); line-height: 1.2; }
+
+.specialization-info-list,
+.specialization-sources {
+  margin-top: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.specialization-info-list > div,
+.specialization-sources > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text, #f4f0df) 10%, transparent);
+}
+
+.specialization-info-list span,
+.specialization-sources span { color: var(--color-muted); }
+.reward-subheading { margin-top: 14px; }
+.specialization-reward small { color: var(--color-muted); }
+.specialization-reward.locked { opacity: .58; }
+
+@media (max-width: 340px) {
+  .specialization-grid { grid-template-columns: 1fr; }
+}
